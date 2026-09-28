@@ -1,0 +1,8 @@
+{
+  "scene": {"setting": "outdoor/nature", "overall": "Two people seated on a wooden bench in a forest, looking toward something out of frame to the right"},
+  "people": [
+    {"id": "p1", "posture": "seated, upright", "clothing": "navy polo shirt with a small embroidered patch, tan trousers, navy cap", "facing": "right, toward something out of frame", "expression": "slight smile", "contact": "no physical contact with anyone"},
+    {"id": "p2", "posture": "seated, leaning slightly forward, forearms on knees", "clothing": "navy polo shirt with a small embroidered patch, tan trousers, navy cap", "facing": "right, toward something out of frame", "expression": "neutral", "contact": "no physical contact with anyone"}
+  ],
+  "between": {"distance_p1_p2": "about 30 cm apart on the same bench", "clothing_match": "same shirt, trousers and cap style"}
+}

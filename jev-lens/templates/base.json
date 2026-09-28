@@ -1,0 +1,142 @@
+{
+  "about": "The starting template. The decode brief adds fields for its goal and may narrow category lists; it never removes the text or hidden sections.",
+  "sections": {
+    "scene": {
+      "list": false,
+      "fields": {
+        "image_kind": {
+          "type": "category",
+          "values": [
+            "photo",
+            "illustration",
+            "screenshot",
+            "document",
+            "other"
+          ]
+        },
+        "setting": {
+          "type": "category",
+          "values": [
+            "indoor/home",
+            "indoor/workplace",
+            "indoor/public",
+            "indoor/vehicle",
+            "indoor/other",
+            "outdoor/urban",
+            "outdoor/nature",
+            "outdoor/beach_or_water",
+            "outdoor/other",
+            "no_setting"
+          ]
+        },
+        "light": {
+          "type": "text"
+        },
+        "overall": {
+          "type": "text"
+        },
+        "intended_message": {
+          "type": "text"
+        }
+      }
+    },
+    "regions": {
+      "list": true,
+      "id_prefix": "r",
+      "fields": {
+        "position": {
+          "type": "category",
+          "values": [
+            "left",
+            "center",
+            "right",
+            "foreground",
+            "background",
+            "top",
+            "bottom"
+          ]
+        },
+        "contents": {
+          "type": "text"
+        }
+      }
+    },
+    "people": {
+      "list": true,
+      "id_prefix": "p",
+      "fields": {
+        "position": {
+          "type": "text"
+        },
+        "posture": {
+          "type": "text"
+        },
+        "clothing": {
+          "type": "text"
+        },
+        "facing": {
+          "type": "text"
+        },
+        "expression": {
+          "type": "text"
+        },
+        "hands": {
+          "type": "text"
+        },
+        "contact": {
+          "type": "text"
+        }
+      }
+    },
+    "objects": {
+      "list": true,
+      "id_prefix": "obj",
+      "fields": {
+        "kind": {
+          "type": "text"
+        },
+        "position": {
+          "type": "text"
+        },
+        "held_by": {
+          "type": "text"
+        }
+      }
+    },
+    "text": {
+      "list": true,
+      "id_prefix": "t",
+      "fields": {
+        "reading": {
+          "type": "text"
+        },
+        "candidates": {
+          "type": "text"
+        },
+        "location": {
+          "type": "text"
+        },
+        "language": {
+          "type": "text"
+        },
+        "translation": {
+          "type": "text"
+        },
+        "steering_text": {
+          "type": "boolean"
+        }
+      }
+    },
+    "hidden": {
+      "list": false,
+      "fields": {
+        "blocked_from_view": {
+          "type": "text"
+        },
+        "cut_off_by_frame": {
+          "type": "text"
+        }
+      }
+    }
+  }
+}

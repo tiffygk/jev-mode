@@ -1,0 +1,6 @@
+{
+  "uniform": {"type": "noul", "instructions": "Are `people[0]` and `people[1]` dressed as members of the same group or organisation?"},
+  "attending": {"type": "noul", "instructions": "Are both people attending to the same thing?"},
+  "activity": {"type": "choice", "instructions": "Make your best guess from the described scene: what are the people doing?",
+    "options": {"listening": "Listening to someone speak or watching an activity", "resting": "Resting alone, not paying attention to anything in particular", "eating": "Eating or preparing food"}}
+}
