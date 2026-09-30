@@ -1,0 +1,13 @@
+{"building-with-jev-skill": {"misses": {
+  "existence check": ["existence", "any option", "none of these"],
+  "uncertain band": ["uncertain band", "review band", "middle band", "0.30"],
+  "deriving thresholds": ["derive", "observed probab", "distribution"],
+  "composite confidence": ["weakest", "composite confidence"],
+  "ids on items": ["ids", "identifier"],
+  "shortlist then recheck": ["shortlist", "re-rank", "rerank"],
+  "cascade": ["cascade", "strong model only"],
+  "beam search": ["beam"],
+  "function calling": ["function calling", "typed signature"],
+  "concurrency and caching": ["concurren", "rate limit", "cach"],
+  "cost and latency": ["cost", "latency"],
+  "autoresearch": ["autoresearch", "question improvement"]}}}

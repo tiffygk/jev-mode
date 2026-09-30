@@ -1,42 +1,30 @@
 ---
 name: jevaluate-harness
-description: Use when running a jevaluate rating round, re-rating after a rubric change, changing the jevaluate rubric, running its judgment eval, or publishing ratings to the jev-mode ratings folder.
+description: Use when running a jevaluate rating round, re-rating after a rubric change, changing the jevaluate rubric, or publishing ratings to the jev-mode ratings folder.
 ---
 
 # Jevaluate Harness
 
-Companion to `jevaluate` (`jevaluate/read.md` covers one rating). This file covers rounds and the rubric.
+The maintainer's process for `jevaluate`. One rating is `jevaluate/read.md`; testing the rubric is the `jevaluate-eval` skill. If `$JEVALUATE_OVERLAY` is set, read that file first; its rules override the defaults here.
 
 ## Settings (yours, not in this skill)
-`$PRIVATE_TERMS`: a file of regexes, one per line, for lines never to publish. `library.py export` refuses a match but reads only `$JEVALUATE_LIBRARY/private-terms.txt`, so point `$PRIVATE_TERMS` at that file. Your own pre-push hook should read `$PRIVATE_TERMS` too; jev-mode ships none.
+- `$JEVALUATE_LIBRARY`: the private ratings library (default `~/.claude/jevaluate-library`).
+- `$PRIVATE_TERMS`: your never-publish regexes, one per line. `library.py export` reads only `$JEVALUATE_LIBRARY/private-terms.txt`, so keep the file there (or symlink it) and have your pre-push hook read the same file.
+- `$JEVALUATE_OVERLAY`: a markdown note of your own rules for these workflows, read first; no required format.
 
-## 1. Pick and screen
-Run `python3 jevaluate/scripts/screen_list.py <list README> --known-yes <repo that calls Jev> --known-no <repo that doesn't>`; it stops if either control is misclassified. Quote counts from its output, never by eye. Never classify repos with GitHub code search.
+## Two principles
+- **Code checks, text explains:** every rule has a row in `jevaluate/enforcement.md` naming the check that refuses a wrong answer, or why it stays judgment.
+- **Ask for what is observed:** raters record type, the calls-Jev line, each decision's stakes as read and the verdict; `library.py add` derives kind and every n.a.
 
-## 2. Size before spending
-Run `python3 jevaluate/scripts/coverage_manifest.py <owner/repo> <dir>` for every project and apply `read.md`'s cost rule (section 2) to each. Sum the estimates and agree the total, and every scoped rating, with the user before dispatch; an unattended rater can't ask.
+## Workflows
+Open the file for the workflow and follow it in order; each step names the gate that must pass.
 
-## 3. Brief raters
-Give each rater `rater-brief.md`, filling PROJECT, SLUG, PREV (the previous rating file), VIA and SCOPE, and changing its paths if your jevaluate install or round folder differs: own folder only, facts written before reading the old rating, no `library.py add`, commit or push.
+| Workflow | File | Done when |
+|---|---|---|
+| Change the rubric | `rubric-change.md` | `jevaluate-eval` passes and the owner approves the version |
+| Rate or re-rate projects | `rating-round.md` | every rating logged by `library.py add`, scan clean |
+| Publish ratings | `publish.md` | one pull request, reviewed |
 
-## 4. Log one at a time
-As controller, run `python3 jevaluate/scripts/library.py add <rating> --evidence <dir> --link-docs` for one rating at a time, since `add` rebuilds the shared index and numbers same-day files. Send a refused rating back to its rater; never hand-fix it. Keep a ledger: project, verdict, tokens, flags.
+To see where you are: `python3 jevaluate-harness/scripts/harness_status.py <ledger> --workflow rubric|round` (`round` runs through publishing). It reruns the scripted gates it has (the materials check), reads the other steps from the ledger, and names the file to open next. Ledger lines: `done: <step> <YYYY-MM-DD> <evidence>`. Steps: rubric = rules-written, materials-checked, quiz-passed, eval-passed, owner-approved, frozen; round = picked, sized, costs-approved, rated, scanned, adjudicated, final-gate, release-check, published.
 
-## 5. Adjudicate
-Send any verdict move of 2 or more points, and any rubric line a rater called ambiguous, to a fresh reviewer subagent given only the facts. Answer "what would X get?" from that re-verdict, never from memory.
-
-## 6. Calibrate
-- Run the judgment eval (`jevaluate/evals/`, see its README; if the folder isn't there yet, say so and skip this step) before and after any rubric change. Tune only on tuning-set failures, never on held-out cases.
-- When raters disagree on a fact across re-rates, tighten that fact's anchor, then re-run the eval.
-- Test wording with `claude -p --setting-sources "" --strict-mcp-config --tools "" --system-prompt-file <f> --model <m> --effort <e> --output-format json < prompt.md` (`--bare` fails on OAuth logins). Agent token logs miss these calls; add each call's `usage` to your spend.
-- Measure a cheaper rating mode on one real repo before building it. A quick mode measured at 78k tokens left 10 of 24 facts unknown and was dropped.
-- Record each round's findings in `jevaluate/CALIBRATION.md` (create it if missing).
-
-## 7. Publish
-1. Give every rating a `why:` line (20 words at most).
-2. Run `library.py export <preview dir>`; render it and read the index, a detail page and a full page.
-3. Have a fresh reviewer subagent read every page for private context (anything crediting a private conversation, people named other than by their GitHub or Hugging Face handle), rater process notes, and broken or unlinked `file:line` references. Brief it to skip hedging and tone suggestions.
-4. Check the README's claims against the skill's current files.
-5. Export into `ratings/`, run a GitHub readiness audit, push once.
-
-Publish only full or agreed-scoped ratings under the current rubric; never evidence folders.
+Keep a ledger per workflow: each step, each ruling with its cost if wrong, and tokens per agent. Record rulings and handoffs where your overlay says, or in the ledger.

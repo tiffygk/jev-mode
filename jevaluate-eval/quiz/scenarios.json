@@ -1,0 +1,160 @@
+[
+ {
+  "id": "q01",
+  "text": "jev-loan-lens is a small loan-approval service. Its README says every application is scored by TypeSafe's Jev before a decision. The code never calls Jev. There is no client, key or network request, only a hardcoded rule: credit score above 640 and income above a fixed figure means approved. The 'jev_score' field in each response is that rule's number renamed. Approvals trigger automatic disbursement through a payments API, so real money moves on the strength of a rule that claims to be an AI model.",
+  "set": "tuning",
+  "tags": [
+   "calls-jev",
+   "mention-only",
+   "citation-1a"
+  ]
+ },
+ {
+  "id": "q02",
+  "text": "tidy-downloads is a command-line tool that cleans a user's Downloads folder. Its README never mentions Jev or TypeSafe. The code sends one yes/no question per file to Jev's HTTP endpoint, such as 'Is this installer older than the software it installs and safe to archive?'. It asks nothing else. Each 'yes' is acted on immediately: the file moves to an Archive folder. A 'no' leaves the file alone. It only touches the user's own files and keeps a log so moves can be undone.",
+  "set": "heldout",
+  "tags": [
+   "calls-jev",
+   "stakes-own-files",
+   "yes-no-only"
+  ]
+ },
+ {
+  "id": "q03",
+  "text": "jev-tutorial-notebook is a Jupyter course in five lessons on asking Jev for decisions. The README says every cell runs with the free sandbox key. The code confirms it: each cell makes a real request to Jev with sample data such as fictional support tickets and toy invoices. Answers are printed under the cell so learners can see the format, confidence values and error cases. Nothing is stored or acted on, and no personal data is used. The final lesson is a short exercise checked by comparing printed output.",
+  "set": "tuning",
+  "tags": [
+   "guide"
+  ]
+ },
+ {
+  "id": "q04",
+  "text": "Learn Jev in 10 Minutes is a Markdown tutorial. Its README says every snippet can be pasted and run. None can. The snippets import a package that does not exist, use placeholder keys, and show Jev answers as invented comments like '# => approve'. The repository has no executable code, no tests and no requests to TypeSafe. Readers get a plausible picture of how Jev's calls look, but nothing is called and no answer exists. The commentary is sound as prose, though the 'runnable' claim is false.",
+  "set": "tuning",
+  "tags": [
+   "guide",
+   "calls-jev"
+  ]
+ },
+ {
+  "id": "q05",
+  "text": "typesafe-proxy-lite is advertised as a Jev-compatible endpoint that other developers can point their apps at. It accepts requests in Jev's format and returns Jev-shaped JSON with decision, confidence and reason fields. Underneath, it never contacts TypeSafe. A keyword matcher and a few regexes produce the decisions, with confidence values picked at random from a range. Each answer is returned to whichever caller sent the request. The README says 'powered by Jev' in its footer, which is untrue. It only imitates Jev's interface.",
+  "set": "tuning",
+  "tags": [
+   "replacement",
+   "citation"
+  ]
+ },
+ {
+  "id": "q06",
+  "text": "jevkit-js is a client library. The README calls it a 'smart approvals toolkit', which suggests logic of its own. The code is a thin wrapper: it takes questions from other developers' apps, adds an auth header, forwards them unchanged to Jev, and hands Jev's response back untouched. It has no retries that change meaning, no caching, no decision rules and no interpretation of answers. Whatever the calling app asks is what Jev sees. Any action taken on the answer is up to the developer who installed the library.",
+  "set": "heldout",
+  "tags": [
+   "client"
+  ]
+ },
+ {
+  "id": "q07",
+  "text": "AccessGate controls door entry at a shared office. The README says it uses Jev to decide who may enter. The code does call Jev: when a badge is tapped, it sends the holder's name, role, schedule and recent entry history. If Jev's score is above 0.8, the door unlocks automatically with no human review. Below that, it stays locked and a log line is written. The answers are acted on directly. Because it handles personal data and physical access, the README warns operators to review the threshold and keep a manual override key.",
+  "set": "tuning",
+  "tags": [
+   "stakes-data-kind",
+   "stakes-access"
+  ]
+ },
+ {
+  "id": "q08",
+  "text": "jev-scoreboard publishes a public web page ranking open-source repositories by documentation clarity. A nightly job sends each repository's README to Jev and stores the returned score, and the page simply displays those scores in a sortable table. The README states clearly that Jev provides the numbers and that they are opinions. Nothing is triggered by a score: no emails, no issues opened, no badges enforced. Maintainers can view but not edit their results. The data comes from public repositories, so no personal data is involved.",
+  "set": "tuning",
+  "tags": [
+   "stakes-public-scores"
+  ]
+ },
+ {
+  "id": "q09",
+  "text": "ChargeGuard's README describes a read-only dashboard: 'Jev fraud scores are displayed for analysts to review.' The code does more. It calls Jev on every card transaction, and the dashboard is the harmless part. A background worker also reads each score and freezes the card automatically whenever the score passes 0.9, then sends the customer a text. No analyst sees the case first. The scores are shown, but they also act, so real customers' money and access are affected without anyone approving. The README's description is misleading.",
+  "set": "heldout",
+  "tags": [
+   "stakes-money",
+   "readme-vs-code"
+  ]
+ },
+ {
+  "id": "q10",
+  "text": "commit-nudge is a git hook whose README promises to 'block vague commit messages using Jev'. The code does call Jev with a single yes/no question: 'Is this commit message descriptive?'. But the hook stores the answer in a variable and never checks it. It always exits with status 0, so every commit goes through. Jev's reply is discarded and not even logged. The tool only inspects the developer's own repository, and the blocking behavior described in the README does not exist.",
+  "set": "tuning",
+  "tags": [
+   "answers-unused-1c"
+  ]
+ },
+ {
+  "id": "q11",
+  "text": "meal-picker is a nutrition app. It sends a user's dietary restrictions, allergies and recent orders to Jev, which returns three suggested dinners. The README says Jev only suggests and never orders. That matches the code: suggestions appear on screen as cards, and nothing is purchased until the person taps Confirm. Only then does the app place the delivery order with their saved payment method. Rejected suggestions are deleted. Personal health data goes to Jev, so the README includes a consent screen and a note on what is shared.",
+  "set": "tuning",
+  "tags": [
+   "stakes-review",
+   "stakes-data-kind"
+  ]
+ },
+ {
+  "id": "q12",
+  "text": "Jev Decision Patterns is a written guide with diagrams on structuring approve/reject workflows around an AI model like Jev. The README claims 'every pattern is tested against the live Jev API'. The repository has no code, no test folder and no CI. Examples are described in prose, and the sample answers are invented. It works as a design essay, but readers looking for runnable calls will find none, and the testing claim cannot be checked because nothing exists to run. No answers are produced, acted on or stored.",
+  "set": "unkeyed",
+  "tags": [
+   "guide"
+  ]
+ },
+ {
+  "id": "q13",
+  "text": "rent-screen is a tenant-screening API for property managers. Its README describes 'automated applicant ranking' and never names TypeSafe or Jev. The code sends each applicant's income, employment history, references and past evictions to Jev and receives a suitability score with a short reason. The API returns that score and reason directly to the calling property-management software, which decides what to do. rent-screen itself takes no action and stores nothing after the response. Because the decisions concern personal data, money and housing access, the calling app carries the consequences.",
+  "set": "unkeyed",
+  "tags": [
+   "stakes-returned-to-caller",
+   "stakes-data-kind"
+  ]
+ },
+ {
+  "id": "q14",
+  "text": "SafeSpots is a public page rating neighborhood cafes on how safe their guest wifi seems. The README says scores are refreshed live by Jev. The code does that: a nightly job sends each cafe's published network details to Jev and writes the returned score to the page. Visitors see a map with colored pins and can read Jev's short explanation. Nothing happens automatically because of a score, with no notices to owners and no listings removed. The page is informational only, and cafe owners can request a re-scan.",
+  "set": "unkeyed",
+  "tags": [
+   "stakes-public-scores"
+  ]
+ },
+ {
+  "id": "q15",
+  "text": "jev-mock-server is a test double for developers building against Jev. It listens locally and accepts requests in Jev's exact format, returning canned answers chosen by a config file, such as approve for one input pattern and reject for another. The README says plainly that it does not contact TypeSafe and is not a model. Each response goes back to the calling test suite, which lets developers check error handling and timeouts without spending API credits. Nothing is stored, and no real personal or financial data should be sent.",
+  "set": "unkeyed",
+  "tags": [
+   "replacement-vs-mention",
+   "test-double"
+  ]
+ },
+ {
+  "id": "q16",
+  "text": "Jev Cookbook is a tutorial repository with Docker Compose and twelve runnable recipes. The README says no API key is needed. That is because the calls never reach Jev: a local layer replays recorded responses from JSON fixtures, matching on request text. Everything runs and prints answers, but it is a replay of past output, not a live model. Any question not in the fixtures returns an error. Learners get something that works offline, but the README's mention of 'calling Jev' overstates what the code does.",
+  "set": "unkeyed",
+  "tags": [
+   "guide",
+   "calls-jev",
+   "replay"
+  ]
+ },
+ {
+  "id": "q17",
+  "text": "expense-approver is an internal finance tool. The README says 'human in the loop: Jev recommends, managers decide'. The code calls Jev with an employee's expense report, including amounts, receipts and history, and shows the recommendation to a manager with an Approve button. However, if the manager does nothing for ten seconds, a timer confirms the recommendation automatically and reimbursement is sent. Answers are shown first, then acted on, usually without a real human choice. The claim of a confirming person is only partly true.",
+  "set": "unkeyed",
+  "tags": [
+   "stakes-review",
+   "stakes-money"
+  ]
+ },
+ {
+  "id": "q18",
+  "text": "readme-linter checks a developer's own documentation folder. Its README never mentions Jev. The code asks Jev one yes/no question per section: 'Is this section outdated?'. It does make the calls and counts them. But a bug returns from the function before results are printed, so the answers are computed and discarded. The tool always reports 'Checked 42 sections' with no findings and touches no files. Only the developer's own Markdown files are read, and nothing leaves the machine except the section text sent to Jev.",
+  "set": "unkeyed",
+  "tags": [
+   "answers-unused-1c"
+  ]
+ }
+]

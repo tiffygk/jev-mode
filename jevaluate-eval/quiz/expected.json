@@ -1,0 +1,79 @@
+{
+ "q01": {
+  "kind": "mentions",
+  "type": "jev-mention-only",
+  "f0": "no",
+  "code": "1a",
+  "top_stakes": "n.a."
+ },
+ "q02": {
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "q03": {
+  "kind": "uses",
+  "type": "demo",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "q04": {
+  "kind": "teaches",
+  "type": "guide",
+  "f0": "n.a.",
+  "code": "1t",
+  "top_stakes": "n.a."
+ },
+ "q05": {
+  "kind": "replaces",
+  "type": "jev-replacement",
+  "f0": "no",
+  "code": "1a",
+  "top_stakes": "n.a."
+ },
+ "q06": {
+  "kind": "uses",
+  "type": "client",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "n.a."
+ },
+ "q07": {
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "very high"
+ },
+ "q08": {
+  "kind": "uses",
+  "type": "demo",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "q09": {
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "very high"
+ },
+ "q10": {
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "1c",
+  "top_stakes": "n.a."
+ },
+ "q11": {
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ }
+}
