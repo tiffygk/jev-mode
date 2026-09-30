@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "jev-mode",
+  "owner": {
+    "name": "tiffygk",
+    "url": "https://github.com/tiffygk"
+  },
+  "metadata": {
+    "description": "Skills for building with Jev, TypeSafe's System One model. Works in Claude Code and Codex."
+  },
+  "plugins": [
+    {
+      "name": "jevaluate",
+      "source": "./",
+      "strict": false,
+      "description": "Rates how well a project uses Jev, with provenance for every finding. Includes the harness for rating rounds, re-rates and rubric calibration.",
+      "author": {
+        "name": "tiffygk",
+        "url": "https://github.com/tiffygk"
+      },
+      "homepage": "https://github.com/tiffygk/jev-mode/tree/main/jevaluate",
+      "repository": "https://github.com/tiffygk/jev-mode",
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "keywords": ["jev", "typesafe", "system-one", "evaluation", "rating"],
+      "category": "development",
+      "skills": ["./jevaluate", "./jevaluate-harness"]
+    },
+    {
+      "name": "jev-lens",
+      "source": "./",
+      "strict": false,
+      "description": "Turns images into a neutral JSON state that Jev can read, one shared schema across the set.",
+      "author": {
+        "name": "tiffygk",
+        "url": "https://github.com/tiffygk"
+      },
+      "homepage": "https://github.com/tiffygk/jev-mode/tree/main/jev-lens",
+      "repository": "https://github.com/tiffygk/jev-mode",
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "keywords": ["jev", "typesafe", "system-one", "images", "vision"],
+      "category": "development",
+      "skills": ["./jev-lens"]
+    }
+  ]
+}
