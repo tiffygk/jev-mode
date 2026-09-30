@@ -7,7 +7,7 @@ Ask, in one message:
 - **The goal:** what decision Jev will make, and for whom.
 - **Their questions,** if they have any.
 - **The images,** and whether they are photos or illustrations.
-- **Anything sensitive:** private people, children, documents, locations. Say plainly that the images stay on this machine and with Claude, and that the Jev check sends only the text state to TypeSafe's API.
+- **Anything sensitive:** private people, children, documents, locations. Say plainly that the images stay on this machine and with the provider of the model running this session (Anthropic for Claude), and that the Jev check sends only the text state to TypeSafe's API.
 - **The decoder model:** ask whether to use the strongest vision model for everything, or the strongest for calibration and a cheaper one for the batch, with the cost difference (see `SKILL.md`, Cost).
 
 If they have no questions, offer 2 or 3 framings of the goal, each with its pros and cons, and let them pick.

@@ -38,7 +38,7 @@ The [system page](https://tiffygk.github.io/jev-mode/system/) also shows the rou
 
 ## Install and use
 
-Needs Claude Code, Python 3.8+, the GitHub CLI (`gh`, logged in) and Jevaluate itself.
+Needs Claude Code or Codex, Python 3.8+, the GitHub CLI (`gh`, logged in) and Jevaluate itself.
 
 ```
 git clone https://github.com/tiffygk/jev-mode

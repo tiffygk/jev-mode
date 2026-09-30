@@ -8,7 +8,7 @@ description: Use when running a jevaluate rating round, re-rating after a rubric
 The maintainer's process for `jevaluate`. One rating is `jevaluate/read.md`; testing the rubric is the `jevaluate-eval` skill. If `$JEVALUATE_OVERLAY` is set, read that file first; its rules override the defaults here.
 
 ## Settings (yours, not in this skill)
-- `$JEVALUATE_LIBRARY`: the private ratings library (default `~/.claude/jevaluate-library`).
+- `$JEVALUATE_LIBRARY`: the private ratings library (default `~/.claude/jevaluate-library` if it exists, else `~/.jevaluate-library`).
 - `$PRIVATE_TERMS`: your never-publish regexes, one per line. `library.py export` reads only `$JEVALUATE_LIBRARY/private-terms.txt`, so keep the file there (or symlink it) and have your pre-push hook read the same file.
 - `$JEVALUATE_OVERLAY`: a markdown note of your own rules for these workflows, read first; no required format.
 

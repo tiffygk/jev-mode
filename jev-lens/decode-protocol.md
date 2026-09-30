@@ -3,7 +3,7 @@
 How a blind decoder turns an image into an inventory. The decoder gets **only** the prompt below, the cleaned images, the template and the brief. It never sees the goal, the questions, Jev results, this conversation, `manifest.json`, or the original file names.
 
 ## Dispatching a decoder
-- A fresh subagent with no conversation history (in Claude Code, the Agent tool with a general-purpose agent; not a fork, which inherits the conversation). Name the model explicitly: the strongest vision model for calibration, the batch model for Phase 2.
+- A fresh subagent with no conversation history. In Claude Code, the Agent tool with a general-purpose agent; not a fork, which inherits the conversation. In Codex, `spawn_agent` with `fork_turns: "none"` (older versions: `fork_context: false`); its default forks the whole conversation, which breaks the blind. Name the model explicitly: the strongest vision model for calibration, the batch model for Phase 2.
 - Up to 10 images per decoder. Two decoders on the same images (Heavy) are dispatched in parallel and never see each other's output.
 - Fill in the prompt below and paste it whole. Replace each `{{...}}`; leave nothing else out.
 

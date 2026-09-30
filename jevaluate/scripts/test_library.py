@@ -1470,3 +1470,26 @@ def test_add_refuses_a_rated_value_that_is_not_a_date(tmp_path, bad):
 def test_add_accepts_a_date():
     import library
     library.require_date({"rated": "2026-09-30"})
+
+
+def run_default(home, *args):
+    env = dict(os.environ)
+    env.pop("JEVALUATE_LIBRARY", None)
+    env["HOME"] = str(home)
+    return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, env=env)
+
+
+def test_default_library_is_harness_neutral(tmp_path):
+    r = run_default(tmp_path, "index")
+    assert r.returncode == 0, r.stderr
+    assert (tmp_path / ".jevaluate-library" / "index.md").exists()
+    assert not (tmp_path / ".claude").exists()
+
+
+def test_default_library_keeps_existing_claude_library(tmp_path):
+    old = tmp_path / ".claude" / "jevaluate-library"
+    old.mkdir(parents=True)
+    r = run_default(tmp_path, "index")
+    assert r.returncode == 0, r.stderr
+    assert (old / "index.md").exists()
+    assert not (tmp_path / ".jevaluate-library").exists()

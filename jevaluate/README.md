@@ -59,14 +59,14 @@ After routing, 23 facts in four groups: core principles, question design, execut
 
 ## Install and use
 
-Needs Claude Code, git, Python 3.8+ and the GitHub CLI (`gh`, logged in).
+Needs Claude Code or Codex, git, Python 3.8+ and the GitHub CLI (`gh`, logged in).
 
 ```
 git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jevaluate ~/.claude/skills/
 ```
 
-Then ask Claude Code: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort, for comparable ratings. A rating costs 100-160k tokens for a small repo. Ratings save to `~/.claude/jevaluate-library/` (or `$JEVALUATE_LIBRARY`).
+Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort, for comparable ratings; in Codex, `gpt-6-sol` at medium effort. A rating costs 100-160k tokens for a small repo. Ratings save to `~/.claude/jevaluate-library/` (or `$JEVALUATE_LIBRARY`).
 
 ## Published ratings
 

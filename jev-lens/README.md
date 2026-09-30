@@ -61,18 +61,13 @@ Every rule cites TypeSafe's docs or cookbooks, dated, in `jev-rules.md`. The cer
 
 ## Install and use
 
-Needs Claude Code, Python 3.9+, and [uv](https://docs.astral.sh/uv/) (or `pip install pillow typesafe-sdk`). The Jev check needs `TYPESAFE_API_KEY`; everything else runs without it.
+Needs Claude Code or Codex, Python 3.9+, and [uv](https://docs.astral.sh/uv/) (or `pip install pillow typesafe-sdk`). The Jev check needs `TYPESAFE_API_KEY`; everything else runs without it. Install the plugin from the marketplace: see [Install](../README.md#install).
 
-```
-git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jev-lens ~/.claude/skills/
-```
-
-Then ask Claude Code: `turn these photos into a Jev state`. Ten images take about 155k tokens in Light mode and 445k in Heavy; the Jev API costs under a cent.
+Then ask your agent: `turn these photos into a Jev state`. Ten images take about 155k tokens in Light mode and 445k in Heavy (measured in Claude Code); the Jev API costs under a cent.
 
 ## Limits
 
-It never states identity, age, gender or relationships unless you add them as labeled context. The question sketch only tests the state; you write the final questions. Only text goes to TypeSafe. Not affiliated with TypeSafe. Current skill uses Opus 5.5 for the best vision and is designed for Claude Code, but can be easily edited for any harness that uses skills or to call a new model with good vision scores.
+It never states identity, age, gender or relationships unless you add them as labeled context. The question sketch only tests the state; you write the final questions. Only text goes to TypeSafe. Not affiliated with TypeSafe. It asks for the strongest vision model available (Opus 5.5 in Claude Code) and runs in Claude Code and Codex. Other harnesses that load skills need small edits.
 
 ## License
 
