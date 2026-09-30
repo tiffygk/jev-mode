@@ -1,6 +1,6 @@
 # State rules
 
-How the reviewed inventory becomes the JSON `state` Jev reads. The general rules for building with Jev, each with its public source, are in `jev-rules.md` (a copy of Jevaluate's; `scripts/rules_sync.py` warns if the two differ). This file applies them to images; rule IDs point there.
+How the reviewed inventory becomes the JSON `state` Jev reads. The general rules for building with Jev, each with its public source, are in `../shared/jev-rules.md`, shared with Jevaluate. This file applies them to images; rule IDs point there.
 
 ## Shape
 - **A JSON object with descriptive field names** (S1), related items grouped (S2). People and objects are lists whose items have the same fields, so comparisons are symmetric.

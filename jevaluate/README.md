@@ -61,20 +61,15 @@ The full list, with the TypeSafe source behind each rule, is in [`rubric.md`](ru
 
 ## Every score shows its work
 
-- **Rules from the source:** every rule and fix cites TypeSafe's docs or one of its 18 cookbooks, dated, in `jev-rules.md`. The few rules that come from rating experience instead are marked as the skill's own. An unhandled Choice order, for example, gets its fix from TypeSafe's consistency cookbook.
+- **Rules from the source:** every rule and fix cites TypeSafe's docs or one of its 18 cookbooks, dated, in [`jev-rules.md`](../shared/jev-rules.md), which Jevaluate and Jev Lens share. The few rules that come from rating experience instead are marked as the skill's own, in `rubric.md`. An unhandled Choice order, for example, gets its fix from TypeSafe's consistency cookbook.
 - **Scores cite their facts:** each score names the rule it meets and the facts behind it.
 - **Claims get checked:** Evidence earns full marks only with a stated sample, independent labels, a held-out set and a fair baseline.
 
 ## Install and use
 
-Needs Claude Code, git, Python 3.8+ and the GitHub CLI (`gh`, logged in: the scripts read each repo's file tree through it). No Jev API key.
+Needs Claude Code or Codex, git, Python 3.8+ and the GitHub CLI (`gh`, logged in: the scripts read each repo's file tree through it). No Jev API key. Install the plugin from the marketplace: see [Install](../README.md#install).
 
-```
-git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate ~/.claude/skills/
-```
-
-Then ask Claude Code: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort every time, so ratings stay comparable. A rating reads every file that could change its verdict, so it isn't cheap: about 45k tokens plus the size of those files, typically 100-160k for a small repo. Ratings save to `~/.claude/jevaluate-library/` (or `$JEVALUATE_LIBRARY`), never into the skill.
+Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort every time, so ratings stay comparable; in Codex, `gpt-6-luna` at medium effort. A rating reads every file that could change its verdict, so it isn't cheap: about 45k tokens plus the size of those files, typically 100-160k for a small repo (measured in Claude Code). Ratings save to `~/.jevaluate-library/` (or `$JEVALUATE_LIBRARY`, or `~/.claude/jevaluate-library/` if you already have one there), never into the skill.
 
 ## Published ratings
 

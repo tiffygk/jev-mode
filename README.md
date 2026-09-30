@@ -1,6 +1,6 @@
 # Jev Mode
 
-Claude Code skills and a study course for building with Jev, TypeSafe's System One model. Not every skill calls Jev: some are guides and evaluators for building with it. The table says which, and each folder's README gives the details.
+Skills for Claude Code and Codex, and a study course, for building with Jev, TypeSafe's System One model. Not every skill calls Jev: some are guides and evaluators for building with it. The table says which, and each folder's README gives the details.
 
 | Name | What it does | Calls Jev | Status |
 |---|---|---|---|
@@ -11,16 +11,32 @@ Claude Code skills and a study course for building with Jev, TypeSafe's System O
 
 Take the course as the Claude artifact when you can: Claude grades your glossary definitions on meaning, while the GitHub Pages copy uses an untested keyword check.
 
-Install a skill by copying its folder into `~/.claude/skills/`:
+## Install
+
+This repo is a plugin marketplace for Claude Code and Codex. It has two plugins:
+
+- `jevaluate`: the Jevaluate and Jevaluate Harness skills
+- `jev-lens`: the Jev Lens skill
+
+In Claude Code:
 
 ```
-git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate ~/.claude/skills/
-cp -r jev-mode/jev-lens ~/.claude/skills/
-cp -r jev-mode/jevaluate-harness ~/.claude/skills/
+claude plugin marketplace add tiffygk/jev-mode
+claude plugin install jevaluate@jev-mode
+claude plugin install jev-lens@jev-mode
 ```
 
-The skills are written for Claude Code, but any coding harness that loads skills can run them with small changes.
+In Codex:
+
+```
+codex plugin marketplace add tiffygk/jev-mode
+codex plugin add jevaluate@jev-mode
+codex plugin add jev-lens@jev-mode
+```
+
+Pull later changes with `claude plugin marketplace update jev-mode` or `codex plugin marketplace upgrade jev-mode`.
+
+Any other coding harness that loads skills can run them with small changes.
 
 Ratings of community Jev projects are in [`ratings/`](ratings/), released under CC0: use and change them freely.
 

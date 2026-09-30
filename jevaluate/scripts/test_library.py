@@ -623,3 +623,26 @@ def test_check_refuses_process_notes(tmp_path, lib, note):
     r = make_rating(tmp_path / "r.md", "P", "o", "https://github.com/o/p", "2026-09-28", summary="Fine. " + note + ".")
     res = run(lib, "check", str(r))
     assert res.returncode != 0 and "process note" in (res.stdout + res.stderr)
+
+
+def run_default(home, *args):
+    env = dict(os.environ)
+    env.pop("JEVALUATE_LIBRARY", None)
+    env["HOME"] = str(home)
+    return subprocess.run([sys.executable, str(SCRIPT), *args], capture_output=True, text=True, env=env)
+
+
+def test_default_library_is_harness_neutral(tmp_path):
+    r = run_default(tmp_path, "index")
+    assert r.returncode == 0, r.stderr
+    assert (tmp_path / ".jevaluate-library" / "index.md").exists()
+    assert not (tmp_path / ".claude").exists()
+
+
+def test_default_library_keeps_existing_claude_library(tmp_path):
+    old = tmp_path / ".claude" / "jevaluate-library"
+    old.mkdir(parents=True)
+    r = run_default(tmp_path, "index")
+    assert r.returncode == 0, r.stderr
+    assert (old / "index.md").exists()
+    assert not (tmp_path / ".jevaluate-library").exists()

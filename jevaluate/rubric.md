@@ -1,6 +1,11 @@
 # Jevaluate rubric
 
-Facts first, scores second. The rules behind each fact, with their sources, are in `jev-rules.md`. Two raters who find the same facts must reach the same scores; that's what the anchors are for. When two ratings of the same project disagree on a score, rewrite that anchor more concretely.
+Facts first, scores second. The rules behind each fact, with their sources, are in `../shared/jev-rules.md`; the two rating rules below are Jevaluate's own. Two raters who find the same facts must reach the same scores; that's what the anchors are for. When two ratings of the same project disagree on a score, rewrite that anchor more concretely.
+
+## Rating rules (Jevaluate's own, not TypeSafe's)
+These decide how a rating is made, not how to build with Jev. They come from rating community projects, not from a TypeSafe page.
+- R1 **A call is proven by a traced request,** never by a name, a README, docs, fixtures or code that imitates Jev's API. (F0 below; from the 2026-09-28 rating round)
+- R2 **Stakes decide which flaws cap a verdict.** Unguarded user text and spliced values cap a verdict only where the code acts, with no review, on personal data, money or access. Almost no community project guards against injection, so a flat cap measured only that. (Stakes below; own rule, 2026-09-28)
 
 ## Before the facts: type, call and stakes
 
