@@ -1,6 +1,6 @@
 ---
 name: jevaluate
-description: Use when rating whether a project, repo, skill, workflow, plugin, agent product or post uses TypeSafe's Jev (System One) model well -- "is this a good use of Jev?", "rate this Jev integration", "jevaluate <url>", or a link to something named after Jev. Also use to check whether something that calls itself Jev actually uses it. It rates, logs the rating to a private library, and lists design fixes; it never edits the project.
+description: Use when rating whether a project, repo, skill, workflow, plugin, agent product or post uses TypeSafe's Jev (System One) model well -- "is this a good use of Jev?", "rate this Jev integration", "jevaluate <url>", or a link to something named after Jev; also when checking whether something that calls itself Jev actually uses it.
 ---
 
 # Jevaluate
@@ -9,7 +9,7 @@ Rates how well something uses Jev, TypeSafe's System One model (typed questions 
 
 ## How to rate
 
-Follow `read.md`, with `rubric.md`, `fix-catalog.md` and `jev-rules.md`. Jevaluate rates projects; it doesn't run or diagnose your own pipeline. If asked for that, say so and stop.
+Follow `read.md`; `scripts/step.py` serves the rubric, the fix rows and past ratings one phase at a time. Jevaluate rates projects; it doesn't run or diagnose your own pipeline. If asked for that, say so and stop.
 
 ## Model
 
@@ -17,23 +17,11 @@ Run on a Sonnet-class model at medium effort, the same one every time: ratings s
 
 ## Verdicts
 
-| Score | Verdict | Means |
-|---|---|---|
-| 5 | Learn from it | Follows the principles and is measured on labels; reference-grade |
-| 4 | Use it | Correct use with minor gaps; plausible but unmeasured |
-| 3 | Use with a fix | Right idea, one fixable design flaw (for untrusted text or spliced values, only when a decision acts on sensitive data with no review) |
-| 2 | Rework it | Core principles broken; results likely unreliable |
-| 1 | False marketing: Jev in name only | Claims to use Jev, and no traced request shows it calling Jev |
-| 1 | Not a Jev integration | Never claims to call Jev (a Jev-like model, say), or calls it and the answers drive nothing |
-| -- | Can't rate yet | Too little visible to judge (for example, README only, no code) |
-
-These are the names only; the rules that decide each verdict are in `rubric.md`, and the verdict comes from them, never from averaging dimension scores. Any verdict of 3 or below always states its reasoning and the core fixes. Offer to write the fixed version only if the user asks.
+Verdicts run from 5 "Learn from it" down to the verdict-1 codes and "Can't rate yet", defined in `rubric.md` section 5. They come from the rules, never from averaging scores. Any verdict of 3 or below states its reasoning and the core fixes.
 
 ## The library
 
-Ratings are logged outside this skill so the skill can be shared without them. Location: `$JEVALUATE_LIBRARY` if set, else `~/.claude/jevaluate-library/`. A new user starts with an empty library; `scripts/library.py` creates it. Never overwrite a past rating: projects change, so a re-rating is a new dated entry.
-
-Ratings live under `projects/<slug>/YYYY-MM-DD.md`, one folder per project, so a project's history sits together; a second same-day rating is `YYYY-MM-DD-2.md`. A `<date>-evidence/` folder beside a rating holds its supporting files and is never read as a rating. Curated lists (an awesome-list screen, for example) live under `lists/<name>/`, saved with `library.py list-add`.
+Ratings are logged outside this skill, in `$JEVALUATE_LIBRARY` if set, else `~/.claude/jevaluate-library/`; `scripts/library.py` creates it. Never overwrite a past rating: a re-rating is a new dated entry.
 
 ## Sources
 

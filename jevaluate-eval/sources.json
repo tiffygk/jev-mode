@@ -1,0 +1,416 @@
+{
+ "jev-omni": {
+  "kind": "hf",
+  "repo": "akhilaaa3/Jev-Omni",
+  "commit": "5addda86ddee081a68fb067477ea100c221b8917",
+  "files": [
+   [
+    "README.md",
+    2500
+   ],
+   [
+    "jev_omni.py",
+    3000
+   ],
+   [
+    "decision_config.json",
+    1200
+   ],
+   [
+    "example.py",
+    400
+   ]
+  ]
+ },
+ "jevmlx": {
+  "kind": "github",
+  "repo": "bnsd55/jevmlx",
+  "commit": "7e0d746081b88412ccd7d84a5ffdcf9d61b36904",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "jevmlx/engine.py",
+    3000
+   ],
+   [
+    "jevmlx/api.py",
+    3000
+   ],
+   [
+    "jevmlx/cli.py",
+    3000
+   ]
+  ]
+ },
+ "typesafe-sdk-js": {
+  "kind": "github",
+  "repo": "typesafe-ai/typesafe-sdk-js",
+  "commit": "66880ccded6cb642dc1809620c2b108c33730214",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "examples/demo.ts",
+    3000
+   ],
+   [
+    "package.json",
+    3000
+   ],
+   [
+    "scripts/test-tarball.mjs",
+    3000
+   ],
+   [
+    "src/client.ts",
+    3000
+   ],
+   [
+    "src/env.ts",
+    3000
+   ],
+   [
+    "src/logging.ts",
+    3000
+   ],
+   [
+    "src/questions.ts",
+    3000
+   ],
+   [
+    "src/resources/models.ts",
+    3000
+   ],
+   [
+    "src/types.ts",
+    3000
+   ]
+  ]
+ },
+ "askjevs": {
+  "kind": "local",
+  "dir": "~/.claude/jevaluate-library/projects/site__askjevs.site/2026-09-28-evidence",
+  "files": [
+   [
+    "files/index.html",
+    2000
+   ],
+   [
+    "files/ask.js",
+    4500
+   ],
+   [
+    "responses/01.json",
+    1500
+   ]
+  ]
+ },
+ "vibecheck": {
+  "kind": "github",
+  "repo": "jlowin/vibecheck",
+  "commit": "1011988a5c7b71b891d3a022fdbd5745c2a36edb",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "src/vibecheck/backends.py",
+    3000
+   ],
+   [
+    "src/vibecheck/sync.py",
+    3000
+   ],
+   [
+    "src/vibecheck/_async.py",
+    3000
+   ]
+  ]
+ },
+ "jev-mcp": {
+  "kind": "github",
+  "repo": "jkudish/jev-mcp",
+  "commit": "a34db9307f437b9514c0d528fe226651e284eb3f",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "package.json",
+    3000
+   ],
+   [
+    "src/index.ts",
+    3000
+   ],
+   [
+    "src/lib.ts",
+    3000
+   ]
+  ]
+ },
+ "building-with-jev-skill": {
+  "kind": "github",
+  "repo": "dbreunig/building-with-jev-skill",
+  "commit": "04fe3666c6b8b8abfec1271c0e581c823a181f6d",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "skills/jev/SKILL.md",
+    3000
+   ],
+   [
+    ".claude-plugin/marketplace.json",
+    3000
+   ],
+   [
+    ".claude-plugin/plugin.json",
+    3000
+   ]
+  ]
+ },
+ "email-tagger": {
+  "kind": "fixture",
+  "path": "cases/email-tagger.md"
+ },
+ "refund-bot": {
+  "kind": "fixture",
+  "path": "cases/refund-bot.md"
+ },
+ "fast-jev-compaction": {
+  "kind": "github",
+  "repo": "tamaratran/fast-jev-compaction",
+  "commit": "e3f262a7f4d42bd8dd32ced30d26176f7cb545b0",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "src/request.ts",
+    3000
+   ],
+   [
+    "src/types.ts",
+    3000
+   ],
+   [
+    "src/compact.ts",
+    3000
+   ]
+  ]
+ },
+ "jev-web-analyzer": {
+  "kind": "github",
+  "repo": "replynodes/jev-web-analyzer",
+  "commit": "37f4b29d3e700e53cdd04dea8ad8977a2ee3f142",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "app/api/analyze/route.ts",
+    3000
+   ],
+   [
+    "scripts/batch.ts",
+    3000
+   ],
+   [
+    "lib/probabilities.ts",
+    3000
+   ]
+  ]
+ },
+ "kev": {
+  "kind": "github",
+  "repo": "jaredpalmer/kev",
+  "commit": "fdfdfd2c7a98225715a9cc8f4d9e1ef29ebbe79c",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "kev/predictors.py",
+    3000
+   ],
+   [
+    "playground/scripts/jev-evaluate.mjs",
+    3000
+   ],
+   [
+    "skills/kev-finetune/scripts/extract_workload.py",
+    3000
+   ]
+  ]
+ },
+ "memsearch": {
+  "kind": "github",
+  "repo": "zilliztech/memsearch",
+  "commit": "2a4652fa086fbd45e92bfd8da7781ebe1642baa7",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "src/memsearch/jev_reranker.py",
+    3000
+   ],
+   [
+    "src/memsearch/reranker.py",
+    3000
+   ],
+   [
+    "src/memsearch/cli.py",
+    3000
+   ]
+  ]
+ },
+ "jev-agent-harness": {
+  "kind": "github",
+  "repo": "buildaistack/jev-agent-harness",
+  "commit": "e45867439211ce0a9aa93635f8add008a640c0c4",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "src/main/java/com/jevharness/core/event/EvaluationCompletedEvent.java",
+    3000
+   ],
+   [
+    "AGENT.md",
+    3000
+   ],
+   [
+    "ARCHITECTURE.md",
+    3000
+   ]
+  ]
+ },
+ "jev-gem-scan": {
+  "kind": "github",
+  "repo": "st1ne/jev-gem-scan",
+  "commit": "6adc00e8e227c28d065b82f3099273a2b1a83ec1",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "src/jev_gem_scan/jev_stub.py",
+    3000
+   ],
+   [
+    "src/jev_gem_scan/router.py",
+    3000
+   ],
+   [
+    "src/jev_gem_scan/__init__.py",
+    3000
+   ]
+  ]
+ },
+ "soter": {
+  "kind": "github",
+  "repo": "frolleks/soter",
+  "commit": "756579a5f77f1e0e612015dd32eb0f90453adcf9",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "utils/jev.ts",
+    3000
+   ],
+   [
+    "scripts/eval.ts",
+    3000
+   ],
+   [
+    "commands/report.ts",
+    3000
+   ]
+  ]
+ },
+ "tripwire": {
+  "kind": "github",
+  "repo": "noelzappy/tripwire",
+  "commit": "b727e6f928f4675c5171c5d36f4f8040a2f02107",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "package.json",
+    3000
+   ],
+   [
+    "src/judge/jev.ts",
+    3000
+   ],
+   [
+    "src/verdict.ts",
+    3000
+   ]
+  ]
+ },
+ "jev-auto-approve": {
+  "kind": "github",
+  "repo": "BasmaAbouzied0/jev-auto-approve",
+  "commit": "d8e636635d00dd7b201522a6b3fe0d36efca4982",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "jev_auto_approve.py",
+    3000
+   ]
+  ]
+ },
+ "jev-guard": {
+  "kind": "github",
+  "repo": "klauswg/jev-guard",
+  "commit": "067a17073f0a7fd5f5fc18508bf9aec49ce46ac2",
+  "files": [
+   [
+    "README.md",
+    3000
+   ],
+   [
+    "src/main/java/com/jevguard/client/JevClientConfig.java",
+    3000
+   ],
+   [
+    "src/main/java/com/jevguard/client/TypeSafeJevClient.java",
+    3000
+   ],
+   [
+    "src/main/java/com/jevguard/eval/EvalRunner.java",
+    3000
+   ],
+   [
+    "src/main/resources/application.yml",
+    3000
+   ]
+  ]
+ }
+}

@@ -1,0 +1,216 @@
+{
+ "jev-omni": {
+  "set": "tuning",
+  "match": [
+   "Omni"
+  ],
+  "kind": "replaces",
+  "type": "jev-replacement",
+  "f0": "no",
+  "code": "1r",
+  "top_stakes": "n.a."
+ },
+ "jevmlx": {
+  "set": "tuning",
+  "match": [
+   "jevmlx"
+  ],
+  "kind": "replaces",
+  "type": "jev-replacement",
+  "f0": "no",
+  "code": "1r",
+  "top_stakes": "n.a."
+ },
+ "kev": {
+  "set": "heldout",
+  "match": [
+   "kev"
+  ],
+  "kind": "replaces",
+  "type": "jev-replacement",
+  "f0": "no",
+  "code": "1r",
+  "top_stakes": "n.a."
+ },
+ "typesafe-sdk-js": {
+  "set": "tuning",
+  "match": [
+   "sdk-js"
+  ],
+  "kind": "uses",
+  "type": "client",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "n.a."
+ },
+ "askjevs": {
+  "set": "tuning",
+  "match": [
+   "askjevs"
+  ],
+  "kind": "uses",
+  "type": "demo",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "vibecheck": {
+  "set": "tuning",
+  "match": [
+   "vibecheck"
+  ],
+  "kind": "uses",
+  "type": "library",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "jev-mcp": {
+  "set": "tuning",
+  "match": [
+   "jev-mcp"
+  ],
+  "kind": "uses",
+  "type": "agent-tool",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "building-with-jev-skill": {
+  "set": "tuning",
+  "match": [
+   "building-with-jev"
+  ],
+  "kind": "teaches",
+  "type": "guide",
+  "f0": "n.a.",
+  "code": "1t",
+  "top_stakes": "n.a."
+ },
+ "email-tagger": {
+  "set": "tuning",
+  "match": [
+   "digest-tagger",
+   "email-tagger"
+  ],
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low",
+  "synthetic": true
+ },
+ "refund-bot": {
+  "set": "tuning",
+  "match": [
+   "refund-bot"
+  ],
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "very high",
+  "synthetic": true
+ },
+ "fast-jev-compaction": {
+  "set": "tuning",
+  "match": [
+   "fast-jev-compaction"
+  ],
+  "kind": "uses",
+  "type": "library",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "memsearch": {
+  "set": "heldout",
+  "match": [
+   "memsearch"
+  ],
+  "kind": "uses",
+  "type": "library",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "jev-web-analyzer": {
+  "set": "tuning",
+  "match": [
+   "jev-web-analyzer"
+  ],
+  "kind": "uses",
+  "type": "demo",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "jev-agent-harness": {
+  "set": "heldout",
+  "match": [
+   "jev-agent-harness"
+  ],
+  "kind": "mentions",
+  "type": "jev-mention-only",
+  "f0": "no",
+  "code": "1a",
+  "top_stakes": "n.a."
+ },
+ "jev-gem-scan": {
+  "set": "heldout",
+  "match": [
+   "gem-scan",
+   "gem_scan"
+  ],
+  "kind": "mentions",
+  "type": "jev-mention-only",
+  "f0": "no",
+  "code": "1b",
+  "top_stakes": "n.a."
+ },
+ "soter": {
+  "set": "heldout",
+  "match": [
+   "soter"
+  ],
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "high"
+ },
+ "tripwire": {
+  "set": "tuning",
+  "match": [
+   "tripwire"
+  ],
+  "kind": "uses",
+  "type": "library",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "high"
+ },
+ "jev-auto-approve": {
+  "set": "heldout",
+  "match": [
+   "auto-approve",
+   "auto_approve"
+  ],
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "very high"
+ },
+ "jev-guard": {
+  "set": "heldout",
+  "match": [
+   "jev-guard"
+  ],
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "very high"
+ }
+}

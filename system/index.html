@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Jevaluate System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=VT323&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: jev-mode retro desktop. A title window, a principles window, then one window per diagram. Shape carries meaning; color repeats it. */
+:root {
+  --bg: #fefefe; --ink: #1e1e1e; --paper: #e5e5e5; --line: #1e1e1e; --dim: #5a5a5a;
+  --pink: #f386a1; --magenta: #d45bb6; --magenta-ink: #a3308a; --sage: #abbab9;
+  --on-fill: #1e1e1e; --grid: rgba(212, 91, 182, .16);
+  --shadow: 3px 3px 0 var(--ink);
+  --display: "Hanken Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --pixel: "VT323", "JetBrains Mono", ui-monospace, monospace;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #17111f; --ink: #f4eef8; --paper: #251c30; --line: #f4eef8; --dim: #b8aec2;
+  --pink: #f386a1; --magenta: #e07ccb; --magenta-ink: #e896d6; --sage: #7f9594;
+  --grid: rgba(243, 134, 161, .12); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #17111f; --ink: #f4eef8; --paper: #251c30; --line: #f4eef8; --dim: #b8aec2;
+  --pink: #f386a1; --magenta: #e07ccb; --magenta-ink: #e896d6; --sage: #7f9594;
+  --grid: rgba(243, 134, 161, .12); color-scheme: dark }
+
+* { box-sizing: border-box }
+body {
+  margin: 0;
+  background:
+    linear-gradient(transparent 0 40%, var(--bg) 100%),
+    repeating-linear-gradient(0deg, var(--grid) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, var(--grid) 0 1px, transparent 1px 40px),
+    var(--bg);
+  color: var(--ink); font-family: var(--display); font-size: 16px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 32px 64px;
+}
+main { max-width: 1060px; margin: 0 auto; display: grid; gap: 28px }
+h1, h2, h3 { text-wrap: balance }
+p { margin: 0 }
+code, .mono { font-family: var(--mono); font-size: .86em }
+
+.win { background: var(--bg); border: 2px solid var(--line); box-shadow: var(--shadow); min-width: 0 }
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--ink); color: var(--bg);
+  font-family: var(--pixel); font-size: 20px; line-height: 1; padding: 5px 10px 4px; letter-spacing: .03em }
+.bar .dots { display: flex; gap: 5px }
+.bar .dots i { width: 11px; height: 11px; border: 2px solid var(--bg); display: block }
+.pad { padding: 20px 22px 24px; display: grid; gap: 16px; min-width: 0 }
+
+.eyebrow { font-family: var(--pixel); font-size: 22px; color: var(--magenta-ink); letter-spacing: .04em; line-height: 1 }
+h1 { font-weight: 600; font-size: clamp(2.3rem, 7vw, 3.4rem); line-height: 1.05; margin: 0; letter-spacing: -.01em }
+h2 { font-weight: 600; font-size: 1.5rem; line-height: 1.15; margin: 0 }
+.lede, .lead { max-width: 68ch }
+.lede { font-size: 1.08rem }
+.lead { color: var(--dim) }
+.chips { display: flex; flex-wrap: wrap; gap: 8px }
+.chip { font-family: var(--pixel); font-size: 19px; line-height: 1; padding: 5px 8px 4px; border: 2px solid var(--line); background: var(--paper);
+  white-space: nowrap; font-variant-numeric: tabular-nums }
+.chip.hot { background: var(--pink); color: var(--on-fill); border-color: var(--on-fill) }
+
+/* principles */
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none }
+.rules li { border: 2px solid var(--line); background: var(--paper); padding: 12px 14px; display: grid; gap: 4px; min-width: 0 }
+.rules b { font-family: var(--pixel); font-weight: 400; font-size: 22px; line-height: 1.05 }
+.rules span { font-size: .92rem }
+
+/* shared marks */
+.scr { display: inline-block; background: var(--ink); color: var(--bg); font-family: var(--mono); font-size: .76rem; font-weight: 600;
+  padding: 2px 7px; line-height: 1.5; white-space: nowrap }
+.drv { border: 2px dashed var(--line) }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: .86rem; color: var(--dim); align-items: center }
+.legend span { display: inline-flex; align-items: center; gap: 8px }
+.lg { display: inline-block; width: 26px; height: 18px; flex: none }
+.lg.q { background: none }
+.lg.q svg { display: block; width: 26px; height: 18px; overflow: visible }
+.lg.q polygon { fill: var(--bg); stroke: var(--line); stroke-width: 2 }
+.lg.s { border: 2px solid var(--line); background: linear-gradient(var(--ink) 0 7px, var(--bg) 7px) }
+.lg.d { border: 2px dashed var(--line) }
+.lg.v { background: var(--pink); border: 2px solid var(--on-fill) }
+.lg.t { background: var(--paper); border: 2px solid var(--line) }
+
+/* diagram 1: pieces and flows */
+.cast { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px }
+.piece { border: 2px solid var(--line); display: flex; flex-direction: column; min-width: 0 }
+.piece .nm { font-family: var(--pixel); font-size: 22px; line-height: 1; padding: 6px 10px 5px; border-bottom: 2px solid var(--line); color: var(--on-fill) }
+.piece.rate .nm { background: var(--pink) }
+.piece.eval .nm { background: var(--sage) }
+.piece.harn .nm { background: var(--ink); color: var(--bg) }
+.piece.over { border-style: dashed }
+.piece.over .nm { background: var(--paper); color: var(--ink); border-bottom-style: dashed }
+.piece .bd { padding: 10px 12px 12px; display: grid; gap: 6px; font-size: .88rem; align-content: start }
+.piece .role { font-weight: 700; font-size: .95rem }
+.piece .q { font-style: italic }
+.piece .bd p:last-child { color: var(--dim) }
+
+.overlay { border: 2px dashed var(--line); padding: 8px 12px; font-size: .88rem; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
+.overlay b { font-family: var(--pixel); font-weight: 400; font-size: 20px; line-height: 1 }
+.lanes { display: grid; gap: 12px }
+.lane { border: 2px solid var(--line); display: grid; grid-template-columns: 190px minmax(0, 1fr) }
+.lane > header { background: var(--paper); border-right: 2px solid var(--line); padding: 10px 12px; display: grid; gap: 2px; align-content: start }
+.lane > header b { font-family: var(--pixel); font-weight: 400; font-size: 22px; line-height: 1 }
+.lane > header code { color: var(--dim); font-size: .74rem }
+.lane > header .done { font-size: .78rem; color: var(--dim); margin-top: 4px }
+.flow { list-style: none; margin: 0; padding: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 0; min-width: 0 }
+.flow > li { display: flex; align-items: center }
+.flow > li:not(:last-child)::after, .grp ol > li:not(:last-child)::after { content: "\2192"; font-family: var(--mono); padding-inline: 6px; color: var(--ink) }
+.st { border: 2px solid var(--line); background: var(--bg); padding: 3px 8px; font-size: .84rem; line-height: 1.3; white-space: nowrap }
+.grp { border: 2px solid var(--on-fill); padding: 4px 8px 6px; color: var(--on-fill); display: grid; gap: 4px; min-width: 0 }
+.grp > small { font-family: var(--pixel); font-size: 18px; line-height: 1 }
+.grp ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0 }
+.grp ol > li { display: flex; align-items: center }
+.grp ol > li::after { color: var(--on-fill) !important }
+.grp .st { background: var(--bg); color: var(--ink) }
+.grp.eval { background: var(--sage) }
+.grp.rate { background: var(--pink) }
+
+/* diagram 2: flowchart */
+.scroll { overflow-x: auto; border: 2px solid var(--line); background: var(--bg); -webkit-overflow-scrolling: touch }
+.scroll svg { display: block; width: 100%; min-width: 860px; height: auto }
+.hint { font-family: var(--pixel); font-size: 18px; color: var(--dim); display: none }
+svg .ln { stroke: var(--line); stroke-width: 2; fill: none }
+svg .dash { stroke: var(--line); stroke-width: 2; fill: none; stroke-dasharray: 5 4 }
+svg .box { fill: var(--bg); stroke: var(--line); stroke-width: 2 }
+svg .typ { fill: var(--paper); stroke: var(--line); stroke-width: 2 }
+svg .v1 { fill: var(--pink); stroke: var(--on-fill); stroke-width: 2 }
+svg .drvb { fill: var(--bg); stroke: var(--line); stroke-width: 2; stroke-dasharray: 5 4 }
+svg .sbar { fill: var(--ink) }
+svg .ah { fill: var(--line) }
+svg text { fill: var(--ink); font-family: var(--display); font-size: 13px }
+svg .qt { font-size: 15px; font-weight: 600 }
+svg .sm { font-size: 12px }
+svg .dim { fill: var(--dim) }
+svg .mn { font-family: var(--mono); font-size: 13px; font-weight: 600 }
+svg .sn { font-family: var(--mono); font-size: 12px; font-weight: 600; fill: var(--bg) }
+svg .px { font-family: var(--pixel); font-size: 20px }
+svg .pxl { font-family: var(--pixel); font-size: 24px }
+svg .onf { fill: var(--on-fill) }
+svg .acc { fill: var(--magenta-ink) }
+svg .mid { text-anchor: middle }
+svg .end { text-anchor: end }
+
+/* diagram 3: eval pipeline */
+.stages { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px }
+.stage { border: 2px solid var(--line); display: grid; grid-template-columns: 220px minmax(0, 1fr) }
+.stage > header { background: var(--paper); border-right: 2px solid var(--line); padding: 10px 12px 12px; display: grid; gap: 4px; align-content: start }
+.stage .n { font-family: var(--pixel); font-size: 34px; line-height: .8; color: var(--magenta-ink) }
+.stage h3 { margin: 0; font-size: 1.05rem; line-height: 1.2 }
+.stage header p { font-size: .84rem; color: var(--dim) }
+.stage .body { padding: 12px; display: grid; gap: 10px; min-width: 0 }
+.chain { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 0; align-items: stretch }
+.chain > li { display: flex; align-items: center; min-width: 0; flex: 1 1 170px }
+.chain > li:not(:last-child)::after { content: "\2192"; font-family: var(--mono); padding-inline: 6px; flex: none }
+.cell { border: 2px solid var(--line); padding: 7px 9px; font-size: .84rem; line-height: 1.35; display: grid; gap: 4px; align-content: start; height: 100%; flex: 1; min-width: 0 }
+.cell b { font-size: .88rem }
+.cell .scr { justify-self: start }
+.cell.pk { background: var(--paper) }
+.cell.drv { border-style: dashed }
+.tag { font-family: var(--pixel); font-size: 17px; line-height: 1; border: 2px solid var(--line); padding: 2px 5px 1px; justify-self: start; background: var(--bg) }
+.tag.blind { background: var(--ink); color: var(--bg) }
+.note { font-size: .84rem; color: var(--dim); max-width: 80ch }
+.note b { color: var(--ink) }
+
+/* bullet chart: one 0-100% scale */
+.bars { display: grid; gap: 10px; padding: 10px 12px 12px; border: 2px solid var(--line) }
+.bars h4 { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: 20px; line-height: 1 }
+.brow { display: grid; grid-template-columns: 210px minmax(0, 1fr) 200px; gap: 10px; align-items: center; font-size: .84rem }
+.track { position: relative; height: 18px; background: var(--paper) }
+.fill { position: absolute; inset: 0 auto 0 0; background: var(--ink) }
+.fill.ctl { background: repeating-linear-gradient(135deg, var(--ink) 0 3px, var(--dim) 3px 6px) }
+.tick { position: absolute; top: -5px; bottom: -5px; width: 3px; margin-left: -1.5px; background: var(--magenta) }
+.val { font-family: var(--pixel); font-size: 19px; line-height: 1; font-variant-numeric: tabular-nums }
+.axis { display: grid; grid-template-columns: 210px minmax(0, 1fr) 200px; gap: 10px; font-size: .74rem; color: var(--dim) }
+.axis .sc { position: relative; height: 16px; font-family: var(--mono) }
+.axis .sc span { position: absolute; transform: translateX(-50%) }
+.axis .sc span:first-child { transform: none }
+.axis .sc span:last-child { transform: translateX(-100%) }
+.thl { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--magenta-ink); font-weight: 600 }
+.thl i { width: 3px; height: 16px; background: var(--magenta); flex: none }
+
+/* diagram 4: blinding table */
+.tbl { width: 100%; border-collapse: collapse; font-size: .88rem }
+.tbl th, .tbl td { border: 2px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top }
+.tbl thead th { background: var(--ink); color: var(--bg); font-family: var(--pixel); font-weight: 400; font-size: 19px; line-height: 1; letter-spacing: .03em }
+.tbl tbody th { font-weight: 700; width: 18% }
+.tbl td:nth-child(2) { width: 30% }
+.tbl td:last-child { width: 15% }
+.tbl tr.open th, .tbl tr.open td { background: var(--paper) }
+.tbl tr.open:first-of-type th { border-top: 4px dashed var(--line) }
+.tbl .tag { display: inline-block; margin: 0 4px 4px 0 }
+.tbl .tag.no { background: var(--pink); color: var(--on-fill); border-color: var(--on-fill) }
+.tbl tr.first-open th, .tbl tr.first-open td { border-top: 4px dashed var(--line) }
+
+footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); text-align: center }
+
+@media (max-width: 860px) {
+  .cast { grid-template-columns: repeat(2, minmax(0, 1fr)) }
+  .lane, .stage { grid-template-columns: 1fr }
+  .lane > header, .stage > header { border-right: 0; border-bottom: 2px solid var(--line) }
+  .hint { display: block }
+}
+@media (max-width: 640px) {
+  .pad { padding: 16px 14px 18px }
+  .brow, .axis { grid-template-columns: 1fr }
+  .brow .lbl { font-weight: 600 }
+  .axis > span:first-child, .axis > span:last-child { display: none }
+  .tbl thead { display: none }
+  .tbl, .tbl tbody, .tbl tr, .tbl th, .tbl td { display: block; width: 100% !important }
+  .tbl tr { border: 2px solid var(--line); margin-bottom: 10px }
+  .tbl th, .tbl td { border: 0; border-top: 1px solid var(--line); padding: 6px 10px }
+  .tbl tbody th { border-top: 0; background: var(--ink); color: var(--bg) }
+  .tbl tr.open th { background: var(--ink); color: var(--bg) }
+  .tbl tr.first-open th, .tbl tr.first-open td { border-top: 0 }
+  .tbl tr.first-open { border-top: 4px dashed var(--line) }
+  .tbl td::before { content: attr(data-k); display: block; font-family: var(--pixel); font-size: 17px; line-height: 1; color: var(--dim); margin-bottom: 2px }
+}
+@media (max-width: 640px) {
+  .chain { flex-direction: column }
+  .chain > li { flex: none; flex-direction: column; align-items: stretch }
+  .chain > li:not(:last-child)::after { content: "\2193"; text-align: center; padding: 2px 0 }
+}
+@media (max-width: 480px) { .cast { grid-template-columns: 1fr } }
+</style>
+</head>
+<body>
+<main>
+
+<section class="win" aria-labelledby="top">
+  <div class="bar"><span>JEVALUATE.TXT</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+  <div class="pad">
+    <div class="eyebrow">jev-mode / jevaluate</div>
+    <h1 id="top">Jevaluate System</h1>
+    <p class="lede">Jevaluate rates whether open-source projects use TypeSafe's Jev model well. The ratings are public, so every LLM rater has to read the rubric the same way. Code checks every rule a script can check. The rater reports only what it observes, and code derives the rest. An eval with blinded labels tests the rubric before any version is frozen.</p>
+    <div class="chips">
+      <span class="chip hot">377 automated tests</span>
+      <span class="chip">19 golden projects keyed</span>
+      <span class="chip">quiz: 33 of 33</span>
+      <span class="chip">negative control: 73%</span>
+      <span class="chip">12 of 13 labels provable</span>
+    </div>
+  </div>
+</section>
+
+<section class="win" aria-labelledby="rules-h">
+  <div class="bar"><span>DESIGN_RULES</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+  <div class="pad">
+    <h2 id="rules-h">Five design rules</h2>
+    <ul class="rules">
+      <li><b>Code enforces, text explains</b><span>Every rubric rule has a row in <code>enforcement.md</code> naming the function that refuses a wrong answer, or why the rule stays judgment. A lint fails on a rule with no row or a function that doesn't exist.</span></li>
+      <li><b>Ask for what is observed</b><span>The rater records type, the call line, each decision with its stakes as read, and the verdict. Code derives kind and every n.a. People and models both miss exception lists. Code doesn't.</span></li>
+      <li><b>Evidence over claims</b><span>"Calls Jev: yes" must cite the file and line of the call, and <code>check</code> confirms it is a call. A README, a docs page or a project name never counts.</span></li>
+      <li><b>Stakes change the rows</b><span>Rules whose test depends on stakes (confidence gating, option order, templated data, untrusted text) get one row per stakes level. The rater sees only the rows its project's decisions need.</span></li>
+      <li><b>Refuse, don't warn</b><span>Scripts stop the workflow: a rating over 200k tokens without approval, a missing step log, routing changed after the facts were served, an eval run on uncommitted rubric changes.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="win" aria-labelledby="d1-h">
+  <div class="bar"><span>1 / HOW THE PIECES FIT</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+  <div class="pad">
+    <h2 id="d1-h">Three skills and one private file</h2>
+    <p class="lead">The harness runs three workflows. A rubric change passes the eval before a git tag freezes it. A rating round sends raters through jevaluate. Publishing exports reviewed ratings in one pull request.</p>
+
+    <div class="cast">
+      <div class="piece rate"><div class="nm">jevaluate</div><div class="bd">
+        <p class="role">Rates one project</p>
+        <p class="q">Does this project use Jev well?</p>
+        <p>The rater follows <code>SKILL.md</code> and <code>read.md</code>. About 45k tokens plus the files it reads.</p></div></div>
+      <div class="piece eval"><div class="nm">jevaluate-eval</div><div class="bd">
+        <p class="role">Tests the rubric</p>
+        <p class="q">Do graders apply the rubric correctly?</p>
+        <p>Materials check, quiz, judgment eval. Proposes wording fixes. Never edits the rubric or a rating.</p></div></div>
+      <div class="piece harn"><div class="nm">jevaluate-harness</div><div class="bd">
+        <p class="role">Runs the process</p>
+        <p class="q">How do I run a round, change the rubric or publish?</p>
+        <p><span class="scr">harness_status.py</span> reruns the scripted gates and names the next step.</p></div></div>
+      <div class="piece over"><div class="nm">overlay (private)</div><div class="bd">
+        <p class="role">The owner's own rules</p>
+        <p class="q">Which extra gates apply here?</p>
+        <p>Private gates and presentation rules. The public skills stay generic.</p></div></div>
+    </div>
+
+    <div class="overlay"><b>$JEVALUATE_OVERLAY</b><span>Read first by the harness and the eval. Its rules override their defaults.</span></div>
+
+    <div class="lanes">
+      <div class="lane">
+        <header><b>Change the rubric</b><code>rubric-change.md</code></header>
+        <ol class="flow">
+          <li><span class="st">rules written</span></li>
+          <li><div class="grp eval"><small>jevaluate-eval</small><ol>
+            <li><span class="st">materials check</span></li><li><span class="st">quiz</span></li><li><span class="st">judgment eval</span></li></ol></div></li>
+          <li><span class="st">owner approves</span></li>
+          <li><span class="st">frozen by git tag</span></li>
+        </ol>
+      </div>
+      <div class="lane">
+        <header><b>Rate projects</b><code>rating-round.md</code></header>
+        <ol class="flow">
+          <li><span class="st">picked</span></li>
+          <li><span class="st">sized</span></li>
+          <li><span class="st">costs approved</span></li>
+          <li><div class="grp rate"><small>jevaluate, one rater per project</small><ol>
+            <li><span class="st">rater reads the code</span></li><li><span class="scr">step.py</span></li><li><span class="scr">library.py check</span></li><li><span class="scr">library.py add</span></li></ol></div></li>
+          <li><span class="scr">scan_transcripts.py</span></li>
+          <li><span class="st">adjudicated</span></li>
+          <li><span class="st">final gate</span></li>
+          <li><span class="st">release check</span></li>
+        </ol>
+      </div>
+      <div class="lane">
+        <header><b>Publish</b><code>publish.md</code></header>
+        <ol class="flow">
+          <li><span class="st">reviewed ratings</span></li>
+          <li><span class="scr">library.py export</span></li>
+          <li><span class="st">one pull request</span></li>
+        </ol>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i class="lg" style="background:var(--ink)"></i>script</span>
+      <span><i class="lg t" style="background:var(--bg)"></i>step, logged in the workflow's ledger</span>
+      <span><i class="lg" style="background:var(--sage);border:2px solid var(--on-fill)"></i>run by jevaluate-eval</span>
+      <span><i class="lg v"></i>run by jevaluate</span>
+    </div>
+  </div>
+</section>
+
+<section class="win" aria-labelledby="d2-h">
+  <div class="bar"><span>2 / ROUTING</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+  <div class="pad">
+    <h2 id="d2-h">Routing, and where code steps in</h2>
+    <p class="lead">Routing decides which facts apply and how a failure counts, so code checks it hardest. Each script window on the chart refuses a wrong answer or fills in a value the rater never enters. The rubric doesn't rate guides or jev-replacements yet: they get verdict 1, not yet rated, and their facts, scores and stakes are n.a.</p>
+    <div class="legend">
+      <span><i class="lg q"><svg viewBox="0 0 26 18" aria-hidden="true"><polygon points="6,1 20,1 25,9 20,17 6,17 1,9"/></svg></i>question the rater answers</span>
+      <span><i class="lg t"></i>type</span>
+      <span><i class="lg v"></i>verdict-1 code</span>
+      <span><i class="lg d"></i>derived by code, never entered</span>
+      <span><i class="lg s"></i>script</span>
+    </div>
+    <p class="hint">Scroll sideways to see the whole chart.</p>
+    <div class="scroll" role="img" aria-label="Routing flowchart. Does the non-test code call hosted Jev? If yes, the type follows from what the code does with the answers: workflow, demo, agent-tool, library or client, or 1c if nothing uses the Jev calls' answers. If no: guide (1t), jev-replacement (1a if it claims to be Jev, else 1r) or jev-mention-only (1a if it claims to call Jev, else 1b). Uses types then record stakes per decision and go through facts, scores, comparison cards and verdict, one phase at a time. Scripts: jev_callsites.py and library.py check for the call; step.py and library.py check on stakes; step.py, library.py check, library.py add and scan_transcripts.py on every phase.">
+<svg viewBox="0 0 1000 880" aria-hidden="true">
+  <defs><marker id="ah" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+
+  <!-- start and F0 -->
+  <rect class="typ" x="420" y="12" width="160" height="34"/>
+  <text class="qt mid" x="500" y="34">A project</text>
+  <line class="ln" x1="500" y1="46" x2="500" y2="64" marker-end="url(#ah)"/>
+  <polygon class="box" points="292,64 708,64 730,94 708,124 292,124 270,94"/>
+  <text class="qt mid" x="500" y="91">Does its non-test code call hosted Jev?</text>
+  <text class="sm dim mid" x="500" y="111">F0: cite the call as path:line</text>
+
+  <line class="dash" x1="250" y1="94" x2="270" y2="94"/>
+  <rect class="box" x="30" y="62" width="220" height="64"/><rect class="sbar" x="30" y="62" width="220" height="20"/>
+  <text class="sn" x="38" y="76">jev_callsites.py</text>
+  <text class="sm" x="38" y="99">finds hosted Jev call lines</text>
+  <text class="sm" x="38" y="115">in non-test code</text>
+
+  <line class="dash" x1="730" y1="94" x2="750" y2="94"/>
+  <rect class="box" x="750" y="62" width="220" height="64"/><rect class="sbar" x="750" y="62" width="220" height="20"/>
+  <text class="sn" x="758" y="76">library.py check</text>
+  <text class="sm" x="758" y="99">the cited line must be a call;</text>
+  <text class="sm" x="758" y="115">a README never counts</text>
+
+  <!-- branch -->
+  <line class="ln" x1="500" y1="124" x2="500" y2="146"/>
+  <line class="ln" x1="259" y1="146" x2="741" y2="146"/>
+  <line class="ln" x1="260" y1="146" x2="260" y2="170" marker-end="url(#ah)"/>
+  <line class="ln" x1="740" y1="146" x2="740" y2="170" marker-end="url(#ah)"/>
+  <text class="px acc" x="270" y="165">yes</text>
+  <text class="px acc" x="750" y="165">no</text>
+
+  <!-- yes: uses types -->
+  <polygon class="box" points="72,170 448,170 470,196 448,222 72,222 50,196"/>
+  <text class="qt mid" x="260" y="201">What does its code do with the answers?</text>
+  <line class="ln" x1="260" y1="222" x2="260" y2="246" marker-end="url(#ah)"/>
+  <rect class="box" x="30" y="246" width="460" height="172"/>
+  <text class="px" x="42" y="268">TYPE</text>
+  <rect class="drvb" x="300" y="253" width="178" height="22"/>
+  <text class="sm mid" x="389" y="268">kind: uses (derived)</text>
+
+  <rect class="typ" x="40" y="282" width="140" height="58"/>
+  <text class="mn" x="49" y="302">workflow</text><text class="sm" x="49" y="320">acts on them</text>
+  <rect class="typ" x="190" y="282" width="140" height="58"/>
+  <text class="mn" x="199" y="302">demo</text><text class="sm" x="199" y="320">only shows them</text><text class="sm" x="199" y="334">to a person</text>
+  <rect class="typ" x="340" y="282" width="140" height="58"/>
+  <text class="mn" x="349" y="302">agent-tool</text><text class="sm" x="349" y="320">hands them to</text><text class="sm" x="349" y="334">an AI agent</text>
+
+  <rect class="typ" x="40" y="350" width="140" height="58"/>
+  <text class="mn" x="49" y="370">library</text><text class="sm" x="49" y="388">others import it,</text><text class="sm" x="49" y="402">its own wording</text>
+  <rect class="typ" x="190" y="350" width="140" height="58"/>
+  <text class="mn" x="199" y="370">client</text><text class="sm" x="199" y="388">passes callers'</text><text class="sm" x="199" y="402">questions through</text>
+  <rect class="v1" x="340" y="350" width="140" height="58"/>
+  <text class="pxl onf" x="349" y="373">1c</text><text class="sm onf" x="349" y="388">nothing uses the</text><text class="sm onf" x="349" y="402">Jev calls' answers</text>
+
+  <!-- no: other types -->
+  <polygon class="box" points="552,170 928,170 950,196 928,222 552,222 530,196"/>
+  <text class="qt mid" x="740" y="201">What does it do instead?</text>
+  <line class="ln" x1="740" y1="222" x2="740" y2="246" marker-end="url(#ah)"/>
+  <rect class="box" x="510" y="246" width="460" height="172"/>
+  <text class="px" x="522" y="268">TYPE</text>
+  <rect class="drvb" x="620" y="253" width="338" height="22"/>
+  <text class="sm mid" x="789" y="268">kind: teaches, replaces, mentions (derived)</text>
+
+  <rect class="typ" x="520" y="282" width="140" height="52"/>
+  <text class="mn" x="528" y="302">guide</text><text class="sm" x="528" y="320">a tutorial, no calls</text>
+  <rect class="typ" x="670" y="282" width="140" height="52"/>
+  <text class="mn" x="678" y="302">jev-replacement</text><text class="sm" x="678" y="320">a stand-in for Jev</text>
+  <rect class="typ" x="820" y="282" width="140" height="52"/>
+  <text class="mn" x="828" y="302">jev-mention-only</text><text class="sm" x="828" y="320">uses only the name</text>
+  <line class="ln" x1="590" y1="334" x2="590" y2="350" marker-end="url(#ah)"/>
+  <line class="ln" x1="740" y1="334" x2="740" y2="350" marker-end="url(#ah)"/>
+  <line class="ln" x1="890" y1="334" x2="890" y2="350" marker-end="url(#ah)"/>
+
+  <rect class="v1" x="520" y="350" width="140" height="58"/>
+  <text class="pxl onf" x="528" y="373">1t</text><text class="sm onf" x="528" y="395">not yet rated</text>
+  <rect class="box" x="670" y="350" width="140" height="58"/>
+  <text class="sm mid" x="740" y="366">claims to be Jev?</text>
+  <rect class="v1" x="676" y="374" width="62" height="28"/><text class="px onf mid" x="707" y="394">yes 1a</text>
+  <rect class="v1" x="742" y="374" width="62" height="28"/><text class="px onf mid" x="773" y="394">no 1r</text>
+  <rect class="box" x="820" y="350" width="140" height="58"/>
+  <text class="sm mid" x="890" y="366">claims to call Jev?</text>
+  <rect class="v1" x="826" y="374" width="62" height="28"/><text class="px onf mid" x="857" y="394">yes 1a</text>
+  <rect class="v1" x="892" y="374" width="62" height="28"/><text class="px onf mid" x="923" y="394">no 1b</text>
+  <text class="sm dim" style="font-size:11px" x="512" y="432">Verdict 1: not yet rated, or 1a false marketing: Jev in name only,</text>
+  <text class="sm dim" style="font-size:11px" x="512" y="446">or 1b discloses it's not a Jev integration.</text>
+
+  <!-- stakes -->
+  <line class="ln" x1="260" y1="418" x2="260" y2="452" marker-end="url(#ah)"/>
+  <text class="px acc" x="270" y="441">each decision</text>
+  <rect class="box" x="30" y="452" width="460" height="166"/>
+  <text class="px" x="42" y="474">STAKES, AS READ</text>
+  <rect class="typ" x="42" y="484" width="92" height="24"/><text class="px mid" x="88" y="502">very high</text>
+  <text class="sm" x="144" y="501">acts with no review on personal data, money or access</text>
+  <rect class="typ" x="42" y="514" width="92" height="24"/><text class="px mid" x="88" y="532">high</text>
+  <text class="sm" x="144" y="531">blocks, routes or reaches people, no review</text>
+  <rect class="typ" x="42" y="544" width="92" height="24"/><text class="px mid" x="88" y="562">low</text>
+  <text class="sm" x="144" y="561">stays with the asker, or a person reviews it</text>
+  <rect class="drvb" x="42" y="580" width="436" height="26"/>
+  <text class="sm" x="52" y="598">top stakes: the highest listed; n.a. for a client or 1c (derived)</text>
+
+  <line class="dash" x1="490" y1="486" x2="510" y2="486"/>
+  <rect class="box" x="510" y="462" width="460" height="50"/><rect class="sbar" x="510" y="462" width="460" height="20"/>
+  <text class="sn" x="518" y="476">step.py</text>
+  <text class="sm" x="518" y="502">serves only the rubric rows for the stakes levels this project has</text>
+  <line class="dash" x1="490" y1="566" x2="510" y2="566"/>
+  <rect class="box" x="510" y="542" width="460" height="50"/><rect class="sbar" x="510" y="542" width="460" height="20"/>
+  <text class="sn" x="518" y="556">library.py check</text>
+  <text class="sm" x="518" y="582">refuses F11 and F13 answers that contradict the listed stakes</text>
+
+  <!-- phases -->
+  <polyline class="ln" points="260,618 260,632 131,632 131,650" marker-end="url(#ah)"/>
+  <text class="px dim end" x="970" y="640">SERVED ONE PHASE AT A TIME</text>
+  <rect class="box" x="30" y="650" width="202" height="48"/>
+  <text class="qt mid" x="131" y="671">Facts</text><text class="sm dim mid" x="131" y="689">F1 to F23</text>
+  <line class="ln" x1="232" y1="674" x2="276" y2="674" marker-end="url(#ah)"/>
+  <rect class="box" x="276" y="650" width="202" height="48"/>
+  <text class="qt mid" x="377" y="679">Scores and stages</text>
+  <line class="ln" x1="478" y1="674" x2="522" y2="674" marker-end="url(#ah)"/>
+  <rect class="box" x="522" y="650" width="202" height="48"/>
+  <text class="qt mid" x="623" y="679">Comparison cards</text>
+  <line class="ln" x1="724" y1="674" x2="768" y2="674" marker-end="url(#ah)"/>
+  <rect class="box" x="768" y="650" width="202" height="48"/>
+  <text class="qt mid" x="869" y="671">Verdict</text><text class="sm dim mid" x="869" y="689">1 to 5</text>
+
+  <text class="px dim" x="30" y="724">ON EVERY PHASE</text>
+  <rect class="box" x="30" y="732" width="455" height="62"/><rect class="sbar" x="30" y="732" width="455" height="20"/>
+  <text class="sn" x="38" y="746">step.py</text>
+  <text class="sm" x="38" y="769">serves a phase only after the last one is written; refuses routing</text>
+  <text class="sm" x="38" y="785">changed after the facts; stops a rating over 200k tokens without approval</text>
+  <rect class="box" x="515" y="732" width="455" height="62"/><rect class="sbar" x="515" y="732" width="455" height="20"/>
+  <text class="sn" x="523" y="746">library.py check</text>
+  <text class="sm" x="523" y="769">refuses a missing step log, phases out of order or a broken format;</text>
+  <text class="sm" x="523" y="785">applies caps and fatal flaws to the verdict</text>
+  <rect class="box" x="30" y="806" width="455" height="62"/><rect class="sbar" x="30" y="806" width="455" height="20"/>
+  <text class="sn" x="38" y="820">library.py add</text>
+  <text class="sm" x="38" y="843">logs the rating and writes the derived fields:</text>
+  <text class="sm" x="38" y="859">kind, top stakes and every n.a.</text>
+  <rect class="box" x="515" y="806" width="455" height="62"/><rect class="sbar" x="515" y="806" width="455" height="20"/>
+  <text class="sn" x="523" y="820">scan_transcripts.py</text>
+  <text class="sm" x="523" y="843">reads each rater's tool calls after the round; flags reading</text>
+  <text class="sm" x="523" y="859">the rubric ahead or writing the controller's approval files</text>
+</svg>
+    </div>
+  </div>
+</section>
+
+<section class="win" aria-labelledby="d3-h">
+  <div class="bar"><span>3 / EVALUATION</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+  <div class="pad">
+    <h2 id="d3-h">The eval that gates every rubric version</h2>
+    <p class="lead">Three instruments run in order, and each must pass before the next runs. The pass bar is set before the run. The report is per rule, never an average.</p>
+
+    <ol class="stages">
+      <li class="stage">
+        <header><span class="n">1</span><h3>Materials check</h3><p>Is what the grader reads consistent?</p></header>
+        <div class="body"><ol class="chain">
+          <li><div class="cell"><span class="scr">lint_materials.py</span><span>Allowed values agree across files. No eval-case names in rubric examples. Every rule has an enforcement row.</span></div></li>
+          <li><div class="cell"><b>Fresh reviewer</b><span>Briefed as a grader, reads the materials cold.</span></div></li>
+          <li><div class="cell pk"><b>Grader view</b><span>The owner reviews exactly what a grader receives, step by step, after any change that moves instructions into code.</span></div></li>
+        </ol></div>
+      </li>
+
+      <li class="stage">
+        <header><span class="n">2</span><h3>Comprehension quiz</h3><p>Does a grader understand the rules on invented projects?</p></header>
+        <div class="body">
+          <ol class="chain">
+            <li><div class="cell"><span class="tag blind">blind writer</span><b>18 invented projects</b><span>From a model that never saw the rubric. Some mislead on the surface. Any overlap with rubric wording is rewritten.</span></div></li>
+            <li><div class="cell pk"><b>Owner's key, 11 keyed</b><span>Answered first, observable fields only. A script derives the rest and refuses contradictory answers.</span></div></li>
+            <li><div class="cell"><b>8 tuning, 3 held out</b><span>Held-out set drawn at random (seed 29) only after the key and its wording were final.</span></div></li>
+          </ol>
+          <div class="bars" role="group" aria-label="Quiz results on one 0 to 100 percent scale">
+            <h4>RESULTS, ONE SCALE</h4>
+            <div class="brow"><span class="lbl">Negative control: vocabulary only</span><div class="track"><div class="fill ctl" style="width:72.7%"></div><div class="tick" style="left:80%"></div></div><span class="val">8 of 11 scenarios, 73%</span></div>
+            <div class="brow"><span class="lbl">Real instructions, 3 runs each</span><div class="track"><div class="fill" style="width:100%"></div><div class="tick" style="left:80%"></div></div><span class="val">33 of 33 answers</span></div>
+            <div class="axis"><span></span><div class="sc"><span style="left:0">0</span><span style="left:50%">50%</span><span style="left:100%">100%</span></div><span></span></div>
+            <p class="thl"><i></i>80% give-away line: the negative control must score under it</p>
+          </div>
+          <p class="note"><b>Negative control:</b> A grader given only the allowed values must score under 80%, or the scenarios give their answers away. Its three misses are the three rules the vocabulary can't supply. <b>Pass bar:</b> Every tuning case right in 3 of 3 runs, held-out in 2 of 3. Every rule tag passed, held-out 3 of 3, and no wording fix was needed. Held-out q09 fed rubric wording, so the results name it as not clean.</p>
+        </div>
+      </li>
+
+      <li class="stage">
+        <header><span class="n">3</span><h3>Judgment eval</h3><p>Does a grader route real projects the way the owner does?</p></header>
+        <div class="body">
+          <ol class="chain">
+            <li><div class="cell pk"><b>Golden dataset</b><span>19 real open-source projects, keyed. 6 of them cover the gaps: one claims Jev and never calls it, one is an honest stub named after Jev, two are high stakes, two very high.</span></div></li>
+            <li><div class="cell"><span class="scr">pick_files.py</span><b>Fixed file rule</b><span>Root README, every file with a hosted call, then Jev or decision hits up to 4 files. Code before docs and tests, data last. 3,000 characters each.</span></div></li>
+            <li><div class="cell"><b>Provable labels</b><span>Every gold answer must be backed by the packet the grader sees. 13 checked: 12 provable, 1 weak, 0 changed.</span></div></li>
+            <li><div class="cell"><span class="tag blind">blind labelers</span><b>Label provenance</b><span>New cases: labels sealed until the owner answers from evidence cards. <span class="scr">check_labels.py</span> refuses a label that cites a doc as a call; <span class="scr">build_cards.py</span> refuses any verdict word on a card.</span></div></li>
+          </ol>
+          <p class="note"><b>The call detector is tested too.</b> Screening about 110 real repos found 4 misses (an AI SDK provider, an Effect provider, Apps Script and Swift files) and 1 false positive (a helper named <code>typesafe_...</code>). Each is now a regression test.</p>
+        </div>
+      </li>
+
+      <li class="stage">
+        <header><span class="n">4</span><h3>Reproducibility</h3><p>Can a score be traced to the exact rubric and key?</p></header>
+        <div class="body"><ol class="chain">
+          <li><div class="cell"><span class="scr">run_eval.py</span><span>Pre-flight refuses uncommitted rubric changes or a branch behind main.</span></div></li>
+          <li><div class="cell drv"><b>Stamp</b><span>Every run records the commit and a fingerprint of the answer key.</span></div></li>
+          <li><div class="cell"><span class="scr">score.py</span><span>Refuses to score if the key changed after the run.</span></div></li>
+        </ol></div>
+      </li>
+
+      <li class="stage">
+        <header><span class="n">5</span><h3>Report</h3><p>What does the rubric get wrong?</p></header>
+        <div class="body"><ol class="chain">
+          <li><div class="cell"><b>Per rule</b><span>Each rule tag scored alone. An average hides the rule that fails.</span></div></li>
+          <li><div class="cell"><b>One fix per missed rule</b><span>Wording fixes come only from tuning misses and never name a held-out case.</span></div></li>
+          <li><div class="cell pk"><b>Stop</b><span>The owner sees each fix as a before-and-after. The eval never edits the rubric.</span></div></li>
+        </ol></div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section class="win" aria-labelledby="d4-h">
+  <div class="bar"><span>4 / BLINDING</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
+  <div class="pad">
+    <h2 id="d4-h">Who is blind to what</h2>
+    <p class="lead">Each blind closes one path for leakage, contamination or anchoring. Two roles can't be blind, so rules fence in what each can touch.</p>
+    <table class="tbl">
+      <thead><tr><th scope="col">Who</th><th scope="col">Blind to</th><th scope="col">Why</th><th scope="col">Term</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Scenario writer</th><td data-k="Blind to">The rubric and the answer keys</td><td data-k="Why">Scenarios that echo rubric wording test string matching, not understanding.</td><td data-k="Term"><span class="tag">leakage</span></td></tr>
+        <tr><th scope="row">The owner, setting the key</th><td data-k="Blind to">Every model answer and the controller's reading, until the key is set</td><td data-k="Why">Golden labels can't anchor on a model.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
+        <tr><th scope="row">Blind labelers</th><td data-k="Blind to">The rubric's accept lists and each other's labels. Labels stay sealed until the owner answers.</td><td data-k="Why">An independent second opinion that can't touch the key.</td><td data-k="Term"><span class="tag">label provenance</span></td></tr>
+        <tr><th scope="row">Graders under test</th><td data-k="Blind to">The answer key, eval-case names (a lint keeps them out of rubric examples), the held-out set during tuning</td><td data-k="Why">A grader that has seen the answers is scored on memory.</td><td data-k="Term"><span class="tag">contamination</span><span class="tag">overfitting</span></td></tr>
+        <tr><th scope="row">Raters in a round</th><td data-k="Blind to">The rubric past the current phase, and the project's previous rating until the facts are written</td><td data-k="Why">Stops skimming ahead and copying an old verdict.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
+        <tr><th scope="row">Final gate reviewer</th><td data-k="Blind to">Any summary of the work</td><td data-k="Why">Judges the artifact, not the story told about it.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
+        <tr class="open first-open"><th scope="row">Eval controller</th><td data-k="Blind to">Nothing: it knows the key</td><td data-k="Why">It runs the eval. It may fix wording only from tuning misses, draws the held-out set after wording is final, and names any held-out item that fed wording (q09).</td><td data-k="Status"><span class="tag no">not blind</span></td></tr>
+        <tr class="open"><th scope="row">The owner</th><td data-k="Blind to">Nothing: knows the rubric and rules on it</td><td data-k="Why">The domain expert the graders are tuned to match. The quiz measures agreement with that reading.</td><td data-k="Status"><span class="tag no">not blind</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer class="foot">jev-mode / jevaluate, rubric 2026-09-29. Numbers as of 2026-09-30.</footer>
+</main>
+</body>
+</html>

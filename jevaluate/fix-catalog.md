@@ -30,5 +30,7 @@ Each design fix answers one failed fact. Cite the fact, give the remedy, and poi
 | F16 builder's own labels | Label with an LLM panel or blind reviewers, or disclose that the builder labeled | `cookbooks/classification_using_confidence` |
 | F17 tuned and tested on the same data | Hold out a test set the thresholds and wording never saw | `cookbooks/classification_using_confidence` |
 | F18 unfair baseline | Compare on the same data against a reasonable LLM or rules alternative | `cookbooks/consistency_choice_cookbook` |
+| G1 a guide's rule contradicts the page it cites | Rewrite the rule to match the page, and quote the page beside it | The page the rule cites |
+| G2 a guide's example would fail F1-F6 | Fix the example the way the matching F1-F6 row says; readers copy examples before rules | `concepts/how-to-build-with-system-one` |
 
 When a project has several failed facts, lead with the fix that unblocks the most others. Usually that's F1 (decompose), then F5 (thresholds in code), then F7 (measure).

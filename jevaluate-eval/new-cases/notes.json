@@ -1,0 +1,179 @@
+{
+ "jev-agent-harness": {
+  "summary": "A Java project for building AI agents. The evidence is its README and three design documents; no Java source file is in the evidence.",
+  "lines": {
+   "README.md:14": "The tagline says the project is powered by Spring AI and Jev.",
+   "README.md:22": "Describes the scaffolding the project offers for agents.",
+   "README.md:35": "Introduces a table of the two parts the project combines.",
+   "README.md:40": "The table row says Jev makes the fast decisions: routing, classification and risk checks.",
+   "README.md:135": "Says Jev handles routing and classification in under half a second.",
+   "README.md:139": "Says sending simple decisions to Jev saves 60 to 80 percent on token costs."
+  },
+  "actions": []
+ },
+ "jev-gem-scan": {
+  "summary": "A Python command-line tool that scores simulated crypto token launches as a good find or a scam.",
+  "lines": {
+   "README.md:7": "Says the tool wires a mocked TypeSafe Jev model into a chat bot.",
+   "README.md:23": "Says nothing is executed, there are no API keys or network calls, and the Jev call is a stand-in that follows fixed rules.",
+   "README.md:33": "Says the tool asks the model one question per launch and a separate gate decides whether any result is ever acted on.",
+   "README.md:51": "Says the included web page is a visual concept with hard-coded loops that does not run the scanner.",
+   "README.md:120": "Says call_jev_api() is a clearly labeled placeholder because there is no public Jev API."
+  },
+  "actions": [
+   [
+    "src/jev_gem_scan/jev_stub.py",
+    4,
+    "The docstring of the function named call_jev_api says no Jev or decision-model API is called."
+   ],
+   [
+    "src/jev_gem_scan/jev_stub.py",
+    62,
+    "Picks the result from a points total that fixed if-statements add up."
+   ],
+   [
+    "src/jev_gem_scan/router.py",
+    101,
+    "In active mode, shows an alert for a launch rated a good find when its confidence is above the threshold."
+   ]
+  ]
+ },
+ "soter": {
+  "summary": "A Discord bot that checks the messages people post in a server.",
+  "lines": {
+   "utils/jev.ts:25": "Names TypeSafe's Jev model, version 1.13, in a request sent through OpenRouter.",
+   "utils/jev.ts:73": "Names the same model in a second request, for messages a member has reported.",
+   "utils/jev.ts:91": "Names the same model in a third request, for a member's message history.",
+   "README.md:5": "Says the bot moderates a Discord server automatically, powered by Jev.",
+   "README.md:45": "Says a separate script sends test cases through the same judgment the bot uses and reports the results.",
+   "README.md:49": "Says the test script costs one Jev call per case.",
+   "README.md:59": "Says that above 80 percent confidence a message is deleted right away and logged, and between 50 and 80 percent it is left up and logged."
+  },
+  "actions": [
+   [
+    "utils/jev.ts",
+    4,
+    "Sets 0.8 as the score above which, per the comment, the message is deleted."
+   ],
+   [
+    "utils/jev.ts",
+    5,
+    "Sets 0.5 as the score above which, per the comment, the message is flagged to the moderators."
+   ],
+   [
+    "utils/jev.ts",
+    52,
+    "Turns the hate-speech score into a level: remove above 0.8, review above 0.5, otherwise none."
+   ],
+   [
+    "commands/report.ts",
+    131,
+    "Posts the hate-speech score for a reported member into the report ticket."
+   ]
+  ]
+ },
+ "tripwire": {
+  "summary": "A TypeScript package that sits between an app and its language model and checks each reply.",
+  "lines": {
+   "package.json:63": "Lists the AI SDK's TypeSafe provider as a dependency.",
+   "src/judge/jev.ts:2": "Imports the TypeSafe provider for the AI SDK.",
+   "src/judge/jev.ts:20": "Creates the TypeSafe provider with an API key.",
+   "src/judge/jev.ts:22": "Chooses the Jev model the checks are sent to (jev-latest unless set).",
+   "README.md:5": "Says every model reply is judged before the user sees it, seven checks in one call to TypeSafe's Jev.",
+   "README.md:9": "Says a policy file sets which checks run, how confident Jev must be, and what a block does.",
+   "README.md:16": "Says it is version 0.1, tested with a stand-in judge, with no accuracy numbers against the real Jev yet.",
+   "README.md:31": "Setup: add a TypeSafe key, or leave it empty to use the stand-in judge.",
+   "README.md:147": "The file list: the Jev judge file, and a rule-based stand-in used for tests and dry runs.",
+   "src/judge/jev.ts:29": "Sends the reply and the checks to the Jev model and waits for the answers."
+  },
+  "actions": [
+   [
+    "src/verdict.ts",
+    25,
+    "The comment says a hard check that fires with confidence at or above its threshold blocks the reply."
+   ],
+   [
+    "src/verdict.ts",
+    42,
+    "Adds the check to the blocking list when it is a hard check at or above its threshold; otherwise it only flags."
+   ],
+   [
+    "src/verdict.ts",
+    60,
+    "The prompt-injection check fires when the probability is 0.5 or more."
+   ]
+  ]
+ },
+ "jev-auto-approve": {
+  "summary": "A Claude Code hook that runs before the agent's shell commands.",
+  "lines": {
+   "jev_auto_approve.py:14": "The address the hook sends each command to: TypeSafe's API.",
+   "README.md:3": "Says Jev approves read-only shell commands for Claude Code, and everything else still asks you.",
+   "README.md:11": "Says a command is approved automatically when Jev is at least 95 percent sure it is read-only.",
+   "README.md:12": "Says you get the usual prompt when Jev is unsure.",
+   "README.md:13": "Says you get the usual prompt when Jev is down, slow, rate-limited, or there is no key.",
+   "README.md:14": "Says deleting, pushing, downloading, installing and similar commands are never sent to Jev.",
+   "README.md:15": "Says commands containing comments or approval-like text are never sent to Jev."
+  },
+  "actions": [
+   [
+    "jev_auto_approve.py",
+    16,
+    "Sets the approval cut-off to 0.95 unless the user changes it."
+   ],
+   [
+    "jev_auto_approve.py",
+    93,
+    "Checks whether the read-only probability is at or above the cut-off."
+   ],
+   [
+    "jev_auto_approve.py",
+    94,
+    "If it is, the command is approved and runs without asking."
+   ],
+   [
+    "jev_auto_approve.py",
+    95,
+    "Otherwise the user gets the usual prompt."
+   ]
+  ]
+ },
+ "jev-guard": {
+  "summary": "A Java service that screens deposits and withdrawals at a crypto exchange.",
+  "lines": {
+   "src/main/java/com/jevguard/client/JevClientConfig.java:25": "Uses the real TypeSafe connection when an API key is set (a stand-in otherwise).",
+   "src/main/java/com/jevguard/client/TypeSafeJevClient.java:37": "Sets up the connection to TypeSafe with the address, key and model.",
+   "src/main/java/com/jevguard/eval/EvalRunner.java:43": "The test runner's address for TypeSafe's API.",
+   "src/main/java/com/jevguard/eval/EvalRunner.java:62": "The test runner connects to TypeSafe when a key is set.",
+   "src/main/resources/application.yml:13": "The service's configured address for TypeSafe's API.",
+   "README.md:3": "Says the service sorts exchange deposits and withdrawals by risk as they happen, with Jev sorting and code deciding.",
+   "README.md:7": "Says Jev answers one question per transfer: who should handle it.",
+   "README.md:11": "Says fixed rules (blacklist, sanctioned party, amount cap) act before any model call.",
+   "README.md:13": "Says Jev's own routing suggestion is recorded but never carried out.",
+   "README.md:31": "Lists the four questions sent to Jev, and that a failed call goes to manual review.",
+   "README.md:56": "Setup: put a TypeSafe API key in the settings file and start the service."
+  },
+  "actions": [
+   [
+    "README.md",
+    12,
+    "The README says withdrawals judged risky are frozen, and a risky deposit goes to account review."
+   ],
+   [
+    "src/main/java/com/jevguard/eval/EvalRunner.java",
+    111,
+    "When Jev gives no answer, the transfer goes to manual review."
+   ],
+   [
+    "src/main/java/com/jevguard/eval/EvalRunner.java",
+    114,
+    "Otherwise a gate turns Jev's answers into an action for the transfer."
+   ],
+   [
+    "src/main/java/com/jevguard/eval/EvalRunner.java",
+    116,
+    "A fixed rule's action wins when one applies; otherwise the action from Jev's answers stands."
+   ]
+  ]
+ }
+}
