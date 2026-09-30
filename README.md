@@ -11,14 +11,20 @@ Claude Code skills and a study course for building with Jev, TypeSafe's System O
 
 Take the course as the Claude artifact when you can: Claude grades your glossary definitions on meaning, while the GitHub Pages copy uses an untested keyword check.
 
-Install a skill by copying its folder into `~/.claude/skills/`:
+## Install
+
+This repo is a Claude Code plugin marketplace with two plugins:
+
+- `jevaluate`: the Jevaluate and Jevaluate Harness skills
+- `jev-lens`: the Jev Lens skill
 
 ```
-git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate ~/.claude/skills/
-cp -r jev-mode/jev-lens ~/.claude/skills/
-cp -r jev-mode/jevaluate-harness ~/.claude/skills/
+claude plugin marketplace add tiffygk/jev-mode
+claude plugin install jevaluate@jev-mode
+claude plugin install jev-lens@jev-mode
 ```
+
+Pull later changes with `claude plugin marketplace update jev-mode`.
 
 The skills are written for Claude Code, but any coding harness that loads skills can run them with small changes.
 
