@@ -1388,3 +1388,17 @@ def test_a_guide_with_only_an_import_or_dependency_passes(tmp_path, name, text):
     err = []
     library.check_guide_code("n.a.", ev, err)
     assert err == []
+
+
+# --- audit, 2026-09-30: rated must be a date, never a path ---
+@pytest.mark.parametrize("bad", ["../../../x", "2026-09-30/../../y", "latest"])
+def test_add_refuses_a_rated_value_that_is_not_a_date(tmp_path, bad):
+    import library
+    d = {"project": "P", "owner": "o", "rated": bad, "verdict": "3"}
+    with pytest.raises(SystemExit) as e:
+        library.require_date(d)
+    assert "rated" in str(e.value)
+
+def test_add_accepts_a_date():
+    import library
+    library.require_date({"rated": "2026-09-30"})

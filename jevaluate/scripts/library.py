@@ -101,6 +101,7 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     text = store_derived(text); d = front_text(text)
     for k in ("project", "owner", "rated", "verdict"):
         if not d.get(k): sys.exit(f"missing front-matter field: {k}")
+    require_date(d)
     slug = slug_for(d.get("url", ""))
     old = None
     if supersedes:
@@ -393,6 +394,11 @@ def type_code_problems(typ, code, f0=None):
     if uses and f0 != "yes": err.append(f"a {typ} calls Jev, but calls Jev is {f0}. A project that doesn't call Jev and isn't a guide or a replacement is a jev-mention-only, with {lab('1a')} or {lab('1b')}")
     elif typ in ("jev-replacement", "jev-mention-only") and f0 != "no": err.append(f"a {typ} doesn't call Jev, but calls Jev is {f0}")
     return err
+
+def require_date(d):
+    """`rated` names the rating file, so it must be a plain date, never a path."""
+    if not re.fullmatch(r"\d{4}-\d\d-\d\d", str(d.get("rated", ""))):
+        sys.exit(f"front-matter rated must be a date (YYYY-MM-DD), got {d.get('rated')!r}")
 
 def check_schema(d, t, err, ev=None):
     vals = rubric_text.allowed_values()
@@ -818,6 +824,7 @@ def migrate():
     for p in RAT.glob("*.md"):
         d = front(p)
         rated = d.get("rated", "")
+        if not re.fullmatch(r"\d{4}-\d\d-\d\d", rated): print(f"skipped {p.name}: rated is not a date"); continue
         slug = slug_for(d.get("url", ""))
         m = pat.match(p.name)
         base, num = (m.group(1), int(m.group(2)) if m.group(2) else 1) if m else (p.name, 1)
