@@ -6,7 +6,7 @@
     "url": "https://github.com/tiffygk"
   },
   "metadata": {
-    "description": "Skills for building with Jev, TypeSafe's System One model."
+    "description": "Skills for building with Jev, TypeSafe's System One model. Works in Claude Code and Codex."
   },
   "plugins": [
     {
