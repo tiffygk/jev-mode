@@ -13,7 +13,7 @@ Follow `read.md`, with `rubric.md`, `fix-catalog.md` and `jev-rules.md`. Jevalua
 
 ## Model
 
-Run on a Sonnet-class model at medium effort, the same one every time: ratings stay comparable only if the rater doesn't change. Record both in the rating (`rater`, `effort`).
+Run on a Sonnet-class model at medium effort, the same one every time: ratings stay comparable only if the rater doesn't change. In Codex, run on `gpt-6-luna` at medium effort. In another harness, pick one model and effort and keep them. Record both in the rating (`rater`, `effort`); a rating by a different model is a different rater's.
 
 ## Verdicts
 
@@ -31,10 +31,14 @@ These are the names only; the rules that decide each verdict are in `rubric.md`,
 
 ## The library
 
-Ratings are logged outside this skill so the skill can be shared without them. Location: `$JEVALUATE_LIBRARY` if set, else `~/.claude/jevaluate-library/`. A new user starts with an empty library; `scripts/library.py` creates it. Never overwrite a past rating: projects change, so a re-rating is a new dated entry.
+Ratings are logged outside this skill so the skill can be shared without them. Location: `$JEVALUATE_LIBRARY` if set, else `~/.claude/jevaluate-library/` if it exists (libraries made before Codex support), else `~/.jevaluate-library/`. A new user starts with an empty library; `scripts/library.py` creates it. Never overwrite a past rating: projects change, so a re-rating is a new dated entry.
 
 Ratings live under `projects/<slug>/YYYY-MM-DD.md`, one folder per project, so a project's history sits together; a second same-day rating is `YYYY-MM-DD-2.md`. A `<date>-evidence/` folder beside a rating holds its supporting files and is never read as a rating. Curated lists (an awesome-list screen, for example) live under `lists/<name>/`, saved with `library.py list-add`.
 
 ## Sources
 
 Only public sources: the docs at docs.typesafe.ai (page list: `https://docs.typesafe.ai/llms.txt`; append `.md` to any page for markdown) and the project's own public files. Credit a repo to its GitHub owner, never to its banner or branding. A project's claims about its own results are claims until the rating checks them.
+
+## In Codex
+
+Codex's default sandbox blocks the network and writes outside the workspace. Fetching a repo (`gh`, `git`) and `library.py add` need your approval, or run with network access and the library folder as a writable root.

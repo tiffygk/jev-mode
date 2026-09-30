@@ -33,7 +33,7 @@ Both phases use `decode-protocol.md` (how decoders are briefed and what they wri
 
 ## Cost
 
-Each subagent carries a fixed overhead (about 55k tokens in Claude Code) before it reads anything. Guide for 10 images:
+Each subagent carries a fixed overhead (about 55k tokens in Claude Code) before it reads anything. The figures below are Claude Code measurements; other harnesses differ. Guide for 10 images:
 
 | | Light | Heavy |
 |---|---|---|
@@ -71,6 +71,7 @@ A run folder next to the images, `<name>-jev-lens/`:
 - Python 3.9 or later. `prepare_images.py` and `jev_check.py` declare their packages inline (Pillow; `typesafe-sdk`), so `uv run` installs them; without uv, `pip install pillow typesafe-sdk` and use `python`. The other scripts use only the standard library.
 - `TYPESAFE_API_KEY` for the Jev check. Without it, the skill skips the check, says so, and still delivers the decode and state.
 - The model ID: `jev-1.13.0` by default; take the current one from https://docs.typesafe.ai/models.
+- In Codex, the default sandbox blocks the network and writes outside the workspace: `uv run` installing packages, the Jev check, and a run folder outside the workspace need your approval.
 - Run `python scripts/rules_sync.py` (in this skill's folder) once at the start; it warns if `jev-rules.md` differs from Jevaluate's copy.
 
 Rating whether a finished Jev project uses Jev well is a different job: the Jevaluate skill. Jev Lens does not need it.

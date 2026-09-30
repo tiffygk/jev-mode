@@ -1,6 +1,7 @@
 """The Jevaluate ratings library: add a rating, rebuild the index, find similar ratings.
 
-Location: $JEVALUATE_LIBRARY or ~/.claude/jevaluate-library/ (created on first use).
+Location: $JEVALUATE_LIBRARY, else ~/.claude/jevaluate-library/ if it already exists (libraries made before
+the Codex plugin), else ~/.jevaluate-library/ (created on first use).
 Usage:
   python3 library.py add [--link-docs] [--evidence DIR] [--supersedes OLD.md] <rating.md>
                                               copy into projects/<slug>/ (never overwrites) and rebuild the index;
@@ -33,7 +34,11 @@ hf__<user>__<model>; any other URL -> site__<domain> (no www.), plus __<path seg
 import os, sys, re, shutil, pathlib, argparse, datetime
 from urllib.parse import urlparse
 
-LIB = pathlib.Path(os.environ.get("JEVALUATE_LIBRARY", pathlib.Path.home() / ".claude/jevaluate-library"))
+def default_lib():
+    old = pathlib.Path.home() / ".claude/jevaluate-library"
+    return old if old.is_dir() else pathlib.Path.home() / ".jevaluate-library"
+
+LIB = pathlib.Path(os.environ.get("JEVALUATE_LIBRARY") or default_lib())
 RAT = LIB / "ratings"
 PROJ = LIB / "projects"
 

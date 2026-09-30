@@ -28,14 +28,9 @@ For a different LLM rating skill, this one won't run, but its pattern carries ov
 
 ## Install and use
 
-Needs Claude Code, Python 3.8+, the GitHub CLI (`gh`, logged in) and Jevaluate itself.
+Needs Claude Code or Codex, Python 3.8+ and the GitHub CLI (`gh`, logged in). The `jevaluate` plugin installs it with Jevaluate: see [Install](../README.md#install).
 
-```
-git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate jev-mode/jevaluate-harness ~/.claude/skills/
-```
-
-Set `$PRIVATE_TERMS` to your file of never-publish regexes (see the skill's Settings). Then ask Claude Code: `run a jevaluate re-rate round`.
+Set `$PRIVATE_TERMS` to your file of never-publish regexes (see the skill's Settings). Then ask your agent: `run a jevaluate re-rate round`.
 
 ## Limits
 
