@@ -2,58 +2,312 @@
 
 # jevlint: full rating
 
-**Verdict 4, Use it** · workflow · rated 2026-09-27 at [`582c0b8`](https://github.com/Fox-Islam/jevlint/tree/582c0b8be072fb0d14fcaa5bd72b278205543ed7) · read: full · rubric unrecorded (earlier) · unknown, medium effort
-
-*Rated under an earlier rubric (unrecorded). A re-rating is queued.*
+**Verdict 4, Use it** · library · rated 2026-09-30 at [`582c0b8`](https://github.com/Fox-Islam/jevlint/tree/582c0b8be0) · read: extract · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
 
 ## Summary
 
-jevlint is a linter for Jev queries themselves: it reads the request body (`state` + `questions`) another project would send to System One and reports where that query is written in a way TypeSafe's own docs say the model handles badly (compound judgments, wrong primitive, missing fallback option, arithmetic delegated to the model, etc.). It runs 28 zero-cost static rules plus 25 model-backed checks, each check itself a small, well-formed Jev question (mostly Noul, one Choice) with a trigger threshold stored in a JSON catalogue. Verdict: **4, Use it** — clean, well-batched, evidence-driven design; held back from 5 by a real templating flaw (values spliced into question instructions rather than kept in state) and by evidence that, while unusually rigorous, discloses several small-sample/single-draw weaknesses.
+A linter that sends a user's Jev query to Jev as state and asks 25 calibrated yes/no checks about it, reporting findings by severity.
 
 ## What fails
 
 | Fact | Finding |
 |---|---|
-| Model pinned (F12) | **no.** (default). Client defaults to `jev-latest`; pinning requires passing `--model=typesafe/jev-1.13` explicitly. Mitigated by disclosure: `docs/evidence.md` measured the drift between the alias and the pinned build on the whole self-test and reported it as immaterial on this workload, which is more diligence than simply leaving it unpinned and untested. |
-| Choice order handled (F13) | **no.** The one Choice (`question/type-mismatch`) shows no evidence of order-averaging or per-item randomization. Low stakes (severity `advice`, an internal linter judgment, not a high-stakes routing decision), so this is a minor, not fatal, gap. Docs: https://docs.typesafe.ai/cookbooks/consistency_choice_cookbook.md |
-| Values from code are fields, not templates (F20) | **no.** In `_ask_about_query`, the two questions' actual instruction text is spliced into the check's own instruction string via `.replace('{pair}', f'"{first.instructions_text()}" and "{second.instructions_text()}"')` ([`python/src/jevlint/model_linter.py:196-199`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be072fb0d14fcaa5bd72b278205543ed7/python/src/jevlint/model_linter.py#L196-L199)) rather than passed as JSON fields the question points at. The same pattern recurs for per-element locate checks: `check.locate.replace('{element}', f'"{text}"')`. |
-| Content in state, judgments in questions (F21) | **no.** same evidence as F20. The state for the pairwise call does hold `{'questions': [...]}` (content in state, correctly), but the per-pair check's *instruction* additionally has the specific pair's raw text quoted directly into it — content duplicated into the question rather than kept only in state and referenced by path. |
-| Untrusted text treated as data (F22) | **no.** and linked to the same finding. The text spliced into a check's instructions via `{pair}`/`{element}` originates from the query file being linted, which could itself contain adversarial or steering text (this is exactly the class of risk `state/adversarial-content` exists to catch in *other* projects' queries). No injection-check Noul or adversarial test was found covering jevlint's own use of that spliced text. |
-| Non-English content handled (F23) | **no.** `docs/languages.md` covers adding a *display* language for jevlint's own report text (i18n of output strings), not testing check accuracy on non-English *query* content; no test of that kind was found. Docs: https://docs.typesafe.ai/concepts/state.md |
+| Calls hosted Jev (F0) | **yes.** Builds and sends System One calls through the TypeSafe SDK for every model check and probe ([`python/src/jevlint/typesafe/client.py:103`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/typesafe/client.py#L103)) |
+| Pinned model version (F12) | **no.** Default is the SDK's `jev-latest` though triggers were tuned for jev-1.13; a `--model` pin is optional ([`python/src/jevlint/typesafe/client.py:96`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/typesafe/client.py#L96)). docs.typesafe.ai/models |
+| Held-out result (F17) | **no.** Wordings and triggers were changed after reading the same corpus tiers whose rates are then reported ([`docs/evidence.md:322`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/docs/evidence.md#L322)). docs.typesafe.ai/concepts/how-to-build-with-system-one |
+| Fair baseline (F18) | **no.** Arms compare a check with its repaired query or a coin flip; no rules or LLM baseline ([`docs/evidence.md:944`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/docs/evidence.md#L944)). docs.typesafe.ai/concepts/how-to-build-with-system-one |
+| Data as fields, not templates (F20) | **no.** The pair check splices both question texts into the Noul instruction, and the field check a field name ([`python/src/jevlint/model_linter.py:210`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L210)). docs.typesafe.ai/primitives/advanced |
+| Untrusted text treated as data (F22) | **no.** Reviewed question text and user state go in with no source marker or injection test of its calls ([`python/src/jevlint/model_linter.py:452`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L452)). docs.typesafe.ai/model-jaggedness/jev-1.13 |
+| Non-English handled (F23) | **no.** Only the spare-field check was tried across languages; reviewed questions and gold items are English ([`docs/evidence.md:743`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/docs/evidence.md#L743)). docs.typesafe.ai/models |
 
 <details>
-<summary><b>What passes (11) and doesn't apply (1)</b></summary>
+<summary><b>What passes (15) and doesn't apply (2)</b></summary>
 
 | Fact | Finding |
 |---|---|
-| Atomic (F1) | yes. Every model check names one property (`question/compound-judgment` itself only asks "does this question join separate judgments," `checks_catalogue.json`); nothing found combining two judgments into one check. |
-| Right primitive (F2) | yes. 24 Noul (yes/no defect checks) + 1 Choice with 4 exclusive, exhaustive, well-described options (`question/type-mismatch`, `checks_catalogue.json`); no Score used, no numeric levels. |
-| Structured state (F3) | yes. Question-scoped calls send `question.as_state()` ([`python/src/jevlint/model_linter.py:100`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be072fb0d14fcaa5bd72b278205543ed7/python/src/jevlint/model_linter.py#L100), [`python/src/jevlint/model_linter.py:434`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be072fb0d14fcaa5bd72b278205543ed7/python/src/jevlint/model_linter.py#L434)); state-scoped calls send the real query state via `query.state_with(question)` ([`python/src/jevlint/model_linter.py:449`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be072fb0d14fcaa5bd72b278205543ed7/python/src/jevlint/model_linter.py#L449)). |
-| Batching (F4) | yes. strongly. `_ask_about_question` puts every applicable check for one question in one request ([`python/src/jevlint/model_linter.py:96-116`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be072fb0d14fcaa5bd72b278205543ed7/python/src/jevlint/model_linter.py#L96-L116)); `_ask_about_query` puts every check × every question-pair into one request with compound keys ([`python/src/jevlint/model_linter.py:162-200`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be072fb0d14fcaa5bd72b278205543ed7/python/src/jevlint/model_linter.py#L162-L200)). |
-| Thresholds in code (F5) | yes. `"trigger": 0.7` etc. live as named JSON fields in `checks/catalogue.json`, read as `check.trigger` and compared in code (`model_linter.py`: `fired = probability > check.trigger`), never in prompt prose. |
-| No invented values (F6) | yes. jevlint never asks Jev to count, compute, or produce a value; it asks Jev to judge properties of a query's text (compound-ness, negation, indirection, etc.). Where the query being *linted* asks Jev to do arithmetic, that is exactly the defect a static/model check (`question/arithmetic`) flags in the *other* project, not something jevlint itself delegates. |
-| Options exclusive/exhaustive (F8) | yes. (for the one Choice). `question/type-mismatch`'s four options (noul/choice/score/other) are described with explicit boundaries and a catch-all for values that aren't a judgment at all (`checks_catalogue.json`). |
-| Unclear/other option (F9) | yes. The `other` option in `question/type-mismatch` is worded distinctly from the three primitive names ("a value the reader would have to write down, such as a name, a number or a date") rather than echoing state text. |
-| Evidence recorded evenly (F10) | n.a.. jevlint's states are either a single question object or the real material being linted, not a constructed evidence list with per-answer weighting; the fact doesn't have a clean analogue here. |
-| Confidence drives action (F11) | yes. Firing is threshold-gated (`fired = probability > check.trigger`) and `near_trigger` is surfaced separately so close calls are marked as close rather than reported as flatly binary (`model_linter.py`, `checks_catalogue.json` `"trigger"` note). |
-| Typed answers read directly (F19) | yes. `response.choice(key).choice()`, `response.noul(key).noul()`, `answer.probability_of(...)` are read directly; no free-text answer is parsed anywhere in `model_linter.py`. |
-| Measured in the workflow (F7) | yes. unusually extensive. `docs/evidence.md` (1000 lines) reports, per check: a self-test table (clean/broken/fixed readings, explicitly flagged as circular — "the same person wrote each check and both its examples... a regression detector, not a validity gate"), and a separate "Measured against a labelled corpus" section using material jevlint's author didn't write (22 TypeSafe-doc examples, 52 published-correct examples, 62 items from `jev-bias-bench` and the Atarim API, and cases from an independent project, `decision-v7`), harvested over 1173 calls with the catalogue hash recorded for reproducibility. |
+| Atomic questions (F1) | yes. Each of the 31 check wordings asks one property of the reviewed query, with its standard in the criteria ([`checks/catalogue.json:316`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/checks/catalogue.json#L316)) |
+| Right primitive (F2) | yes. Defect presence is a Noul, the type check a Choice over noul/choice/score/other, locators Choice or Noul ([`checks/catalogue.json:714`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/checks/catalogue.json#L714)) |
+| Structured state (F3) | yes. The reviewed question goes in as `{instructions, criteria}` and questions point at those paths; the pair call sends a list ([`python/src/jevlint/model_linter.py:431`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L431)) |
+| Batching (F4) | yes. Every question-scoped check for one reviewed question rides in one request, state-scoped ones in another ([`python/src/jevlint/model_linter.py:430`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L430)) |
+| Thresholds in code (F5) | yes. Each check's trigger lives in the catalogue, the near and worth-seeing bands as class constants ([`checks/catalogue.json:384`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/checks/catalogue.json#L384), [`python/src/jevlint/model_linter.py:54`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L54)) |
+| No invented values (F6) | yes. Jev only judges whether a defect is present; means, spreads, trigger comparison and patches are computed in code ([`python/src/jevlint/model_linter.py:743`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L743)) |
+| Measured in the workflow (F7) | yes. Per-check tables with counts on docs, SQuAD, decision-v7 and planted-defect corpora, including a Brier score ([`docs/evidence.md:94`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/docs/evidence.md#L94)) |
+| Options cover every case, no overlap (F8) | yes. The type check's four options are exclusive and each is described, with the boundary between choice and score spelled out ([`checks/catalogue.json:714`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/checks/catalogue.json#L714)) |
+| An "other" option where needed (F9) | yes. The type check carries an `other` option for answers a reader would write down ([`checks/catalogue.json:714`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/checks/catalogue.json#L714)) |
+| Evidence recorded evenly (F10) | n.a.. One reviewed question or one user-supplied state is judged, with no per-answer evidence list ([`python/src/jevlint/model_linter.py:431`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L431)) |
+| Confidence drives action, low (F11) | yes. A finding is raised only above the check's trigger; readings within 0.05 are re-asked and may report undecided ([`python/src/jevlint/model_linter.py:743`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L743)) |
+| Choice order handled, low (F13) | n.a.. Always n.a. ([`python/src/jevlint/model_linter.py:887`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L887)) |
+| Size limits respected (F14) | yes. A static rule warns above 20000 state characters and pair checks stop above 12 questions, though sending continues ([`python/src/jevlint/static_linter.py:151`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/static_linter.py#L151)) |
+| Sample size adequate (F15) | yes. Counts are stated per cell, a denominator of 1 is called out, and the gold set is called small ([`corpus/README.md:197`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/corpus/README.md#L197)) |
+| Independent labels (F16) | yes. Labels come from the TypeSafe docs, decision-v7, SQuAD and Quora; four written-from-definition gold items are disclosed ([`docs/evidence.md:146`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/docs/evidence.md#L146)) |
+| Typed answers read directly (F19) | yes. Code reads the typed `noul` probability and Choice `probabilities`, never reasoning text ([`python/src/jevlint/model_linter.py:981`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L981)) |
+| No instructions in the state (F21) | yes. The state holds the reviewed question's own fields and the user's state; directions sit in the check wordings ([`python/src/jevlint/model_linter.py:431`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/python/src/jevlint/model_linter.py#L431)) |
 
 </details>
 
 ## Scores
 
-- **Execution: 3** — anchor "F1-F6 all yes, and F8-F11 yes wherever they apply." F1-F6 all yes; F8/F9 yes; F10 n.a.; F11 yes. (F20-F22 fail, which is a real and, in this case, ironic gap — jevlint's own model calls splice unvetted content into question instructions, the exact pattern its `state/adversarial-content` check exists to flag in other projects' queries — but per the literal anchor text, F20-F22 aren't part of what this dimension's score anchors gate on, the same way Canny's F22 failure didn't move its Execution score. Recorded here and weighted in the verdict reasoning below.)
-- **Fit: 3** — anchor "each decision uses the primitive that fits it; confidence is used wherever an action depends on it; parallel questions are used wherever questions share a state." Every check uses Noul or the one well-formed Choice; confidence gates every firing decision; every scope's checks are batched into a single request rather than issued one at a time. F13 (order-handling on the sole Choice) is a minor, low-stakes gap noted but not treated as a second mismatch given the advisory-only severity.
-- **Coverage: 3** — new project scored against its own stated goal (README: catch the query-writing defects TypeSafe's docs and model-jaggedness page document). 25 model checks plus 28 static checks span most of the named jaggedness anchors (one-snap-judgment, literal-reading, indirection, contradictory-instructions, adversarial-content), with three parallel language implementations (PHP/JS/Python) and a documented self-test/corpus suite. No major stated goal found unaddressed.
-- **Evidence: 2** — anchor "measured with one weakness (small sample, builder's own labels, or no held-out set), disclosed." Its evidence file is strong (per-check Brier scores, sign tests, position-bias controls, ablations showing the advice actually halves error where the defect is real and does nothing where it isn't) — but several of its measurements are single-draw readings against known model jitter, and several corpora are small (12-30 items) even though disclosed candidly. That combination of real weaknesses, however well-disclosed, keeps this at 2 rather than the clean 3 anchor ("independent labels, held out, stated sample, fair baseline" with no caveat attached).
+- Execution 3 of 3: every question is atomic, typed, fielded, batched and gated by a trigger in the catalogue, with the type check carrying an other option (F1-F6, F8, F9, F11, F19).
+- Fit 3 of 3: each decision uses the fitting primitive, the probability gates every finding and exit code, and one request carries each question's checks (F2, F4, F11).
+- Coverage 3 of 3: the README promises checks against each documented failure mode and the catalogue holds a model check for each of them ([`checks/catalogue.json:316`](https://github.com/Fox-Islam/jevlint/blob/582c0b8be0/checks/catalogue.json#L316)).
+- Evidence 2 of 3: measured on labels from others with stated samples, but wordings were adjusted on the same corpus and no plain-LLM or rules baseline was run (F15, F16, F17, F18).
 
 ## Why this verdict
 
-**4, Use it.** jevlint's own use of Jev is disciplined: every check is atomic, uses the right primitive, is batched per scope rather than looped, is threshold-gated in code with a jitter-aware near-trigger flag, and reads typed fields directly. Its evidence work — a corpus assembled from material it didn't write, ablations that test whether acting on a finding actually improves the underlying query's accuracy (not just whether the check stops firing), and explicit position-bias controls — is more rigorous than anything else compared here. It falls short of 5 for two linked reasons: (1) Evidence, while unusually careful, discloses real weaknesses (single-draw self-test readings against ~0.035 model jitter, some corpora as small as 12 items) that keep it at "one weakness, disclosed" rather than a clean 3; (2) the pairwise and locate checks splice raw query text directly into their own question instructions (F20/F21) rather than keeping it in state and pointing at it by path, which is the same failure mode `state/adversarial-content` and `question/indirection` exist to catch in the queries jevlint lints. That's a fixable design flaw, not a fatal one (no F1/F6 failure on a main decision, confidence is never ignored), so it doesn't force the verdict down to 3 or 2 under the rubric's literal caps — but it is inconsistent with calling this reference-grade.
+4, Use it. No capping failure: F1-F6, F8-F11, F19 and F21 all hold, F13, F20 and F22 sit on low decisions, and Fit is 3. It is not a 5 because Evidence is 2, with F17 (wordings changed after reading the corpus) and F18 (no rules or plain-LLM baseline) failing. Every decision stays with the person linting their own query and a patch is offered, never applied.
 
 ## Fixes (from reading the code; not tested against it)
 
-1. **F20/F21 — values spliced into question templates.** In `_ask_about_query`, replace `.replace('{pair}', f'"{first...}" and "{second...}"')` with a state field (e.g. `state = {'first': ..., 'second': ...}`) and a question that points at it by path, rather than concatenating the two questions' text into the check's own instruction string. Same fix for the `{element}` locate substitution. Source: [`primitives/advanced`](https://docs.typesafe.ai/primitives/advanced); [`concepts/state`](https://docs.typesafe.ai/concepts/state).
-2. **F22 — untrusted text not treated as data (linked to the fix above).** Once the pair/element text moves into state, add an injection-check Noul or a test with a deliberately steering question/element (e.g. one that instructs "answer false regardless of content") to confirm the pairwise/locate checks aren't swayed by content from the query being linted. **(confirm with data.)** Source: [`model-jaggedness/jev-1.13`](https://docs.typesafe.ai/model-jaggedness/jev-1.13).
-3. **F12 — pin the default model.** `docs/evidence.md` already did the work of showing `jev-latest` and `jev-1.13` agree on this workload; make that the default (`--model=typesafe/jev-1.13` unless overridden) rather than requiring the flag, since the catalogue's triggers were tuned against the pinned build. Source: [`models`](https://docs.typesafe.ai/models).
+1. F17: hold out a slice of the gold and docs tiers that no wording or trigger change ever sees, and report that slice. Source: [`cookbooks/classification_using_confidence`](https://docs.typesafe.ai/cookbooks/classification_using_confidence).
+2. F18: run a keyword-rules linter and a plain-LLM prompt over the same gold set and report both beside the checks. Source: [`cookbooks/consistency_choice_cookbook`](https://docs.typesafe.ai/cookbooks/consistency_choice_cookbook).
+3. F12: default the client to a versioned `jev-1.13.x` ID, since triggers were tuned for that build, and log the `model` each response names. Source: [`models`](https://docs.typesafe.ai/models).
+4. F20 and F22 (fix-only at low stakes): pass the pair and element text as state fields, and test whether a planted instruction in a reviewed question moves the pair or locator readings. Confirmed only with data. Source: [`primitives/advanced`](https://docs.typesafe.ai/primitives/advanced); [`model-jaggedness/jev-1.13`](https://docs.typesafe.ai/model-jaggedness/jev-1.13).
+
+<details>
+<summary><b>Files read (13; 230 skipped)</b></summary>
+
+- README.md -- read
+- checks/catalogue.json -- read
+- checks/fixtures.json -- skipped: scoped
+- composer.json -- skipped: scoped
+- corpus/README.md -- read
+- corpus/advice.py -- skipped: scoped
+- corpus/answers.py -- read
+- corpus/arms/cc-sample.json -- skipped: scoped
+- corpus/arms/dn-sample.json -- skipped: scoped
+- corpus/arms/score-sample.json -- skipped: scoped
+- corpus/arms/wq-sample.json -- skipped: scoped
+- corpus/borderline.py -- skipped: scoped
+- corpus/boundary.py -- skipped: scoped
+- corpus/build.py -- skipped: scoped
+- corpus/contradiction.py -- skipped: scoped
+- corpus/decision.py -- skipped: scoped
+- corpus/docs-examples.json -- skipped: scoped
+- corpus/dogfood.py -- skipped: scoped
+- corpus/drift.py -- skipped: scoped
+- corpus/encoded.py -- skipped: scoped
+- corpus/external.py -- skipped: scoped
+- corpus/families.py -- skipped: scoped
+- corpus/field.json -- skipped: scoped
+- corpus/fields.py -- skipped: scoped
+- corpus/flores.py -- skipped: scoped
+- corpus/gold.json -- read
+- corpus/harvest.py -- skipped: scoped
+- corpus/labels.json -- skipped: scoped
+- corpus/labels.py -- skipped: scoped
+- corpus/levels.py -- skipped: scoped
+- corpus/locators.py -- skipped: scoped
+- corpus/measure.py -- skipped: scoped
+- corpus/mechanical.py -- skipped: scoped
+- corpus/pages.py -- skipped: scoped
+- corpus/planted.py -- skipped: scoped
+- corpus/position.py -- skipped: scoped
+- corpus/rewrite.py -- skipped: scoped
+- corpus/scores.json -- skipped: scoped
+- corpus/second.py -- skipped: scoped
+- corpus/sibling.py -- skipped: scoped
+- corpus/squad.py -- skipped: scoped
+- corpus/states.py -- skipped: scoped
+- corpus/sums.py -- skipped: scoped
+- corpus/undetermined.py -- skipped: scoped
+- corpus/unread.py -- skipped: scoped
+- corpus/wording.py -- skipped: scoped
+- docs/behaviour.md -- skipped: scoped
+- docs/evidence.md -- read
+- docs/javascript.md -- skipped: scoped
+- docs/languages.md -- skipped: scoped
+- docs/library.md -- skipped: scoped
+- docs/output.md -- skipped: scoped
+- docs/python.md -- skipped: scoped
+- examples/broken-triage.json -- skipped: scoped
+- examples/support-triage.json -- skipped: scoped
+- js/bin/jevlint.ts -- skipped: scoped
+- js/src/catalogue/catalogue.ts -- skipped: scoped
+- js/src/catalogue/check.ts -- skipped: scoped
+- js/src/catalogue/wording.ts -- skipped: scoped
+- js/src/config/config.ts -- skipped: scoped
+- js/src/console/application.ts -- skipped: scoped
+- js/src/console/args.ts -- skipped: scoped
+- js/src/console/commands/checkCommand.ts -- skipped: scoped
+- js/src/console/commands/checksCommand.ts -- skipped: scoped
+- js/src/console/commands/probeCommand.ts -- skipped: scoped
+- js/src/console/commands/selfTestCommand.ts -- skipped: scoped
+- js/src/console/flags.ts -- skipped: scoped
+- js/src/exceptions/jevLintError.ts -- skipped: scoped
+- js/src/format/colour.ts -- skipped: scoped
+- js/src/format/numbers.ts -- skipped: scoped
+- js/src/format/probeFormatter.ts -- skipped: scoped
+- js/src/format/selfTestFormatter.ts -- skipped: scoped
+- js/src/format/textFormatter.ts -- skipped: scoped
+- js/src/i18n/checkText.ts -- skipped: scoped
+- js/src/i18n/text.ts -- skipped: scoped
+- js/src/index.ts -- skipped: scoped
+- js/src/lang/en.ts -- skipped: scoped
+- js/src/lint/clientFactory.ts -- skipped: scoped
+- js/src/lint/linter.ts -- skipped: scoped
+- js/src/lint/modelLinter.ts -- skipped: scoped
+- js/src/lint/rules.ts -- skipped: scoped
+- js/src/lint/staticLinter.ts -- skipped: scoped
+- js/src/probe/probe.ts -- skipped: scoped
+- js/src/probe/questionBuilder.ts -- skipped: scoped
+- js/src/probe/questionProbe.ts -- skipped: scoped
+- js/src/probe/variant.ts -- skipped: scoped
+- js/src/probe/variants.ts -- skipped: scoped
+- js/src/query/query.ts -- skipped: scoped
+- js/src/query/reviewedQuestion.ts -- skipped: scoped
+- js/src/report/finding.ts -- skipped: scoped
+- js/src/report/patch.ts -- skipped: scoped
+- js/src/report/report.ts -- skipped: scoped
+- js/src/selftest/checkScore.ts -- skipped: scoped
+- js/src/selftest/selfTest.ts -- skipped: scoped
+- js/src/support/cause.ts -- skipped: scoped
+- js/src/support/env.ts -- skipped: scoped
+- js/src/support/json.ts -- skipped: scoped
+- js/src/support/ordered.ts -- skipped: scoped
+- js/src/support/phpJson.ts -- skipped: scoped
+- js/src/typesafe/answers.ts -- skipped: scoped
+- js/src/typesafe/client.ts -- skipped: scoped
+- js/src/typesafe/errors.ts -- skipped: scoped
+- js/src/typesafe/questions.ts -- skipped: scoped
+- js/test/anotherLanguage.test.ts -- skipped: scoped
+- js/test/catalogue.test.ts -- skipped: scoped
+- js/test/helpers/fake.ts -- skipped: scoped
+- js/test/icu.test.ts -- skipped: scoped
+- js/test/linter.test.ts -- skipped: scoped
+- js/test/numbers.test.ts -- skipped: scoped
+- js/test/ordered.test.ts -- skipped: scoped
+- js/test/package.test.ts -- skipped: scoped
+- js/test/parity.test.ts -- skipped: scoped
+- js/test/patch.test.ts -- skipped: scoped
+- js/test/probe.test.ts -- skipped: scoped
+- js/test/query.test.ts -- skipped: scoped
+- js/test/stateFieldChecks.test.ts -- skipped: scoped
+- js/test/staticLinter.test.ts -- skipped: scoped
+- package.json -- skipped: scoped
+- php/lang/en.php -- skipped: scoped
+- php/src/Catalogue/Catalogue.php -- skipped: scoped
+- php/src/Catalogue/Check.php -- skipped: scoped
+- php/src/Catalogue/SecondQuestion.php -- skipped: scoped
+- php/src/Catalogue/Wording.php -- skipped: scoped
+- php/src/Config/Config.php -- skipped: scoped
+- php/src/Console/Application.php -- skipped: scoped
+- php/src/Console/Args.php -- skipped: scoped
+- php/src/Console/Commands/CheckCommand.php -- skipped: scoped
+- php/src/Console/Commands/ChecksCommand.php -- skipped: scoped
+- php/src/Console/Commands/ProbeCommand.php -- skipped: scoped
+- php/src/Console/Commands/SelfTestCommand.php -- skipped: scoped
+- php/src/Console/Flags.php -- skipped: scoped
+- php/src/Exceptions/JevLintException.php -- skipped: scoped
+- php/src/Format/ProbeFormatter.php -- skipped: scoped
+- php/src/Format/SelfTestFormatter.php -- skipped: scoped
+- php/src/Format/TextFormatter.php -- skipped: scoped
+- php/src/I18n/CheckText.php -- skipped: scoped
+- php/src/Lint/ClientFactory.php -- skipped: scoped
+- php/src/Lint/Linter.php -- skipped: scoped
+- php/src/Lint/ModelLinter.php -- skipped: scoped
+- php/src/Lint/StaticLinter.php -- skipped: scoped
+- php/src/Probe/Probe.php -- skipped: scoped
+- php/src/Probe/QuestionBuilder.php -- skipped: scoped
+- php/src/Probe/QuestionProbe.php -- skipped: scoped
+- php/src/Probe/Reading.php -- skipped: scoped
+- php/src/Probe/Variant.php -- skipped: scoped
+- php/src/Probe/Variants/CriteriaStripped.php -- skipped: scoped
+- php/src/Probe/Variants/KeysHidden.php -- skipped: scoped
+- php/src/Probe/Variants/LevelsReversed.php -- skipped: scoped
+- php/src/Probe/Variants/NoulAsChoice.php -- skipped: scoped
+- php/src/Probe/Variants/OptionsReversed.php -- skipped: scoped
+- php/src/Probe/Variants/Reworded.php -- skipped: scoped
+- php/src/Probe/Variants/Unchanged.php -- skipped: scoped
+- php/src/Query/Query.php -- skipped: scoped
+- php/src/Query/ReviewedQuestion.php -- skipped: scoped
+- php/src/Report/Finding.php -- skipped: scoped
+- php/src/Report/Patch.php -- skipped: scoped
+- php/src/Report/Report.php -- skipped: scoped
+- php/src/SelfTest/SelfTest.php -- skipped: scoped
+- php/src/Support/Cause.php -- skipped: scoped
+- php/tests/AnotherLanguageTest.php -- skipped: scoped
+- php/tests/AskedDigestTest.php -- skipped: scoped
+- php/tests/CatalogueLintsCleanTest.php -- skipped: scoped
+- php/tests/CatalogueTest.php -- skipped: scoped
+- php/tests/DeclaredExtensionsTest.php -- skipped: scoped
+- php/tests/DocumentationMatchesCatalogueTest.php -- skipped: scoped
+- php/tests/EveryStateFieldCheckReportsItselfTest.php -- skipped: scoped
+- php/tests/EvidenceCountsMatchTheDataTest.php -- skipped: scoped
+- php/tests/FindingCarriesEveryFieldTest.php -- skipped: scoped
+- php/tests/GuardsTest.php -- skipped: scoped
+- php/tests/InconclusiveChecksSpeakEitherWayTest.php -- skipped: scoped
+- php/tests/LinterFacadeTest.php -- skipped: scoped
+- php/tests/LostCallsAreNotAPassTest.php -- skipped: scoped
+- php/tests/ModelLinterTest.php -- skipped: scoped
+- php/tests/PatchNeverEmptiesTheQueryTest.php -- skipped: scoped
+- php/tests/PatchTest.php -- skipped: scoped
+- php/tests/PatchesKeepWhatTheyClaimTest.php -- skipped: scoped
+- php/tests/ProbeNumbersMatchTheDocumentationTest.php -- skipped: scoped
+- php/tests/ProbeTest.php -- skipped: scoped
+- php/tests/QuickstartWorksTest.php -- skipped: scoped
+- php/tests/ReportContractTest.php -- skipped: scoped
+- php/tests/StaticChecksApplyWhereTheySayTest.php -- skipped: scoped
+- php/tests/StaticLinterTest.php -- skipped: scoped
+- php/tests/StaticRulesAreBoundTest.php -- skipped: scoped
+- pyproject.toml -- skipped: scoped
+- python/src/jevlint/__init__.py -- skipped: scoped
+- python/src/jevlint/__main__.py -- skipped: scoped
+- python/src/jevlint/catalogue.py -- skipped: scoped
+- python/src/jevlint/config.py -- skipped: scoped
+- python/src/jevlint/console/__init__.py -- skipped: scoped
+- python/src/jevlint/console/application.py -- skipped: scoped
+- python/src/jevlint/console/args.py -- skipped: scoped
+- python/src/jevlint/console/commands.py -- skipped: scoped
+- python/src/jevlint/console/flags.py -- skipped: scoped
+- python/src/jevlint/errors.py -- skipped: scoped
+- python/src/jevlint/formatting.py -- skipped: scoped
+- python/src/jevlint/icu.py -- skipped: scoped
+- python/src/jevlint/lang/en.py -- skipped: scoped
+- python/src/jevlint/linter.py -- skipped: scoped
+- python/src/jevlint/model_linter.py -- read
+- python/src/jevlint/probe.py -- read
+- python/src/jevlint/probe_formatter.py -- skipped: scoped
+- python/src/jevlint/query.py -- skipped: scoped
+- python/src/jevlint/report.py -- skipped: scoped
+- python/src/jevlint/rules.py -- skipped: scoped
+- python/src/jevlint/self_test_formatter.py -- skipped: scoped
+- python/src/jevlint/selftest.py -- skipped: scoped
+- python/src/jevlint/static_linter.py -- read
+- python/src/jevlint/support.py -- skipped: scoped
+- python/src/jevlint/text.py -- skipped: scoped
+- python/src/jevlint/text_formatter.py -- skipped: scoped
+- python/src/jevlint/typesafe/__init__.py -- skipped: scoped
+- python/src/jevlint/typesafe/answers.py -- read
+- python/src/jevlint/typesafe/client.py -- read
+- python/src/jevlint/typesafe/errors.py -- skipped: scoped
+- python/src/jevlint/typesafe/questions.py -- read
+- python/src/jevlint/variants.py -- read
+- python/tests/conftest.py -- skipped: scoped
+- python/tests/test_catalogue.py -- skipped: scoped
+- python/tests/test_documentation.py -- skipped: scoped
+- python/tests/test_icu.py -- skipped: scoped
+- python/tests/test_linter.py -- skipped: scoped
+- python/tests/test_numbers.py -- skipped: scoped
+- python/tests/test_package.py -- skipped: scoped
+- python/tests/test_parity.py -- skipped: scoped
+- python/tests/test_patch.py -- skipped: scoped
+- python/tests/test_probe.py -- skipped: scoped
+- python/tests/test_query.py -- skipped: scoped
+- python/tests/test_state_field_checks.py -- skipped: scoped
+- python/tests/test_static_linter.py -- skipped: scoped
+- site/behaviour.html -- skipped: scoped
+- site/corpus.html -- skipped: scoped
+- site/evidence.html -- skipped: scoped
+- site/examples.html -- skipped: scoped
+- site/index.html -- skipped: scoped
+- site/javascript.html -- skipped: scoped
+- site/languages.html -- skipped: scoped
+- site/library.html -- skipped: scoped
+- site/output.html -- skipped: scoped
+- site/python.html -- skipped: scoped
+- site/spec/query.schema.json -- skipped: scoped
+- site/spec/report.schema.json -- skipped: scoped
+- spec/query.schema.json -- skipped: scoped
+- spec/report.schema.json -- skipped: scoped
+
+</details>

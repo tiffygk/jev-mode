@@ -1,0 +1,297 @@
+[← Summary](../bnsd55__jevmlx.md)
+
+# jevmlx: full rating
+
+**Verdict 1, Replaces Jev, not yet rated** · jev replacement · rated 2026-09-30 at [`7e0d746`](https://github.com/bnsd55/jevmlx/tree/7e0d746081b8) · read: extract · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
+
+## Summary
+
+jevmlx is a local Apple Silicon engine that scores every option of typed fields from logits in one batched pass, and its server offers a `/v1/systemone` endpoint that accepts Jev's request shape and returns Jev-style typed answers (README.md). It documents its prompt contract, calibration bundle and abstention rule, and benchmarks against TypeSafe's public eval pages. It makes no hosted Jev call and does not claim to be or call Jev (README.md: "Not affiliated with TypeSafe AI"), so it routes to 1r until a replacement track exists.
+
+## What fails
+
+| Fact | Finding |
+|---|---|
+| Calls hosted Jev (F0) | **no.** No hosted call; a local MLX model scores options and the server mimics Jev's request shape (`README.md`, `js/tests/fixtures/systemone-200.json`). Docs: https://docs.typesafe.ai/introduction/quickstart.md, https://docs.typesafe.ai/sdk.md |
+
+## Why this verdict
+
+Verdict 1r: the project offers Jev-style typed answers (`/v1/systemone`) from a local model without calling hosted Jev, and its README says it is not affiliated with TypeSafe AI, so no claim to be Jev triggers 1a. This is a placeholder until a replacement track exists, not a judgment of its engineering; scores are n.a.
+
+<details>
+<summary><b>Files read (10; 262 skipped)</b></summary>
+
+- .github/workflows/release-check.yml -- skipped: scoped
+- .github/workflows/results-check.yml -- skipped: scoped
+- ARCHITECTURE.md -- read
+- BENCHMARKING.md -- read
+- CHANGELOG.md -- skipped: scoped
+- PROMPT_PROTOCOL.md -- read
+- README.md -- read
+- benchmarks/README.md -- read
+- benchmarks/cases.json -- skipped: scoped
+- benchmarks/check_results.py -- skipped: scoped
+- benchmarks/compat.py -- skipped: scoped
+- benchmarks/driftprobe.py -- skipped: scoped
+- benchmarks/golden_prompts.py -- skipped: scoped
+- benchmarks/invariance.py -- skipped: scoped
+- benchmarks/layer_bisect.py -- skipped: scoped
+- benchmarks/leaderboard.py -- skipped: scoped
+- benchmarks/m5.py -- skipped: scoped
+- benchmarks/make_cases.py -- skipped: scoped
+- benchmarks/naive_vs_parallel.py -- skipped: scoped
+- benchmarks/openjev/fetch.py -- skipped: scoped
+- benchmarks/perturb.py -- skipped: scoped
+- benchmarks/probe.py -- skipped: scoped
+- benchmarks/public/fetch.py -- skipped: scoped
+- benchmarks/public/jabr.py -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/SUMMARY.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/naive_local-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/naive_local-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/naive_local-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/naive_local-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/naive_local-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/naive_local-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/naive_local-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-bundled/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-perturbed/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-labels-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parallel-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--gemma-3-12b-it-4bit/parity.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/SUMMARY.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/naive_local-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/naive_local-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/naive_local-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/naive_local-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/naive_local-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/naive_local-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/naive_local-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-bundled/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-perturbed/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-labels-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parallel-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--llama-3.1-8b-instruct-4bit/parity.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/SUMMARY.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/naive_local-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/naive_local-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/naive_local-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/naive_local-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/naive_local-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/naive_local-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/naive_local-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-bundled/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-perturbed/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-labels-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parallel-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen2.5-7b-instruct-4bit/parity.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/SUMMARY.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/naive_local-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/naive_local-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/naive_local-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/naive_local-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/naive_local-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/naive_local-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/naive_local-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-bundled/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-perturbed/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-labels-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-slots-bundled/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-slots-perturbed/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-slots-typesafe/completed_cases.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-slots-typesafe/heartbeat.jsonl -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-slots-typesafe/report.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-slots-typesafe/report.md -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parallel-slots-typesafe/run.json -- skipped: scoped
+- benchmarks/results/m5max-128gb-mlx-community--qwen3-8b-4bit/parity.json -- skipped: scoped
+- benchmarks/summarize_results.py -- skipped: scoped
+- benchmarks/synthetic.py -- skipped: scoped
+- benchmarks/timing.py -- skipped: scoped
+- benchmarks/to_jsonl.py -- skipped: scoped
+- benchmarks/two_stage.py -- skipped: scoped
+- benchmarks/typed_decisions/__init__.py -- skipped: scoped
+- benchmarks/typed_decisions/fetch.py -- skipped: scoped
+- benchmarks/typesafe/README.md -- skipped: scoped
+- benchmarks/typesafe/fetch.py -- read
+- benchmarks/typesafe/official.json -- skipped: scoped
+- benchmarks/typesafe/published.py -- skipped: scoped
+- benchmarks/typesafe/questions.py -- skipped: scoped
+- jevmlx/__init__.py -- skipped: scoped
+- jevmlx/__main__.py -- skipped: scoped
+- jevmlx/adapters.py -- skipped: scoped
+- jevmlx/api.py -- read
+- jevmlx/baseline.py -- skipped: scoped
+- jevmlx/bench.py -- skipped: scoped
+- jevmlx/calibrate.py -- read
+- jevmlx/cli.py -- skipped: scoped
+- jevmlx/constraints.py -- skipped: scoped
+- jevmlx/doctor.py -- skipped: scoped
+- jevmlx/driftenv.py -- skipped: scoped
+- jevmlx/engine.py -- skipped: scoped
+- jevmlx/evalmetrics.py -- skipped: scoped
+- jevmlx/evalreport.py -- skipped: scoped
+- jevmlx/evalrun.py -- skipped: scoped
+- jevmlx/http.py -- skipped: scoped
+- jevmlx/json_text.py -- skipped: scoped
+- jevmlx/lint.py -- skipped: scoped
+- jevmlx/models.py -- skipped: scoped
+- jevmlx/openai_slots.py -- skipped: scoped
+- jevmlx/parity.py -- skipped: scoped
+- jevmlx/presets/code_security.json -- skipped: scoped
+- jevmlx/presets/fintech_fraud.json -- skipped: scoped
+- jevmlx/presets/high_cardinality_255.json -- skipped: scoped
+- jevmlx/presets/support_triage.json -- skipped: scoped
+- jevmlx/resume.py -- skipped: scoped
+- jevmlx/schema.py -- read
+- jevmlx/serve.py -- skipped: scoped
+- jevmlx/setcons.py -- skipped: scoped
+- jevmlx/timing.py -- skipped: scoped
+- jevmlx/trie.py -- skipped: scoped
+- jevmlx/watch.py -- skipped: scoped
+- jevmlx/web/dashboard.html -- skipped: scoped
+- js/README.md -- skipped: scoped
+- js/package.json -- skipped: scoped
+- js/src/index.ts -- skipped: scoped
+- js/tests/client.test.ts -- skipped: scoped
+- js/tests/dashboard-helpers.test.mjs -- skipped: scoped
+- js/tests/fixtures/decide-200.json -- skipped: scoped
+- js/tests/fixtures/models-200.json -- skipped: scoped
+- js/tests/fixtures/systemone-200.json -- read
+- pyproject.toml -- skipped: scoped
+- tests/conftest.py -- skipped: scoped
+- tests/fixtures/dashboard/dashboard.json -- skipped: scoped
+- tests/fixtures/dashboard/questions.json -- skipped: scoped
+- tests/fixtures/jabr/cases_fixture.py -- skipped: scoped
+- tests/fixtures/results_ok/report.json -- skipped: scoped
+- tests/golden/prompts/gemma__2c715097ff9c081a6ac1e5cd239e2ac756b5bd99__risk_enum_bool_labels.json -- skipped: scoped
+- tests/golden/prompts/gemma__2c715097ff9c081a6ac1e5cd239e2ac756b5bd99__tags_multi_labels.json -- skipped: scoped
+- tests/golden/prompts/qwen2.5__a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3__risk_enum_bool_labels.json -- skipped: scoped
+- tests/golden/prompts/qwen2.5__a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3__tags_multi_labels.json -- skipped: scoped
+- tests/golden/prompts/qwen3__fake__risk_enum_bool_labels.json -- skipped: scoped
+- tests/golden/prompts/qwen3__fake__tags_multi_labels.json -- skipped: scoped
+- tests/test_adapters.py -- skipped: scoped
+- tests/test_api.py -- skipped: scoped
+- tests/test_baseline.py -- skipped: scoped
+- tests/test_bench.py -- skipped: scoped
+- tests/test_benchmarks_engine.py -- skipped: scoped
+- tests/test_calibrate.py -- skipped: scoped
+- tests/test_check_results.py -- skipped: scoped
+- tests/test_cli.py -- skipped: scoped
+- tests/test_cli_smoke.py -- skipped: scoped
+- tests/test_doctor.py -- skipped: scoped
+- tests/test_driftenv.py -- skipped: scoped
+- tests/test_dump_serve_fixtures.py -- skipped: scoped
+- tests/test_engine.py -- skipped: scoped
+- tests/test_engine_fake.py -- skipped: scoped
+- tests/test_error_breaker.py -- skipped: scoped
+- tests/test_ev1_dependent.py -- skipped: scoped
+- tests/test_evalmetrics.py -- skipped: scoped
+- tests/test_evalreport.py -- skipped: scoped
+- tests/test_evalrun.py -- skipped: scoped
+- tests/test_field_semantics.py -- skipped: scoped
+- tests/test_finalize_semantics.py -- skipped: scoped
+- tests/test_golden_prompts.py -- skipped: scoped
+- tests/test_guards.py -- skipped: scoped
+- tests/test_invariance.py -- skipped: scoped
+- tests/test_issue105_prior_order.py -- skipped: scoped
+- tests/test_jabr.py -- skipped: scoped
+- tests/test_leaderboard.py -- skipped: scoped
+- tests/test_lint.py -- skipped: scoped
+- tests/test_m5.py -- skipped: scoped
+- tests/test_m5_ab_fix.py -- skipped: scoped
+- tests/test_m5_ab_install.py -- skipped: scoped
+- tests/test_m5_e2e.py -- skipped: scoped
+- tests/test_m5_results_pr.py -- skipped: scoped
+- tests/test_model_aliases.py -- skipped: scoped
+- tests/test_multi.py -- skipped: scoped
+- tests/test_onefield.py -- skipped: scoped
+- tests/test_openai_slots.py -- skipped: scoped
+- tests/test_openjev.py -- skipped: scoped
+- tests/test_ordinal.py -- skipped: scoped
+- tests/test_perturb.py -- skipped: scoped
+- tests/test_perturb_flip.py -- skipped: scoped
+- tests/test_presets.py -- skipped: scoped
+- tests/test_probe.py -- skipped: scoped
+- tests/test_prompt_v2.py -- skipped: scoped
+- tests/test_public_fetch.py -- skipped: scoped
+- tests/test_published.py -- skipped: scoped
+- tests/test_real_results_folder.py -- skipped: scoped
+- tests/test_resume.py -- skipped: scoped
+- tests/test_serve.py -- skipped: scoped
+- tests/test_smoke.py -- skipped: scoped
+- tests/test_synthetic.py -- skipped: scoped
+- tests/test_text_model.py -- skipped: scoped
+- tests/test_timing.py -- skipped: scoped
+- tests/test_trie.py -- skipped: scoped
+- tests/test_two_stage.py -- skipped: scoped
+- tests/test_typed_decisions_fetch.py -- skipped: scoped
+- tests/test_typed_decisions_fetch_hub.py -- skipped: scoped
+- tests/test_typesafe_fetch.py -- skipped: scoped
+- tests/test_w1b_slot_multi.py -- skipped: scoped
+- tests/test_w1c.py -- skipped: scoped
+- tests/test_w2_setcons.py -- skipped: scoped
+- tests/test_w2c_codebook.py -- skipped: scoped
+- tests/test_w2d_telemetry.py -- skipped: scoped
+- tests/test_w2e_calib.py -- skipped: scoped
+- tests/test_w2e_count.py -- skipped: scoped
+- tests/test_w2e_rowcodes.py -- skipped: scoped
+- tests/test_w3d_constraints.py -- skipped: scoped
+- tests/test_w3d_dag.py -- skipped: scoped
+- tests/test_w3d_map.py -- skipped: scoped
+- tests/test_w3f_batch.py -- skipped: scoped
+- tests/test_w3g.py -- skipped: scoped
+- tests/test_w4b_parity.py -- skipped: scoped
+- tests/test_w5a.py -- skipped: scoped
+- tests/test_w5b.py -- skipped: scoped
+- tests/test_w5b11_constraints.py -- skipped: scoped
+- tests/test_w5b14_ledger.py -- skipped: scoped
+- tests/test_w5b1_immutable.py -- skipped: scoped
+- tests/test_w5d.py -- skipped: scoped
+- tests/test_watch.py -- skipped: scoped
+- tests/test_watch_round4.py -- skipped: scoped
+- tests/test_watch_round4b.py -- skipped: scoped
+- tests/test_watch_sse.py -- skipped: scoped
+- tests/test_watch_web.py -- skipped: scoped
+
+</details>

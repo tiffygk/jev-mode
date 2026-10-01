@@ -1,5 +1,7 @@
 [← All ratings](README.md)
 
+*Rated under an earlier rubric (2026-09-28b). A re-rating is queued.*
+
 > **RileyCarney/JevTools** at [`7f6907b`](https://github.com/RileyCarney/JevTools/tree/7f6907b4614914cb47c8b089252832f1f2da485f) · demo
 > ### Verdict 3: Use with a fix
 > Execution ●●○ · Fit ●●● · Coverage ●●○ · Evidence ○○○

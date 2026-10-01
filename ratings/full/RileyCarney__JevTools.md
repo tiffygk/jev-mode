@@ -2,7 +2,9 @@
 
 # JevTools: full rating
 
-**Verdict 3, Use with a fix** · demo · rated 2026-09-28 at [`7f6907b`](https://github.com/RileyCarney/JevTools/tree/7f6907b4614914cb47c8b089252832f1f2da485f) · read: full · rubric 2026-09-28b · claude-sonnet-5-5, medium effort
+**Verdict 3, Use with a fix** · demo · rated 2026-09-28 at [`7f6907b`](https://github.com/RileyCarney/JevTools/tree/7f6907b4614914cb47c8b089252832f1f2da485f) · read: full · rubric 2026-09-28b (earlier) · claude-sonnet-5-5, medium effort
+
+*Rated under an earlier rubric (2026-09-28b). A re-rating is queued.*
 
 ## Summary
 
