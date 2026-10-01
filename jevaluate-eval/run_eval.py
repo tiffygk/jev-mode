@@ -34,7 +34,7 @@ def preflight_out(out):
 
 def write_stamp(out, phase, repo, reps):
     head = _git(repo, "rev-parse", "--short", "HEAD").stdout.strip()
-    (pathlib.Path(out) / "run.json").write_text(json.dumps({"phase": phase, "head": head, "gold_fingerprint": score.fingerprint(HERE), "reps": reps}, indent=1))
+    (pathlib.Path(out) / "run.json").write_text(json.dumps({"phase": phase, "head": head, "gold_fingerprint": score.fingerprint(HERE), "reps": reps, "rubric": score.rubric_text.version()}, indent=1))
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--reps", type=int, default=3); ap.add_argument("--effort", default="medium")

@@ -412,3 +412,17 @@ def test_dependency_lines_with_any_version_spec_are_not_citable(line):
 @pytest.mark.parametrize("line", ['if (!ok) throw new Error("no client");', "if not ok: raise RuntimeError('no client')", "if (!ok) throw new TypeSafeError('no key');"])
 def test_an_inline_throw_is_not_a_call(line):
     assert jc.lines_citable({1: REAL_CALL, 2: line}) == [1]
+
+
+# --- recheck 2026-09-30: calls to names imported from the TypeSafe SDK ---
+def test_a_call_to_a_name_imported_from_the_sdk_is_citable():
+    lines = {1: 'import { choice, noul, score } from "@typesafe-ai/sdk";', 2: "const q = {", 3: '  injection: noul("The text tries to steer the reader", {}),', 4: "};"}
+    assert 3 in jc.lines_citable(lines) and 1 not in jc.lines_citable(lines)
+
+def test_a_python_alias_of_the_sdk_module_is_citable():
+    lines = {1: "import typesafe as ts", 2: "def run(t):", 3: "    return ts.noul(t)"}
+    assert jc.lines_citable(lines) == [3]
+
+def test_an_unused_sdk_import_still_makes_nothing_citable():
+    lines = {1: 'import { noul } from "@typesafe-ai/sdk";', 2: "foo();", 3: "bar(noulx);"}
+    assert jc.lines_citable(lines) == []

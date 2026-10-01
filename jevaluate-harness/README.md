@@ -22,12 +22,12 @@ The skill is a short guide that opens one of three files, each a numbered list w
 
 1. `rubric-change.md` changes the rubric: a meaning and an example for every value, one row per stakes level where the rule changes with stakes, and a code check for every rule. Then Jevaluate Eval tests it.
 2. `rating-round.md` runs a round: screen a list against two known controls, size each repo, brief raters, log ratings one at a time, scan each rater's transcript, send big verdict moves to a reviewer that sees only the facts.
-3. `publish.md` exports a preview, has a reviewer check every page for private context, and opens one pull request.
+3. `publish.md` exports a preview, has a reviewer check every page for private context, runs the release check (tests, a fresh clone, a passing eval on this rubric), and opens one pull request.
 
 Written steps alone slipped in earlier rounds, so scripts check each one:
 
 - Parallel raters wrote to the shared library at the same time. Now the controller alone logs each rating, one at a time, through `library.py add`.
-- Sizing fetched one large repo file by file for over 15 minutes. Rounds now size from shallow clones.
+- Sizing fetched one large repo file by file for over 15 minutes. Sizing now uses the repo's file list, and large repos are read from a shallow clone.
 - A mode the skill didn't have shipped in its README. The lint now refuses any file a skill names that doesn't exist.
 
 `harness_status.py` reads your round's ledger, reruns each scripted check, and names the file to open next. A skipped step shows up there before the next one starts.
