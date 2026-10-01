@@ -26,7 +26,7 @@ def clone_smoke(repo):
 def eval_stamp(results_dir, version):
     stamps = sorted(pathlib.Path(results_dir).glob("*-baseline.md")) + sorted(pathlib.Path(results_dir).glob("*-after.md"))
     if not stamps: return False, "no eval result found"
-    last = max(stamps, key=lambda p: p.name)
+    last = max(stamps, key=lambda p: (p.name[:10], p.name.endswith("-after.md")))  # newest date; on one day the after run is the later one
     m = re.match(r"Run: phase=(\w+) rubric=(\S+) commit=(\S+) passed=(\w+)", last.read_text().splitlines()[0] if last.read_text() else "")
     if not m: return False, f"{last.name} has no stamp line"
     if m.group(2) != version: return False, f"last eval ran on rubric {m.group(2)}, publishing {version}"

@@ -133,7 +133,7 @@ def planned_reps(run, argv_reps):
 def stamp_line(run, passed):
     """First output line: what was run, on which rubric and commit, and whether it passed."""
     info = json.loads((pathlib.Path(run) / "run.json").read_text())
-    return f"Run: phase={info.get('phase')} rubric={rubric_text.version()} commit={info.get('head')} passed={'yes' if passed else 'no'}"
+    return f"Run: phase={info.get('phase')} rubric={info.get('rubric', 'unknown')} commit={info.get('head')} passed={'yes' if passed else 'no'}"  # the rubric the run was made on
 
 if __name__ == "__main__":
     args = sys.argv[1:]; argv_reps = None

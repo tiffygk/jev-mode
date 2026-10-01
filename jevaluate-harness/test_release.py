@@ -22,3 +22,10 @@ def test_fixtures_behave():
     bad = subprocess.run([sys.executable, str(lib), "check", str(HERE / "fixtures" / "bad-rating.md")], capture_output=True, text=True)
     assert good.returncode == 0, good.stdout
     assert bad.returncode != 0, bad.stdout
+
+
+def test_same_day_after_run_beats_the_baseline(tmp_path):
+    (tmp_path / "2026-10-01-baseline.md").write_text("Run: phase=baseline rubric=2026-09-29 commit=abc passed=yes\n")
+    (tmp_path / "2026-10-01-after.md").write_text("Run: phase=after rubric=2026-09-29 commit=def passed=no\n")
+    ok, detail = cr.eval_stamp(tmp_path, "2026-09-29")
+    assert ok is False and "after" in detail

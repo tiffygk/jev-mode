@@ -345,7 +345,27 @@ def test_run_eval_accepts_an_out_folder_that_does_not_exist_yet(tmp_path):
 
 
 def test_stamp_line_reads_run_json(tmp_path):
-    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "head": "abc1234"}))
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "head": "abc1234", "rubric": "2026-09-29"}))
     line = sc.stamp_line(tmp_path, True)
-    assert line == f"Run: phase=after rubric={sc.rubric_text.version()} commit=abc1234 passed=yes"
+    assert line == "Run: phase=after rubric=2026-09-29 commit=abc1234 passed=yes"
     assert sc.stamp_line(tmp_path, False).endswith("passed=no")
+
+
+def test_stamp_uses_the_rubric_the_run_was_made_on(tmp_path):
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "baseline", "head": "abc1234", "rubric": "2026-01-01"}))
+    assert " rubric=2026-01-01 " in sc.stamp_line(tmp_path, True)
+
+def test_a_run_with_no_recorded_rubric_is_stamped_unknown(tmp_path):
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "baseline", "head": "abc1234"}))
+    assert " rubric=unknown " in sc.stamp_line(tmp_path, True)
+
+
+def test_write_stamp_records_the_rubric_version(tmp_path):
+    import run_eval as re_
+    repo = tmp_path / "repo"; repo.mkdir()
+    import subprocess
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-q", "--allow-empty", "-m", "x"], check=True)
+    out = tmp_path / "out"; out.mkdir()
+    re_.write_stamp(out, "baseline", repo, 3)
+    assert json.loads((out / "run.json").read_text())["rubric"] == sc.rubric_text.version()
