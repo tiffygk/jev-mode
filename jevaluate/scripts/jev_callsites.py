@@ -153,11 +153,40 @@ def is_marker(c):
     return bool(HOSTED.search(c) or CONSTRUCT.search(c) or MODULE_CALL.search(c))
 
 
+SDK_IMPORT_JS = re.compile(r"""^import\s+(?:type\s+)?(.+?)\s+from\s+["'](?:@typesafe-ai/sdk|typesafe(?:-ai)?)["']""")
+SDK_IMPORT_PY = re.compile(r"^(?:from\s+typesafe(?:_ai|_sdk)?\s+import\s+(.+)|import\s+typesafe(?:_ai|_sdk)?\s+as\s+(\w+))")
+
+
+def sdk_names(code):
+    """Names a file binds from the TypeSafe SDK: `import { noul, choice as c } from "@typesafe-ai/sdk"`, `import * as ts from ...`,
+    `from typesafe import noul`, `import typesafe as ts`. A call to one of them shows the file uses the SDK; the import alone does not."""
+    names = set()
+    for c in code:
+        m = SDK_IMPORT_JS.match(c)
+        if m:
+            spec = m.group(1)
+            for part in re.split(r"[,{}]", spec):
+                part = part.strip()
+                if not part or part.startswith("type "): continue
+                names.add(re.split(r"\s+as\s+", part)[-1].strip())
+            continue
+        m = SDK_IMPORT_PY.match(c)
+        if m:
+            if m.group(2): names.add(m.group(2))
+            else:
+                for part in m.group(1).strip("() ").split(","):
+                    if part.strip(): names.add(re.split(r"\s+as\s+", part.strip())[-1].strip())
+    names.discard("*")
+    return {n.replace("* as ", "").strip() for n in names if re.fullmatch(r"(?:\* as )?[A-Za-z_$][\w$]*", n.strip())}
+
+
 def lines_citable(lines):
     """Sorted line numbers of a {line number: text} map that an F0 yes may cite: in a file that holds a hosted marker, every line that is a call
     expression or names the endpoint or a model ID, except imports, dependencies, comments, throws, declarations, regexes and bare strings."""
     code = code_lines(lines)
-    if not any(is_marker(c) for c in code.values()): return []
+    names = sdk_names(code.values())
+    used = re.compile(r"(?<![\w$.])(?:" + "|".join(map(re.escape, names)) + r")\s*[.(]") if names else None
+    if not any(is_marker(c) or (used and is_call_code(c) and used.search(c)) for c in code.values()): return []
     return [i for i, c in sorted(code.items()) if is_call_code(c) and (HOSTED.search(c) or any(m.group(1) not in NOT_CALLS for m in CALL_EXPR.finditer(c)))]
 
 
