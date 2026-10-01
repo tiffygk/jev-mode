@@ -35,12 +35,12 @@ def test_facts_withheld_until_routing_written(tmp_path):
     res = step(tmp_path / "lib", "next", str(r))
     assert res.returncode != 0 and "project_type" in res.stdout + res.stderr and "kind" not in res.stdout + res.stderr
 
-def test_routed_to_1r_skips_to_verdict(tmp_path):
+def test_routed_to_1r_goes_to_compare_then_verdict(tmp_path):
     r = tmp_path / "t.md"
     r.write_text(INTAKE.replace("---\n", "---\nkind: replaces\nproject_type: jev-replacement\nverdict_1_code: 1r\ntop_stakes: n.a.\ncitation: none\n", 1)
                  + "## Facts\n- F0 Calls hosted Jev -- no. Serves its own model (serve.py:3)\n")
     step(tmp_path / "lib", "next", str(r)); out = step(tmp_path / "lib", "next", str(r)).stdout
-    assert "## 5. Verdict" in out
+    assert "## 5. Verdict" not in out and [e["step"] for e in json.loads((tmp_path / "t.md.steps.json").read_text())] == ["routing", "compare"]
 
 def test_log_records_each_step(tmp_path):
     r = tmp_path / "t.md"; r.write_text(INTAKE); step(tmp_path / "lib", "next", str(r))
@@ -61,7 +61,9 @@ def test_verdict_serves_g_rows_and_unkeyed_rows(tmp_path):
     r = tmp_path / "t.md"
     r.write_text(ROUTED + "## Facts\n- F0 Calls hosted Jev -- no. Serves its own model (serve.py:3)\n"
                  "- F1 Atomic -- no. Compound question (a.py:1)\n- G1 Rules match -- no. Contradicts the page (SKILL.md:2)\n")
-    step(tmp_path / "lib", "next", str(r)); out = step(tmp_path / "lib", "next", str(r)).stdout
+    step(tmp_path / "lib", "next", str(r)); step(tmp_path / "lib", "next", str(r))
+    r.write_text(r.read_text() + "\n## Compared with\nNo close past rating.\n")
+    out = step(tmp_path / "lib", "next", str(r)).stdout
     assert "| F1 " in out and "| G1 " in out and "| F2 " not in out and "| G2 " not in out
     assert "Measured once, loop not closed" in out and "A Choice with a very large or deep option list" in out
 
@@ -131,11 +133,12 @@ def test_a_two_level_row_counts_for_both_levels(tmp_path):
     assert "| F20 Data as fields, not templates, high or low " in out and "| F11 Confidence drives action, high or very high " in out
     assert "| F11 Confidence drives action, low " in out and "| F13 Choice order handled, high " in out and "| F13 Choice order handled, very high " not in out
 
-def test_routed_to_1t_skips_to_verdict(tmp_path):
+def test_routed_to_1t_goes_to_compare(tmp_path):
     r = tmp_path / "t.md"
     r.write_text(INTAKE.replace("---\n", "---\nkind: teaches\nproject_type: guide\nverdict_1_code: 1t\ntop_stakes: n.a.\ncitation: none\n", 1)
                  + "## Facts\n- F0 Calls hosted Jev -- n.a. A guide\n")
-    step(tmp_path / "lib", "next", str(r)); assert "## 5. Verdict" in step(tmp_path / "lib", "next", str(r)).stdout
+    step(tmp_path / "lib", "next", str(r)); step(tmp_path / "lib", "next", str(r))
+    assert [e["step"] for e in json.loads((tmp_path / "t.md.steps.json").read_text())] == ["routing", "compare"]
 
 
 def test_every_stakes_row_label_in_the_rubric_maps_to_a_level():

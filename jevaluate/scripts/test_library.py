@@ -40,7 +40,7 @@ def with_steps(r):
     d["top_stakes"] = _lib.derive_top_stakes(d, r.read_text()) or ""
     d["kind"] = _lib.rubric_text.KIND_OF.get(d.get("project_type"), "")
     fp = hashlib.sha1("|".join(d.get(k, "") for k in ("project_type", "kind", "verdict_1_code", "top_stakes")).encode()).hexdigest()
-    steps = ["routing", "verdict"] if d.get("verdict_1_code") in ("1a", "1b", "1c", "1r", "1t") else ["routing", "facts", "scores", "compare", "verdict"]
+    steps = ["routing", "compare", "verdict"] if d.get("verdict_1_code") in ("1a", "1b", "1c", "1r", "1t") else ["routing", "facts", "scores", "compare", "verdict"]
     pathlib.Path(str(r) + ".steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": fp} for i, s in enumerate(steps)]))
     return r
 

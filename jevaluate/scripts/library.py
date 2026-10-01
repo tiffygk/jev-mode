@@ -437,7 +437,7 @@ def check_steps(src, d, t, err, prefix=False):
     log = [e for e in json.loads(p.read_text()) if not e["step"].startswith("full:")]
     seen = [e["step"] for e in log]
     code = d.get("verdict_1_code", "").split("#")[0].strip()
-    want = ["routing", "verdict"] if code in ROUTED_CODES else STEP_ORDER
+    want = ["routing", "compare", "verdict"] if code in ROUTED_CODES else STEP_ORDER
     if prefix:  # a cant-rate stops early: any in-order start of the step order will do
         if not seen or seen != STEP_ORDER[:len(seen)]: err.append(f"step log {seen}, expected an in-order start of {STEP_ORDER} beginning with routing")
         return

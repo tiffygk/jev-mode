@@ -94,7 +94,7 @@ def next_step(rating):
         cur = log[-1]["step"]; need = missing(cur, t)
         if need: print("Write these before the next section: " + ", ".join(need), file=sys.stderr); sys.exit(1)
         if cur == "verdict": print("All sections served. Log the rating with library.py add.", file=sys.stderr); sys.exit(1)
-        step = "verdict" if cur == "routing" and fm(t, "verdict_1_code") in ROUTED else ORDER[ORDER.index(cur) + 1]
+        step = "compare" if cur == "routing" and fm(t, "verdict_1_code") in ROUTED else ORDER[ORDER.index(cur) + 1]  # a routed code skips facts and scores, never the comparison (read.md phase 3)
     full_log = read_log(rating) + [{"step": step, "time": now(), "routing": routing_print(t)}]
     log_path(rating).write_text(json.dumps(full_log, indent=1)); print(serve(step, t))
 
