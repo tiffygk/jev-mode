@@ -70,11 +70,14 @@ def slug_for(url):
 def ratings_glob():
     return PROJ.glob("*/*.md")
 
+def rating_key(p):
+    """Sort key for a rating file: its date, then its same-day number (2026-09-28-3 is the third that day)."""
+    m = re.match(r"(\d{4}-\d\d-\d\d)(?:-(\d+))?$", p.stem)
+    return (m.group(1), int(m.group(2) or 1)) if m else (p.stem, 1)
+
 def latest_rating_for(url):
     """The newest stored rating of this project's URL, or None."""
-    def key(p):
-        m = re.match(r"(.*?)(?:-(\d+))?$", p.stem); return (m.group(1), int(m.group(2) or 1))
-    files = sorted((PROJ / slug_for(url)).glob("*.md"), key=key)
+    files = sorted((PROJ / slug_for(url)).glob("*.md"), key=rating_key)
     return files[-1] if files else None
 
 def index():
@@ -586,11 +589,16 @@ def fill_docs_existing():
 
 VERDICT_LABEL = {"5": "Learn from it", "4": "Use it", "3": "Use with a fix", "2": "Rework it", "1": "Jev in name only", "cant-rate": "Can't rate yet"}
 
+def publishable(p):
+    """A full read, or a scope the controller approved (depth extract with `skipped: scoped` Coverage lines)."""
+    depth = front(p).get("depth", "").split()[:1]
+    return depth == ["full"] or (depth == ["extract"] and "skipped: scoped" in section(p.read_text(errors="ignore"), "Coverage"))
+
 def latest_per_project(full_only=False):
     best = {}
     for p in ratings_glob():
-        if full_only and front(p).get("depth", "").split()[:1] != ["full"]: continue
-        m = re.match(r"(.*?)(?:-(\d+))?$", p.stem); key = (m.group(1), int(m.group(2) or 1))
+        if full_only and not publishable(p): continue
+        key = rating_key(p)
         if p.parent.name not in best or key > best[p.parent.name][0]: best[p.parent.name] = (key, p)
     return {k: v[1] for k, v in best.items()}
 
@@ -732,7 +740,7 @@ def export_pages(p):
 
 def export(outdir):
     outdir = pathlib.Path(outdir); pages = {}; rows = []; any_stale = False
-    # Only full reads are published; quick (extract) ratings stay in the library.
+    # Only full reads and approved scopes are published; quick (extract) ratings stay in the library.
     for slug, p in sorted(latest_per_project(full_only=True).items()):
         detail, full, d, r, why = export_pages(p); pages[slug] = (p, detail, full)
         v = d.get("verdict", "").split()[0] if d.get("verdict") else ""

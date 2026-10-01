@@ -513,6 +513,35 @@ def test_export_skips_quick_ratings_and_falls_back_to_latest_full(tmp_path, lib)
     assert "o__onlyquick" not in (out / "README.md").read_text()
 
 
+def test_export_newer_date_beats_numbered_same_day_file(tmp_path, lib):
+    d = lib / "projects" / "o__s"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-28-3.md", "S", "o", "https://github.com/o/s", "2026-09-28", summary="Old numbered summary.")
+    make_rating(d / "2026-09-30.md", "S", "o", "https://github.com/o/s", "2026-09-30", summary="Newer date summary.")
+    out = tmp_path / "out"
+    assert run(lib, "export", str(out)).returncode == 0
+    assert "Newer date summary." in (out / "o__s.md").read_text()
+
+
+def test_export_publishes_approved_scope_over_older_full(tmp_path, lib):
+    d = lib / "projects" / "o__sc"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-20.md", "SC", "o", "https://github.com/o/sc", "2026-09-20", summary="Old full summary.")
+    make_rating(d / "2026-09-30.md", "SC", "o", "https://github.com/o/sc", "2026-09-30", depth="extract", summary="Scoped summary.",
+                coverage="- README.md -- read\n- src/big.py -- skipped: scoped")
+    out = tmp_path / "out"
+    assert run(lib, "export", str(out)).returncode == 0
+    assert "Scoped summary." in (out / "o__sc.md").read_text()
+
+
+def test_latest_rating_for_prefers_newer_date_over_numbered_file(tmp_path, lib):
+    d = lib / "projects" / "o__m"; d.mkdir(parents=True)
+    for name, rated in (("2026-09-28-3", "2026-09-28"), ("2026-09-30", "2026-09-30")):
+        make_rating(d / f"{name}.md", "M", "o", "https://github.com/o/m", rated)
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    import importlib, library
+    importlib.reload(library); library.PROJ = lib / "projects"
+    assert library.latest_rating_for("https://github.com/o/m").name == "2026-09-30.md"
+
+
 def test_add_numbers_after_highest_same_day_and_keeps_evidence_separate(tmp_path, lib):
     d = lib / "projects" / "o__n"; d.mkdir(parents=True)
     make_rating(d / "2026-09-28-2.md", "N", "o", "https://github.com/o/n", "2026-09-28")
