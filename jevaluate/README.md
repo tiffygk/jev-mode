@@ -34,8 +34,8 @@ Each dimension scores 0 to 3. The verdict comes from these rules, never an avera
 ## How it works
 
 1. Pins the commit, fetches every file that could change the verdict, and states the cost. Above 200k tokens it stops until you approve.
-2. Routes the project: the code line that calls Jev (a README or design doc never counts), then its type.
-3. Answers 24 facts, each citing a file:line or quote, and rates each decision's stakes.
+2. Routes the project: the code line that calls Jev (an import, README or design doc never counts), then its type.
+3. Answers 23 facts, each citing a file:line or quote, and rates each decision's stakes.
 4. Scores four dimensions and sets the verdict.
 5. Traces each fix to the failed fact and the TypeSafe page with the remedy.
 6. Compares with the closest past ratings, explains any difference, then logs it.
@@ -55,7 +55,7 @@ The [system page](https://tiffygk.github.io/jev-mode/system/) shows the whole fl
 
 ## What it checks
 
-After routing, 23 facts in four groups: core principles, question design, execution, and the evidence behind claims. The full list is in [`rubric.md`](rubric.md); every rule cites TypeSafe's docs or one of its 18 cookbooks in `jev-rules.md`.
+After routing, 23 facts in four groups: core principles, question design, execution, and the evidence behind claims. The full list is in [`rubric.md`](rubric.md); each rule in `jev-rules.md` cites its source: TypeSafe's docs, one of its 18 cookbooks, or a finding from rating projects.
 
 ## Install and use
 

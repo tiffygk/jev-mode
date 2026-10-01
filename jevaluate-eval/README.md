@@ -21,13 +21,13 @@ Maintainers of a Jevaluate fork who change its rubric.
 
 ## Sample
 
-> **Jevaluate Eval · rubric 2026-09-29 · quiz, 2026-09-30**
+> **Jevaluate Eval · rubric 2026-09-29 · 2026-09-30**
 >
-> ### Pass: graders read the routing rules the way the owner does
-> - Vocabulary-only control: 8 of 11 (73%), under the 80% give-away line. It missed exactly the three new-rule scenarios.
-> - Real instructions: 33 of 33 over 3 runs, held-out included (one had shaped the wording).
+> ### Pass: graders route 19 real projects the way the owner does
+> - Judgment eval: 19 of 19 cases right in 3 of 3 runs on type, calls Jev, verdict-1 code and stakes.
+> - Quiz: the vocabulary-only control scored 73%, under the 80% give-away line; the real instructions got 33 of 33.
 >
-> **Next: the judgment eval on 19 real projects.**
+> **Next: re-rate the published projects on the frozen rubric.**
 
 ## Results
 
@@ -65,7 +65,7 @@ Code stamps each run with its commit and key fingerprint.
 - A model that never sees the rubric writes the quiz scenarios.
 - Claude Sonnet, headless, is the grader under test.
 - The Claude session running the eval drafts one fix per miss; the owner approves it.
-- Code, not a model, scores each answer against the owner's key, since each has one right value. An LLM judge would add cost and noise, not accuracy. It waits for free text like suggested fixes, once it agrees with the owner's labels.
+- Code scores each answer against the owner's key, since each has one right value. An LLM judge would add cost and noise without adding accuracy. It waits for free text like suggested fixes, once it agrees with the owner's labels.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="images/answer-form-dark.png"><img alt="The owner's answer form" src="images/answer-form-light.png"></picture>
 
@@ -73,7 +73,7 @@ Code stamps each run with its commit and key fingerprint.
 
 ## Where the rules come from
 
-The rubric in `jevaluate/rubric.md`, sourced from TypeSafe's public docs and cookbooks in `jevaluate/jev-rules.md`. Option-order handling, for example, comes from TypeSafe's consistency cookbook.
+The rubric in `jevaluate/rubric.md`, with each rule's source in `jevaluate/jev-rules.md`: TypeSafe's public docs and cookbooks, or a finding from rating projects. Option-order handling, for example, comes from TypeSafe's consistency cookbook.
 
 ## Install and use
 
@@ -84,11 +84,11 @@ git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jevaluate jev-mode/jevaluate-eval ~/.claude/skills/
 ```
 
-From the repo, try `python3 jevaluate-eval/lint_materials.py`. Then ask Claude Code: `test the jevaluate rubric after my change`.
+From the repo, try `python3 jevaluate-eval/lint_materials.py`; every command is in `commands.md`. Then ask Claude Code: `test the jevaluate rubric after my change`.
 
 ## Limits
 
-It runs on Claude and doesn't call Jev, so it needs no TypeSafe key. It scores routing only: type, calls Jev, the verdict-1 code and stakes. The owner's answers are the key, so an owner who misreads a rule tunes graders to that reading. Each headless run costs about 20k tokens. Not affiliated with TypeSafe.
+It runs on Claude and doesn't call Jev, so it needs no TypeSafe key. It scores routing only: type, calls Jev, the verdict-1 code and stakes. The owner's answers are the key, so an owner who misreads a rule tunes graders to that reading. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
 
 ## License
 
