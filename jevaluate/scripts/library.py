@@ -645,8 +645,9 @@ def top_fix(fix):
     pick = next((x for x in ss if IMPERATIVE.match(x)), ss[0] if ss else "")
     return pick[:1].upper() + pick[1:] if pick else ""
 
-def linkify(text, d):
-    """file:line refs (and ',140' or backticked ':40' follow-ons) link to the project at its rated commit; docs slugs link to TypeSafe."""
+def linkify(text, d, known=()):
+    """file:line refs (and ',140' or backticked ':40' follow-ons) link to the project at its rated commit; docs slugs link to TypeSafe.
+    A bare file name links to its full path when exactly one path in `known` (the Coverage list) ends with it."""
     url, commit = d.get("url", "").rstrip("/"), d.get("commit", "").split()[0] if d.get("commit") else ""
     if re.match(r"https://(?:github\.com|huggingface\.co)/[^/]+/[^/]+$", url) and re.fullmatch(r"[0-9a-f]{7,40}", commit):
         def link(path, a, b):
@@ -654,7 +655,9 @@ def linkify(text, d):
         last, end = [None], [-9]
         def ln(m):
             if m.group("n2") and m.start() != end[0] + 2: return m.group(0)  # a bare `N` links only right after a ref
-            if m.group("p"): last[0] = m.group("p")
+            if m.group("p"):
+                hits = [k for k in known if "/" not in m.group("p") and k.endswith("/" + m.group("p"))]
+                last[0] = hits[0] if len(hits) == 1 else m.group("p")
             if not last[0]: return m.group(0)
             end[0] = m.end()
             nums = re.findall(r"(\d+)(?:-(\d+))?", m.group("n") or m.group("n2"))
@@ -711,7 +714,9 @@ def export_pages(p):
     major = [x for x in failing if not minor_fact(x[0], x[3], x[1])]
     minor = [x for x in failing if minor_fact(x[0], x[3], x[1])]
     tested = next((section(t, h) for h in ("Tested here", "Does it help") if section(t, h).strip()), "")
-    L = lambda x: linkify(x, d)
+    cov = section(t, "Coverage").strip()
+    known = [m.group(1) for m in re.finditer(r"^\s*[-*]\s*`?([\w./-]+)`?\s+--", cov, re.M)]
+    L = lambda x: linkify(x, d, known)
     detail = ["[← All ratings](README.md)", ""] + stale + [
         f"> **{who}** {at}" + (f" · {ptype}" if ptype else ""), f"> ### Verdict {v}: {label}", f"> {scores}", ">"]
     detail += [f"> - {L(x)}" for x in summ_lines]
@@ -731,11 +736,14 @@ def export_pages(p):
         full += ["", "<details>", f"<summary><b>What passes ({sum(x[2] == 'yes' for x in passes)}) and doesn't apply ({sum(x[2] == 'n.a.' for x in passes)})</b></summary>", "",
                  "| Fact | Finding |", "|---|---|"] + [f"| {cell(n_)} ({fid(n)}) | {val}. {cell(L(f))} |" for n, n_, val, f in passes] + ["", "</details>"]
     for title, name in (("Scores", "Scores"), ("Why this verdict", "Verdict and reasoning")):
-        if section(t, name).strip(): full += ["", f"## {title}", "", L(section(t, name).strip())]
+        if section(t, name).strip() not in ("", "TBD"): full += ["", f"## {title}", "", L(section(t, name).strip())]
     if tested.strip(): full += ["", "## Tested here", "", L(tested.strip())]
     if fixes: full += ["", "## Fixes (from reading the code; not tested against it)", ""] + [f"{i}. {L(x)}" for i, x in enumerate(fixes, 1)]
-    cov = section(t, "Coverage").strip()
-    if cov: full += ["", "<details>", f"<summary><b>Files read ({len([l for l in cov.splitlines() if l.strip().startswith('-')])})</b></summary>", "", cov, "", "</details>"]
+    if cov:
+        items = [l for l in cov.splitlines() if l.strip().startswith("-")]
+        skipped = sum("skipped" in l for l in items)
+        cov = re.sub(r"fetched with --also; not in (?:the )?manifest", "fetched separately", cov)
+        full += ["", "<details>", f"<summary><b>Files read ({len(items) - skipped}{f'; {skipped} skipped' if skipped else ''})</b></summary>", "", cov, "", "</details>"]
     return "\n".join(detail) + "\n", "\n".join(full) + "\n", d, r, why_line(t, d)
 
 def export(outdir):

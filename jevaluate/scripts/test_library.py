@@ -542,6 +542,28 @@ def test_latest_rating_for_prefers_newer_date_over_numbered_file(tmp_path, lib):
     assert library.latest_rating_for("https://github.com/o/m").name == "2026-09-30.md"
 
 
+def test_export_resolves_bare_file_names_from_coverage(tmp_path, lib):
+    d = lib / "projects" / "o__bare"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-30.md", "Bare", "o", "https://github.com/o/bare", "2026-09-30",
+                fact_lines={1: "- F1 Atomic questions -- no. Broad check (`deep/dir/core.verification.toml:6`, `core.verification.toml:9`)"},
+                coverage="- deep/dir/core.verification.toml -- read\n- jev_x/questions.py -- read (fetched with --also; not in the manifest)\n- big.py -- skipped: scoped")
+    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
+    full = (out / "full" / "o__bare.md").read_text()
+    assert "blob/abc123def456789/deep/dir/core.verification.toml#L9" in full
+    assert "blob/abc123def456789/core.verification.toml" not in full
+    assert "--also" not in full and "fetched separately" in full
+    assert "Files read (2; 1 skipped)" in full
+
+
+def test_export_drops_placeholder_scores(tmp_path, lib):
+    d = lib / "projects" / "o__tbd"; d.mkdir(parents=True)
+    r = make_rating(d / "2026-09-30.md", "Tbd", "o", "https://github.com/o/tbd", "2026-09-30")
+    (d / "2026-09-30.md").write_text((d / "2026-09-30.md").read_text().replace("## Verdict and reasoning", "## Scores\nTBD\n## Verdict and reasoning"))
+    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
+    full = (out / "full" / "o__tbd.md").read_text()
+    assert "TBD" not in full and "## Scores" not in full
+
+
 def test_add_numbers_after_highest_same_day_and_keeps_evidence_separate(tmp_path, lib):
     d = lib / "projects" / "o__n"; d.mkdir(parents=True)
     make_rating(d / "2026-09-28-2.md", "N", "o", "https://github.com/o/n", "2026-09-28")
