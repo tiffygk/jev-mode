@@ -70,11 +70,14 @@ def slug_for(url):
 def ratings_glob():
     return PROJ.glob("*/*.md")
 
+def rating_key(p):
+    """Sort key for a rating file: its date, then its same-day number (2026-09-28-3 is the third that day)."""
+    m = re.match(r"(\d{4}-\d\d-\d\d)(?:-(\d+))?$", p.stem)
+    return (m.group(1), int(m.group(2) or 1)) if m else (p.stem, 1)
+
 def latest_rating_for(url):
     """The newest stored rating of this project's URL, or None."""
-    def key(p):
-        m = re.match(r"(.*?)(?:-(\d+))?$", p.stem); return (m.group(1), int(m.group(2) or 1))
-    files = sorted((PROJ / slug_for(url)).glob("*.md"), key=key)
+    files = sorted((PROJ / slug_for(url)).glob("*.md"), key=rating_key)
     return files[-1] if files else None
 
 def index():
@@ -437,7 +440,7 @@ def check_steps(src, d, t, err, prefix=False):
     log = [e for e in json.loads(p.read_text()) if not e["step"].startswith("full:")]
     seen = [e["step"] for e in log]
     code = d.get("verdict_1_code", "").split("#")[0].strip()
-    want = ["routing", "verdict"] if code in ROUTED_CODES else STEP_ORDER
+    want = ["routing", "compare", "verdict"] if code in ROUTED_CODES else STEP_ORDER
     if prefix:  # a cant-rate stops early: any in-order start of the step order will do
         if not seen or seen != STEP_ORDER[:len(seen)]: err.append(f"step log {seen}, expected an in-order start of {STEP_ORDER} beginning with routing")
         return
@@ -586,11 +589,16 @@ def fill_docs_existing():
 
 VERDICT_LABEL = {"5": "Learn from it", "4": "Use it", "3": "Use with a fix", "2": "Rework it", "1": "Jev in name only", "cant-rate": "Can't rate yet"}
 
+def publishable(p):
+    """A full read, or a scope the controller approved (depth extract with `skipped: scoped` Coverage lines)."""
+    depth = front(p).get("depth", "").split()[:1]
+    return depth == ["full"] or (depth == ["extract"] and "skipped: scoped" in section(p.read_text(errors="ignore"), "Coverage"))
+
 def latest_per_project(full_only=False):
     best = {}
     for p in ratings_glob():
-        if full_only and front(p).get("depth", "").split()[:1] != ["full"]: continue
-        m = re.match(r"(.*?)(?:-(\d+))?$", p.stem); key = (m.group(1), int(m.group(2) or 1))
+        if full_only and not publishable(p): continue
+        key = rating_key(p)
         if p.parent.name not in best or key > best[p.parent.name][0]: best[p.parent.name] = (key, p)
     return {k: v[1] for k, v in best.items()}
 
@@ -637,8 +645,9 @@ def top_fix(fix):
     pick = next((x for x in ss if IMPERATIVE.match(x)), ss[0] if ss else "")
     return pick[:1].upper() + pick[1:] if pick else ""
 
-def linkify(text, d):
-    """file:line refs (and ',140' or backticked ':40' follow-ons) link to the project at its rated commit; docs slugs link to TypeSafe."""
+def linkify(text, d, known=()):
+    """file:line refs (and ',140' or backticked ':40' follow-ons) link to the project at its rated commit; docs slugs link to TypeSafe.
+    A bare file name links to its full path when exactly one path in `known` (the Coverage list) ends with it."""
     url, commit = d.get("url", "").rstrip("/"), d.get("commit", "").split()[0] if d.get("commit") else ""
     if re.match(r"https://(?:github\.com|huggingface\.co)/[^/]+/[^/]+$", url) and re.fullmatch(r"[0-9a-f]{7,40}", commit):
         def link(path, a, b):
@@ -646,7 +655,9 @@ def linkify(text, d):
         last, end = [None], [-9]
         def ln(m):
             if m.group("n2") and m.start() != end[0] + 2: return m.group(0)  # a bare `N` links only right after a ref
-            if m.group("p"): last[0] = m.group("p")
+            if m.group("p"):
+                hits = [k for k in known if "/" not in m.group("p") and k.endswith("/" + m.group("p"))]
+                last[0] = hits[0] if len(hits) == 1 else m.group("p")
             if not last[0]: return m.group(0)
             end[0] = m.end()
             nums = re.findall(r"(\d+)(?:-(\d+))?", m.group("n") or m.group("n2"))
@@ -658,6 +669,12 @@ def cell(x): return x.replace("|", "/").replace("\n", " ")
 
 CODE_LABEL = {"1a": "False marketing: Jev in name only", "1b": "Not a Jev integration", "1c": "Jev answers unused",
               "1g": "Misleading guide", "1r": "Replaces Jev, not yet rated", "1t": "Guide, not yet rated"}
+
+NOT_RATED = {"1r": "replaces Jev", "1t": "guide"}
+
+def not_rated(d):
+    """Plain words for a verdict-1 code the scale doesn't score yet (1r, 1t), else ''. Pages show these as n.a., never as a 1."""
+    return NOT_RATED.get(d.get("verdict_1_code", "").split("#")[0].strip(), "")
 
 def verdict_label(t, v):
     code = front_text(t).get("verdict_1_code", "").split("#")[0].strip()
@@ -683,9 +700,10 @@ def dots(x):
 
 def export_pages(p):
     """-> (detail page, full page, front matter, rubric, why) for one rating."""
-    t = p.read_text(errors="ignore"); d = front_text(t); v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
+    t = re.sub(r"(?m)^Adjudicated [^\n]*\n?", "", p.read_text(errors="ignore"))  # internal provenance, not for public pages
+    d = front_text(t); v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
     r = d.get("rubric", "").split(); r = r[0] if r else ""
-    slug = p.parent.name; label = verdict_label(t, v)
+    slug = p.parent.name; label = verdict_label(t, v); unscored = not_rated(d)
     who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
     commit = d.get("commit", "").split()[0] if d.get("commit") else ""
     at = (f"at [`{commit[:7]}`]({d['url'].rstrip('/')}/tree/{commit})" if re.fullmatch(r"[0-9a-f]{7,40}", commit) and re.search(r"github\.com|huggingface\.co", d.get("url", ""))
@@ -703,9 +721,11 @@ def export_pages(p):
     major = [x for x in failing if not minor_fact(x[0], x[3], x[1])]
     minor = [x for x in failing if minor_fact(x[0], x[3], x[1])]
     tested = next((section(t, h) for h in ("Tested here", "Does it help") if section(t, h).strip()), "")
-    L = lambda x: linkify(x, d)
+    cov = section(t, "Coverage").strip()
+    known = [m.group(1) for m in re.finditer(r"^\s*[-*]\s*`?([\w./-]+)`?\s+--", cov, re.M)]
+    L = lambda x: linkify(x, d, known)
     detail = ["[← All ratings](README.md)", ""] + stale + [
-        f"> **{who}** {at}" + (f" · {ptype}" if ptype else ""), f"> ### Verdict {v}: {label}", f"> {scores}", ">"]
+        f"> **{who}** {at}" + (f" · {ptype}" if ptype else ""), (f"> ### Not rated yet: {unscored}" if unscored else f"> ### Verdict {v}: {label}"), f"> {scores}", ">"]
     detail += [f"> - {L(x)}" for x in summ_lines]
     if top: detail += [">", f"> **Top fix:** {L(top)}"]
     detail += ["", "## What holds it back", ""] + ([f"- **{n_}** ({fid(n)}): {L(f)}" for n, n_, _, f in major] or ["Nothing that lowers the verdict."])
@@ -714,7 +734,7 @@ def export_pages(p):
         detail += ["", "## Fixes (from reading the code; not tested against it)", ""] + [f"{i}. {L(x)}" for i, x in enumerate(fixes[:3], 1)]
     if minor: detail += ["", "**Minor:** " + "; ".join(f"{n_} ({fid(n)})" for n, n_, _, _ in minor) + ". These are listed fixes and don't lower the verdict."]
     detail += ["", f"[Full rating: every fact, its evidence and the files read →](full/{slug}.md)", ""]
-    head = f"**Verdict {v}, {label}**" + (f" · {ptype}" if ptype else "") + f" · rated {d.get('rated', '')} {at} · read: {d.get('depth', '').split()[0] if d.get('depth') else ''} · rubric {r or 'unrecorded'}{' (earlier)' if stale else ''} · {d.get('rater', 'rater unrecorded')}" + (f", {d['effort'].split()[0]} effort" if d.get("effort") else "")
+    head = (f"**Not rated yet: {unscored}**" if unscored else f"**Verdict {v}, {label}**") + (f" · {ptype}" if ptype else "") + f" · rated {d.get('rated', '')} {at} · read: {d.get('depth', '').split()[0] if d.get('depth') else ''} · rubric {r or 'unrecorded'}{' (earlier)' if stale else ''} · {d.get('rater', 'rater unrecorded')}" + (f", {d['effort'].split()[0]} effort" if d.get("effort") else "")
     full = [f"[← Summary](../{slug}.md)", "", f"# {d.get('project', slug)}: full rating", "", head, ""] + stale + ["## Summary", "", L(summ), "",
             "## What fails", "", "| Fact | Finding |", "|---|---|"]
     full += [f"| {cell(n_)} ({fid(n)}) | **{val}.** {cell(L(f))} |" for n, n_, val, f in rows if n == 0 or val in ("no", "unknown")]
@@ -723,16 +743,19 @@ def export_pages(p):
         full += ["", "<details>", f"<summary><b>What passes ({sum(x[2] == 'yes' for x in passes)}) and doesn't apply ({sum(x[2] == 'n.a.' for x in passes)})</b></summary>", "",
                  "| Fact | Finding |", "|---|---|"] + [f"| {cell(n_)} ({fid(n)}) | {val}. {cell(L(f))} |" for n, n_, val, f in passes] + ["", "</details>"]
     for title, name in (("Scores", "Scores"), ("Why this verdict", "Verdict and reasoning")):
-        if section(t, name).strip(): full += ["", f"## {title}", "", L(section(t, name).strip())]
+        if section(t, name).strip() not in ("", "TBD"): full += ["", f"## {title}", "", L(section(t, name).strip())]
     if tested.strip(): full += ["", "## Tested here", "", L(tested.strip())]
     if fixes: full += ["", "## Fixes (from reading the code; not tested against it)", ""] + [f"{i}. {L(x)}" for i, x in enumerate(fixes, 1)]
-    cov = section(t, "Coverage").strip()
-    if cov: full += ["", "<details>", f"<summary><b>Files read ({len([l for l in cov.splitlines() if l.strip().startswith('-')])})</b></summary>", "", cov, "", "</details>"]
+    if cov:
+        items = [l for l in cov.splitlines() if l.strip().startswith("-")]
+        skipped = sum("skipped" in l for l in items)
+        cov = re.sub(r"fetched with --also; not in (?:the )?manifest", "fetched separately", cov)
+        full += ["", "<details>", f"<summary><b>Files read ({len(items) - skipped}{f'; {skipped} skipped' if skipped else ''})</b></summary>", "", cov, "", "</details>"]
     return "\n".join(detail) + "\n", "\n".join(full) + "\n", d, r, why_line(t, d)
 
 def export(outdir):
     outdir = pathlib.Path(outdir); pages = {}; rows = []; any_stale = False
-    # Only full reads are published; quick (extract) ratings stay in the library.
+    # Only full reads and approved scopes are published; quick (extract) ratings stay in the library.
     for slug, p in sorted(latest_per_project(full_only=True).items()):
         detail, full, d, r, why = export_pages(p); pages[slug] = (p, detail, full)
         v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
@@ -740,7 +763,8 @@ def export(outdir):
         who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
         ptype = (d.get("project_type", "").split() or [""])[0]
         ptype = "" if ptype == "unrecorded" else ptype.replace("-", " ")
-        rows.append((-int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{v} {verdict_label(p.read_text(errors='ignore'), v)}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} |"))
+        un = not_rated(d); shown = f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(p.read_text(errors='ignore'), v)}"
+        rows.append((1 if un else -int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{shown}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} |"))
     tpl = SKILL / "ratings-template"
     readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n| Project | Type | Verdict | Why | Rated |\n|---|---|---|---|---|\n" + "\n".join(r for _, r in sorted(rows)) + "\n"
     if any_stale: readme += "\n† Rated under an earlier rubric; a re-rating is queued.\n"

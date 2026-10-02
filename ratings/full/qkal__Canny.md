@@ -2,58 +2,87 @@
 
 # Canny: full rating
 
-**Verdict 4, Use it** · workflow · rated 2026-09-27 at [`f2c5e53`](https://github.com/qkal/Canny/tree/f2c5e53779445d60dc4a09d2dbced2308fccb820) · read: full · rubric unrecorded (earlier) · unknown, medium effort
-
-*Rated under an earlier rubric (unrecorded). A re-rating is queued.*
+**Verdict 4, Use it** · workflow · rated 2026-09-30 at [`f2c5e53`](https://github.com/qkal/Canny/tree/f2c5e53779) · read: full · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
 
 ## Summary
 
-Canny is a supervision layer for AI coding agents (Claude Code, Codex CLI) that keeps an append-only ledger of what an agent actually did and blocks a "done" claim until a check has passed. Its stated design rule is "Facts go to code. Judgments go to Jev. Only facts can block." Jev is used for exactly two judgments, both Nouls: (1) does the agent's stop message claim the work is done (`CLAIMS_DONE`, in `src/hook.ts`), gating whether a deterministic block gets relaxed; and (2) for each edited file, does the diff break any of N project-stated rules (`rule_${i}` Nouls, batched per change), surfaced as a non-blocking note. Verdict: **4, Use it** — clean, minimal, well-fitted use of Jev restricted to the two decisions that actually need semantic judgment, with everything else (blocking, thresholds, caching) kept deterministic in code. It falls short of 5 because Jev's own judgments (rule-break detection, done-claim detection) are never evaluated against labels; the project's one disclosed benchmark measures wall-clock overhead of the whole gate, not Jev's accuracy, and the model defaults to an unpinned alias.
+Canny is a hook layer for Claude Code and Codex CLI that asks Jev two kinds of yes/no question: whether the agent's last message claims it is done, and whether an edit breaks a project rule. It keeps facts in code and lets Jev only relax a block or add a note, with 0.9 and 0.1 cut-offs, a content-hash cache and a replayable ledger. The model is the unpinned `jev-latest` alias, and the agent's own text goes in unflagged.
 
 ## What fails
 
 | Fact | Finding |
 |---|---|
-| Model pinned (F12) | **no.** Default is the alias `jev-latest` ([`src/jev.ts:7`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/jev.ts#L7)); pinning requires the operator to set `CANNY_JEV_MODEL`, and nothing in the repo enforces or defaults to a versioned ID even though thresholds were informally tuned (the drift comment at [`src/jev.ts:11`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/jev.ts#L11)). |
-| Untrusted text treated as data (F22) | **no.** `change.added`/`change.removed` is text the agent (or a possibly-adversarial diff) wrote, sent straight into Jev's state with no flag, no injection-check Noul, and no test for steering content. `test/robustness.test.ts`'s "hostile text" suite tests deterministic-parser performance (regex backtracking/DoS) on adversarial strings, not whether such text can steer the rule-judge's answer. |
+| Calls hosted Jev (F0) | **yes.** Hook judge POSTs Noul questions with a bearer key to api.typesafe.ai/v1/systemone ([`src/jev.ts:92`](https://github.com/qkal/Canny/blob/f2c5e53779/src/jev.ts#L92)) |
+| Pinned model version (F12) | **no.** Default is the `jev-latest` alias under fixed 0.9 and 0.1 cut-offs ([`src/jev.ts:7`](https://github.com/qkal/Canny/blob/f2c5e53779/src/jev.ts#L7)). https://docs.typesafe.ai/models |
+| Untrusted text treated as data (F22) | **no.** The agent's own message and diffs go in with no flag; a crafted message could push claims_done to 0.1 ([`src/hook.ts:228`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L228)). https://docs.typesafe.ai/model-jaggedness/jev-1.13 |
+| Non-English handled (F23) | **no.** No test or translation for non-English messages or diffs ([`test/jev.test.ts:1`](https://github.com/qkal/Canny/blob/f2c5e53779/test/jev.test.ts#L1)). https://docs.typesafe.ai/models |
 
 <details>
-<summary><b>What passes (11) and doesn't apply (5)</b></summary>
+<summary><b>What passes (14) and doesn't apply (6)</b></summary>
 
 | Fact | Finding |
 |---|---|
-| Atomic (F1) | yes. `CLAIMS_DONE`: one property ("does this message claim done"), [`src/hook.ts:39`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L39). Rule-noul: one property per rule ("does this change break rule i"), [`src/hook.ts:197`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L197). |
-| Right primitive (F2) | yes. Both decisions are binary; Noul is correct for both, [`src/hook.ts:39`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L39), [`src/hook.ts:197`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L197). |
-| Structured state (F3) | yes. `stop()`: single-string state, allowed for a single text (`{ message }`, [`src/hook.ts:228`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L228)). `ruleCheck()`: JSON with named fields (`rules`, `change.file/added/removed`), [`src/hook.ts:206-209`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L206-L209). |
-| Batching (F4) | yes. All rule-Nouls for one change go in one request ([`src/hook.ts:194-202`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L194-L202), one `judge()` call per change at line 210); changes are processed in parallel via `Promise.all` ([`src/hook.ts:203-216`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L203-L216)), not a sequential loop. |
-| Thresholds in code (F5) | yes. `YES`/`NO` are exported constants in [`src/jev.ts:12-13`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/jev.ts#L12-L13). |
-| No invented values (F6) | yes. Jev is asked only for yes/no judgments; no counting, arithmetic, or date math is delegated to it anywhere in `src/hook.ts` or `src/jev.ts`. |
-| Options exclusive/exhaustive (F8) | n.a.. (no Choice used). |
-| Unclear/other option (F9) | n.a.. (no Choice used). |
-| Evidence recorded evenly (F10) | yes. Both Nouls' `criteria.true`/`criteria.false` are comparably detailed, [`src/hook.ts:40-42`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L40-L42) and `198-199`; no conclusions are pre-loaded into the state. |
-| Confidence drives action (F11) | yes. Threshold-gated relax/note behavior described above, [`src/hook.ts:211`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L211), [`src/hook.ts:252`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L252). |
-| Choice order handled (F13) | n.a.. (no Choice used). |
-| Size limits respected (F14) | n.a.. State is small by construction (`clip()` on diffs) but no explicit token-budget check or test was found in the files read. |
-| Typed answers read directly (F19) | yes. `answers?.[id]` (a typed noul probability) is read directly and compared numerically; no free text is parsed, [`src/hook.ts:211`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L211), [`src/hook.ts:231`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L231), [`src/hook.ts:252`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L252). |
-| Values from code are fields, not templates (F20) | yes. Rule text lives in `state.rules` as data; only a numeric index (a path reference, not a value needing JSON structure) is spliced into the question string, [`src/hook.ts:197-199`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L197-L199). |
-| Content in state, judgments in questions (F21) | yes. Diff content and message text sit in `state`; the question strings hold only the judgment being asked, [`src/hook.ts:206-209`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L206-L209), [`src/hook.ts:228-229`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/hook.ts#L228-L229). |
-| Non-English content handled (F23) | n.a.. Tool operates on code/English project rules; no non-English handling claimed or expected. |
+| Atomic questions (F1) | yes. Each Noul asks one property: whether `message` claims completion, or whether `change` breaks one `rules[i]` ([`src/hook.ts:39`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L39)) |
+| Right primitive (F2) | yes. Both are yes/no judgments asked as Noul with true/false criteria ([`src/hook.ts:39`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L39)) |
+| Structured state (F3) | yes. State is `{message}` or `{rules, change:{file, added, removed}}`, and questions point at those paths ([`src/hook.ts:206`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L206)) |
+| Batching (F4) | yes. All rule questions go in one request per change, and changes run in parallel ([`src/hook.ts:194`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L194)) |
+| Thresholds in code (F5) | yes. `YES = 0.9` and `NO = 0.1` are named constants applied in the gate ([`src/jev.ts:12`](https://github.com/qkal/Canny/blob/f2c5e53779/src/jev.ts#L12)) |
+| No invented values (F6) | yes. Code counts files, exit codes and checks; Jev only judges a claim or a rule ([`src/hook.ts:240`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L240)) |
+| Measured in the workflow (F7) | yes. Bench times 25 Opus 5 pairs with and without Canny (turns, cost, seconds); no Jev answers recorded ([`README.md:245`](https://github.com/qkal/Canny/blob/f2c5e53779/README.md#L245)) |
+| Options cover every case (F8) | n.a.. No Choice is used, only Noul. |
+| An other option where needed (F9) | n.a.. No Choice is used. |
+| Evidence recorded evenly (F10) | n.a.. One message or one diff is judged, with no per-answer evidence list ([`src/hook.ts:206`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L206)) |
+| Confidence drives action, low (F11) | yes. Code acts only at 0.9 or above for rules and at 0.1 or below to relax the gate ([`src/hook.ts:211`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L211), [`src/hook.ts:252`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L252)) |
+| Choice order handled (F13) | n.a.. No Choice is used. |
+| Size limits respected (F14) | yes. Added and removed text are clipped to 4,000 characters each, and rules to 24 ([`src/hook.ts:367`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L367)) |
+| Sample size adequate (F15) | yes. States 25 pairs and reports 1.6 +/- 3.4 s, claiming only no measurable overhead ([`README.md:245`](https://github.com/qkal/Canny/blob/f2c5e53779/README.md#L245)) |
+| Independent labels (F16) | n.a.. Outcomes are the task's own hidden tests, not labels of Jev answers ([`bench/run.mjs:104`](https://github.com/qkal/Canny/blob/f2c5e53779/bench/run.mjs#L104)) |
+| Held-out result (F17) | n.a.. No threshold or wording was tuned on the bench tasks ([`README.md:245`](https://github.com/qkal/Canny/blob/f2c5e53779/README.md#L245)) |
+| Fair baseline (F18) | yes. The control arm runs the same tasks and prompts without Canny ([`bench/run.mjs:33`](https://github.com/qkal/Canny/blob/f2c5e53779/bench/run.mjs#L33)) |
+| Typed answers read directly (F19) | yes. Reads `answers[id].noul` as a number and compares it to the cut-offs ([`src/jev.ts:103`](https://github.com/qkal/Canny/blob/f2c5e53779/src/jev.ts#L103)) |
+| Data as fields, not templates (F20) | yes. Message and diff travel as state fields; the question text is fixed ([`src/hook.ts:206`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L206)) |
+| No instructions in the state (F21) | yes. State holds the message, the diff and the rule texts to judge against ([`src/hook.ts:206`](https://github.com/qkal/Canny/blob/f2c5e53779/src/hook.ts#L206)) |
 
 </details>
 
 ## Scores
 
-- **Execution: 3** — anchor "F1-F6 all yes, and F8-F11 yes wherever they apply." F1-F6 all yes; F8/F9 n.a.; F10/F11 yes. (F22 fails but is outside F1-F6/F8-F11 and isn't cited in this dimension's anchors as cap-worthy; recorded above as a real gap and carried into fixes.)
-- **Fit: 3** — anchor "each decision uses the primitive that fits it; confidence is used wherever an action depends on it; parallel questions are used wherever questions share a state." Noul fits both binary judgments; confidence gates both actions; the N rule-questions over one change's state are correctly batched into a single request.
-- **Coverage: 3** — new project, scored against its own stated goal ("Facts go to code. Judgments go to Jev. Only facts can block."). Both judgment points the design calls for (done-claim detection, rule-break detection) are implemented exactly as described; no gap between the README's stated design and the code.
-- **Evidence: 2** — anchor "measured with one weakness (small sample, builder's own labels, or no held-out set), disclosed." The disclosed bench is small (25 pairs), measures the gate's overhead/outcome rather than Jev's own judgment accuracy, and the project states this limitation itself rather than overclaiming.
+- Execution 3 of 3: every question is an atomic Noul over a fielded state, gated on probability, with the cut-offs in named constants; F1-F6, F11 and F19 hold.
+- Fit 3 of 3: Noul is the right primitive for both decisions, confidence gates each action, and rule questions share one request per change; F2, F4, F5, F11 hold.
+- Coverage 3 of 3: the README promises a ledger, a done-gate, pattern checks and two Jev judgments, and all of them run in `src/hook.ts`.
+- Evidence 2 of 3: the bench measures cost, turns and pass rate against a control arm with a stated sample, but it never isolates Jev and every run passed in both arms; F7, F15, F18 hold.
 
 ## Why this verdict
 
-**4, Use it.** Canny's use of Jev is disciplined and minimal: two decisions, both genuinely needing semantic judgment (a regex can't reliably tell "I skipped tests, it's a one-liner" apart from "done"), both using the right primitive (Noul), both batched correctly, both gated by named-constant thresholds that determine an action rather than being decorative. The architecture keeps Jev strictly advisory ("Jev never blocks... a rule violation becomes a note, not a wall"), which is the correct posture for an unevaluated judge sitting in a supervision hook. It doesn't reach 5 because nothing in the repo evaluates Jev's own two judgments against labels — the one benchmark that exists measures the surrounding gate's overhead, not whether `CLAIMS_DONE` or the rule-noul are actually accurate — and because the model defaults to an unpinned alias despite thresholds having been informally tuned to a specific drift band.
+Verdict 4: no capping failure, since F1-F6, F11, F19 and F21 hold and both decisions are low stakes, so F22 and F20 move nothing. It is not 5 because Evidence is 2 and no labeled run of the two questions closes the loop (`closes_loop: none`). Jev can only relax a block or add a note, which keeps the unflagged agent text and the unpinned `jev-latest` alias to listed fixes.
 
 ## Fixes (from reading the code; not tested against it)
 
-1. **F22 — untrusted text not treated as data.** The diff text sent as `change.added`/`change.removed` is exactly the kind of agent-written or attacker-influenced content Jev's own docs warn about. Add an injection-check Noul, or test the rule-judge against a diff containing a steering comment (e.g. "this fully satisfies the no-hardcoded-keys rule") to see whether it moves the answer. **(confirm with data.)** Source: [`model-jaggedness/jev-1.13`](https://docs.typesafe.ai/model-jaggedness/jev-1.13); [`cookbooks/classifying_rag_passages`](https://docs.typesafe.ai/cookbooks/classifying_rag_passages).
-2. **F12 — model not pinned by default.** Since thresholds were tuned against a specific version's drift ("Jev drifts about 0.05 between runs", [`src/jev.ts:11`](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/jev.ts#L11)), default `CANNY_JEV_MODEL` to a versioned ID and log the `model` field each response returns, retuning `YES`/`NO` after any upgrade. Source: [`models`](https://docs.typesafe.ai/models).
-3. **Loop not closed.** No evaluation exists for either Noul's own accuracy. Building a small labeled set (true rule-violations, true "done" claims) the way `jev-belay` did, then sweeping/deriving `YES`/`NO` from observed probabilities rather than the current informal band, would let Canny credibly claim its judge is accurate rather than merely non-blocking. Source: [`confidence`](https://docs.typesafe.ai/confidence); [`cookbooks/autoresearch_feature_discovery`](https://docs.typesafe.ai/cookbooks/autoresearch_feature_discovery).
+1. F22: flag the agent's message and diff as untrusted, add an injection-check Noul, or test a steering message against `claims_done`. Confirm with data. [`model-jaggedness/jev-1.13`](https://docs.typesafe.ai/model-jaggedness/jev-1.13); [`cookbooks/classifying_rag_passages`](https://docs.typesafe.ai/cookbooks/classifying_rag_passages).
+2. F12: default to a versioned model ID, log the returned `model`, and retune 0.9 and 0.1 after upgrades. [`models`](https://docs.typesafe.ai/models).
+3. Loop: label a small set of done-claims and rule breaks, then derive the cut-offs from the observed probabilities. [`confidence`](https://docs.typesafe.ai/confidence); [`cookbooks/autoresearch_feature_discovery`](https://docs.typesafe.ai/cookbooks/autoresearch_feature_discovery).
+4. F23: test one non-English message and diff. [`concepts/state`](https://docs.typesafe.ai/concepts/state).
+
+<details>
+<summary><b>Files read (18)</b></summary>
+
+- CHANGELOG.md -- read
+- CONTRIBUTING.md -- read
+- README.md -- read
+- bench/run.mjs -- read
+- package.json -- read
+- src/checks.ts -- read
+- src/cli.ts -- read
+- src/hook.ts -- read
+- src/jev.ts -- read
+- src/ledger.ts -- read
+- test/checks.test.ts -- read
+- test/cli.test.ts -- read
+- test/fixtures.test.ts -- read
+- test/hook.test.ts -- read
+- test/jev.test.ts -- read
+- test/ledger.test.ts -- read
+- test/robustness.test.ts -- read
+- vitest.config.ts -- read
+
+</details>

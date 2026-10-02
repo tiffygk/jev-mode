@@ -22,13 +22,23 @@ The goal is a Jev community that uplevels itself, sharing resources built on the
 
 | Project | Type | Verdict | Why | Rated |
 |---|---|---|---|---|
-| [Fox-Islam/jevlint](Fox-Islam__jevlint.md) | workflow | **4 Use it** | Atomic, batched checks gated in code, with evidence tested on material it didn't write. | 2026-09-27 † |
-| [qkal/Canny](qkal__Canny.md) | workflow | **4 Use it** | Two well-chosen Jev decisions, batched and gated by thresholds in code; Jev stays advisory. | 2026-09-27 † |
-| [valentynkit/jev-belay](valentynkit__jev-belay.md) | workflow | **4 Use it** | One Jev call, only for the judgment code can't make; a code veto Jev can't override. | 2026-09-27 † |
-| [RileyCarney/JevTools](RileyCarney__JevTools.md) | demo | **3 Use with a fix** | Batched, typed and in code; one two-part question and overlapping topic options. | 2026-09-28 |
-| [jkudish/jev-mcp](jkudish__jev-mcp.md) | agent tool | **3 Use with a fix** | Sound design, but claim and query text is spliced into question wording with no injection check. | 2026-09-28 † |
-| [superagents-lab/jev-search](superagents-lab__jev-search.md) | workflow | **3 Use with a fix** | No fatal flaw; one Choice lacks "none of these" and one top answer skips a confidence check. | 2026-09-28 † |
-| [jlowin/vibecheck](jlowin__vibecheck.md) | library | **2 Rework it** | Its examples use bare-number Score levels, and filter and group send one request per item. | 2026-09-28 † |
-| [Jev-Omni](hf__akhilaaa3__Jev-Omni.md) | jev alternative | **1 Not a Jev integration** | An open classifier model that never calls Jev. | 2026-09-28 † |
+| [Fox-Islam/jevlint](Fox-Islam__jevlint.md) | library | **4 Use it** | Typed, batched, trigger-gated checks; evidence is independent but wordings were tuned on the same corpus and no baseline. | 2026-09-30 |
+| [altryne/Jevify](altryne__jevify.md) | agent tool | **4 Use it** | Atomic batched Score scanner with pinned model and size guard; nothing measured on accuracy and no injection or non-English test. | 2026-09-30 |
+| [kitze/skillbox](kitze__skillbox.md) | agent tool | **4 Use it** | Batched atomic Score questions with thresholds in code and a safe search fallback; no accuracy measured and model floats. | 2026-09-30 |
+| [kylemclaren/JevPDF](kylemclaren__jevpdf.md) | workflow | **4 Use it** | One atomic noul per line, batched and gated by a named threshold; no accuracy measured, model unpinned. | 2026-09-30 |
+| [qkal/Canny](qkal__Canny.md) | workflow | **4 Use it** | Atomic Noul questions, gated at 0.9 and 0.1, only relax or note; model unpinned, agent text unflagged. | 2026-09-30 |
+| [valentynkit/jev-belay](valentynkit__jev-belay.md) | workflow | **4 Use it** | Four batched questions gated by thresholds in code; the 0.70 cutoff was tuned on the same labeled stops it reports. | 2026-09-30 |
+| [RileyCarney/JevTools](RileyCarney__JevTools.md) | demo | **3 Use with a fix** | Sound batched design, but overlapping topic options cap it at 3; only an inconsistent latency figure is claimed. | 2026-10-01 |
+| [devagrawal09/jev-review](devagrawal09__jev-review.md) | workflow | **3 Use with a fix** | Staged, gated, well-typed calls; earlier Jev conclusions feed later states (F10) and nothing is measured. | 2026-09-30 |
+| [jkudish/jev-mcp](jkudish__jev-mcp.md) | agent tool | **3 Use with a fix** | Sound typed design with caller-set thresholds, held at 3 by directive `purpose` fields in state; speed and cost unmeasured. | 2026-09-30 |
+| [jlowin/vibecheck](jlowin__vibecheck.md) | library | **3 Use with a fix** | Sound typed API, but bare-number Score levels ship in examples and its one results claim has no measurement behind it. | 2026-09-30 |
+| [superagents-lab/jev-search](superagents-lab__jev-search.md) | workflow | **3 Use with a fix** | Batched atomic questions gated by code thresholds; window and query Choices ignore confidence; model unpinned, nothing measured. | 2026-09-30 |
+| [umatter/jevtools](umatter__jevtools.md) | library | **3 Use with a fix** | Sound election design; very-high recipient Choices use one option order, some questions splice values, defaults tuned on held-out. | 2026-09-30 |
+| [Ask Jevs](site__askjevs.site.md) | demo | **2 Rework it** | Raw user questions carry no standard, word tags use the wrong primitive, options overlap, and rules sit in state. | 2026-09-30 |
+| [browser-use/jev-ultrafast](browser-use__jev-ultrafast.md) | library | **2 Rework it** | Top answer acts in the user's Chrome at any probability and the Choice order is never varied. | 2026-09-30 |
+| [thruwire/foreman](thruwire__foreman.md) | workflow | **2 Rework it** | Finish decision rests on broad catch-all questions, and Jev's earlier scores are fed back into state; nothing measured. | 2026-09-30 |
+| [AkashPriyadarshii/jev-superpowers](AkashPriyadarshii__jev-superpowers.md) | jev replacement | **1 False marketing: Jev in name only** | Claims Jev answers gate every decision, but ships no Jev call; its own bridge answers with keyword matching. | 2026-09-30 |
+| [Jev-Omni](hf__akhilaaa3__Jev-Omni.md) | jev replacement | **n.a. (replaces Jev, not yet rated)** | Open Gemma-based model offering Jev-style probabilities with no Jev call; no replacement track exists yet. | 2026-09-30 |
+| [bnsd55/jevmlx](bnsd55__jevmlx.md) | jev replacement | **n.a. (replaces Jev, not yet rated)** | Local Apple Silicon reimplementation of Jev-style scoring; makes no hosted Jev calls, so it routes to replacement. | 2026-09-30 |
+| [typesafe-ai/system-one-adapter-python](typesafe-ai__system-one-adapter-python.md) | jev replacement | **n.a. (replaces Jev, not yet rated)** | Offers Jev-style typed answers from OpenAI, Anthropic and Gemini models without calling Jev; replacement track not yet defined. | 2026-09-30 |
 
-† Rated under an earlier rubric; a re-rating is queued.

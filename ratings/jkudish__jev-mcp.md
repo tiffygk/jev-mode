@@ -1,29 +1,27 @@
 [← All ratings](README.md)
 
-*Rated under an earlier rubric (2026-09-28). A re-rating is queued.*
-
-> **jkudish/jev-mcp** at [`a34db93`](https://github.com/jkudish/jev-mcp/tree/a34db9307f437b9514c0d528fe226651e284eb3f) · agent tool
+> **jkudish/jev-mcp** at [`fcd18d8`](https://github.com/jkudish/jev-mcp/tree/fcd18d8609ba05a2f1988af91407d86377801ca0) · agent tool
 > ### Verdict 3: Use with a fix
-> Execution ●●● · Fit ●●○ · Coverage ●●○ · Evidence n.a.
+> Execution ●●● · Fit ●●● · Coverage ●●● · Evidence ●○○
 >
-> - jev-mcp (v0.10.1, Node 22, MIT, 443 stars) is an MCP server that exposes Jev as 12 judgment tools over TypeSafe, OpenRouter, Cloudflare, Vercel or a compatible endpoint.
-> - The awesome-jev list says it wraps three cookbook patterns; CHANGELOG 0.1.0 names them as jev_verify (citation_check), jev_screen (llm_guardrails) and jev_find (semantic_find), and the repo has since grown to 12 tools, so the list entry is stale.
-> - The question and state design is good: one request per tool call, typed Nouls and Choices with described options, JSON state with IDs, thresholds as parameters with defaults in code, and every tool fails closed on a malformed answer.
+> - jev-mcp is an MCP server that gives coding agents twelve Jev judgment tools (verify, screen, find, rerank, classify, decide, compare, extract, audit, review, gate), each one batched request returning typed probabilities plus an auto or review action.
+> - Question wording, Choice and Score use, validation that fails closed, and caller-set thresholds are all strong, and the tools keep policy in code.
+> - The README reports live captures and one cookbook benchmark figure but no accuracy or calibration measurement of its own, and several cutoffs are fixed in code.
 >
-> **Top fix:** Move spliced text into JSON state fields: pass claim, query, purpose, proposition and aspect as state fields and point the question at their paths, as jev_classify already does.
+> **Top fix:** Move the directives out of the state (F21): drop or replace the `purpose` sentences with a caller-supplied content field, and keep the judgment in the questions.
 
 ## What holds it back
 
-- **Measured in the workflow** (F7): test/mock.test.mjs is mock-provider wire and fail-closed tests, and test/e2e.test.mjs has one to three live assertions per tool (anecdotes, gated on a key). Read in full: test/mock.test.mjs is wire and fail-closed plumbing with hand-fed answers (no golden set); the live e2e has one jev_audit case with five builder-written planted failures (test/e2e.test.mjs, AUDIT_SOURCE) asserted as pass/fail, and no run reports an accuracy, cost or latency number. No labeled evaluation and no calibration of any threshold, so the loop is not closed. The rerank description quotes TypeSafe's CLERC result ([`src/index.ts:888`](https://github.com/jkudish/jev-mcp/blob/a34db9307f437b9514c0d528fe226651e284eb3f/src/index.ts#L888)), not a measurement of this tool. Docs: https://docs.typesafe.ai/cookbooks/classification_using_confidence.md
-- **Choice order is handled** (F13): High-stakes Choices exist (verify relation can mark a claim contradicted and jev_gate escalates on it; find's best Choice ranks; classify routes), and no averaging over option orders or shuffle appears anywhere in src/index.ts (grep for shuffle, random, permutation: none), and no test in the full mock or e2e files exercises option order; options are keyed in caller order (c0.., option_0.., candidate ids). Docs: https://docs.typesafe.ai/cookbooks/consistency_choice_cookbook.md
+- **Measured in the workflow** (F7): README claims 150 to 500 ms and a fraction of a cent with no measurement; only usage captures ([`README.md:27`](https://github.com/jkudish/jev-mcp/blob/fcd18d8609ba05a2f1988af91407d86377801ca0/README.md#L27)). concepts/how-to-build-with-system-one
+- **No instructions in the state** (F21): State carries a `purpose` field with directives like "Verify each claim in claims against the evidence" ([`src/server.ts:230`](https://github.com/jkudish/jev-mcp/blob/fcd18d8609ba05a2f1988af91407d86377801ca0/src/server.ts#L230), [`src/server.ts:1990`](https://github.com/jkudish/jev-mcp/blob/fcd18d8609ba05a2f1988af91407d86377801ca0/src/server.ts#L1990)). concepts/state
 
 ## Fixes (from reading the code; not tested against it)
 
-1. Move spliced text into JSON state fields: pass claim, query, purpose, proposition and aspect as state fields and point the question at their paths, as jev_classify already does.
-2. Flag or test untrusted text (F22): add the ANTI_INJECTION sentence used in review, gate and audit to verify, find, rerank, noul, compare, extract and classify, and add a steering test for verify and find as gate has ([`test/mock.test.mjs:1719`](https://github.com/jkudish/jev-mcp/blob/a34db9307f437b9514c0d528fe226651e284eb3f/test/mock.test.mjs#L1719)); answers F22.
-3. Handle Choice order (F13): for high-stakes verify, find and classify, average over two or more option orders, or randomize the option order per item.
+1. Move the directives out of the state (F21): drop or replace the `purpose` sentences with a caller-supplied content field, and keep the judgment in the questions. https://docs.typesafe.ai/concepts/state.md
+2. Measure the tools (F7, closes_loop none): label a sample of claims, injected pages and classes, report precision and recall at the 0.8 and 0.75 defaults and the real latency, then calibrate. https://docs.typesafe.ai/cookbooks/classification_using_confidence.md (confirmed only with data)
+3. Pass caller text as fields (F20): point questions at `claims[i].text`, `query` and `propositions[i]` as jev_classify does. https://docs.typesafe.ai/primitives/advanced.md
 
-**Minor:** The model is pinned to a versioned ID (F12); Values from code are fields, not templates (F20); Untrusted text is treated as data (F22); Non-English content is handled (F23). These are listed fixes and don't lower the verdict.
+**Minor:** Pinned model version (F12); Size limits respected (F14); Data as fields, not templates, high or low (F20); Untrusted text treated as data, high or low (F22); Non-English handled (F23). These are listed fixes and don't lower the verdict.
 
 [Full rating: every fact, its evidence and the files read →](full/jkudish__jev-mcp.md)
 

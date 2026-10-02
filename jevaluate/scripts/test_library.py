@@ -40,7 +40,7 @@ def with_steps(r):
     d["top_stakes"] = _lib.derive_top_stakes(d, r.read_text()) or ""
     d["kind"] = _lib.rubric_text.KIND_OF.get(d.get("project_type"), "")
     fp = hashlib.sha1("|".join(d.get(k, "") for k in ("project_type", "kind", "verdict_1_code", "top_stakes")).encode()).hexdigest()
-    steps = ["routing", "verdict"] if d.get("verdict_1_code") in ("1a", "1b", "1c", "1r", "1t") else ["routing", "facts", "scores", "compare", "verdict"]
+    steps = ["routing", "compare", "verdict"] if d.get("verdict_1_code") in ("1a", "1b", "1c", "1r", "1t") else ["routing", "facts", "scores", "compare", "verdict"]
     pathlib.Path(str(r) + ".steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": fp} for i, s in enumerate(steps)]))
     return r
 
@@ -511,6 +511,73 @@ def test_export_skips_quick_ratings_and_falls_back_to_latest_full(tmp_path, lib)
     assert "Full read summary." in (out / "o__q.md").read_text()
     assert not (out / "o__onlyquick.md").exists()
     assert "o__onlyquick" not in (out / "README.md").read_text()
+
+
+def test_export_newer_date_beats_numbered_same_day_file(tmp_path, lib):
+    d = lib / "projects" / "o__s"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-28-3.md", "S", "o", "https://github.com/o/s", "2026-09-28", summary="Old numbered summary.")
+    make_rating(d / "2026-09-30.md", "S", "o", "https://github.com/o/s", "2026-09-30", summary="Newer date summary.")
+    out = tmp_path / "out"
+    assert run(lib, "export", str(out)).returncode == 0
+    assert "Newer date summary." in (out / "o__s.md").read_text()
+
+
+def test_export_publishes_approved_scope_over_older_full(tmp_path, lib):
+    d = lib / "projects" / "o__sc"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-20.md", "SC", "o", "https://github.com/o/sc", "2026-09-20", summary="Old full summary.")
+    make_rating(d / "2026-09-30.md", "SC", "o", "https://github.com/o/sc", "2026-09-30", depth="extract", summary="Scoped summary.",
+                coverage="- README.md -- read\n- src/big.py -- skipped: scoped")
+    out = tmp_path / "out"
+    assert run(lib, "export", str(out)).returncode == 0
+    assert "Scoped summary." in (out / "o__sc.md").read_text()
+
+
+def test_latest_rating_for_prefers_newer_date_over_numbered_file(tmp_path, lib):
+    d = lib / "projects" / "o__m"; d.mkdir(parents=True)
+    for name, rated in (("2026-09-28-3", "2026-09-28"), ("2026-09-30", "2026-09-30")):
+        make_rating(d / f"{name}.md", "M", "o", "https://github.com/o/m", rated)
+    sys.path.insert(0, str(pathlib.Path(__file__).parent))
+    import importlib, library
+    importlib.reload(library); library.PROJ = lib / "projects"
+    assert library.latest_rating_for("https://github.com/o/m").name == "2026-09-30.md"
+
+
+def test_export_resolves_bare_file_names_from_coverage(tmp_path, lib):
+    d = lib / "projects" / "o__bare"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-30.md", "Bare", "o", "https://github.com/o/bare", "2026-09-30",
+                fact_lines={1: "- F1 Atomic questions -- no. Broad check (`deep/dir/core.verification.toml:6`, `core.verification.toml:9`)"},
+                coverage="- deep/dir/core.verification.toml -- read\n- jev_x/questions.py -- read (fetched with --also; not in the manifest)\n- big.py -- skipped: scoped")
+    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
+    full = (out / "full" / "o__bare.md").read_text()
+    assert "blob/abc123def456789/deep/dir/core.verification.toml#L9" in full
+    assert "blob/abc123def456789/core.verification.toml" not in full
+    assert "--also" not in full and "fetched separately" in full
+    assert "Files read (2; 1 skipped)" in full
+
+
+def test_export_drops_placeholder_scores(tmp_path, lib):
+    d = lib / "projects" / "o__tbd"; d.mkdir(parents=True)
+    r = make_rating(d / "2026-09-30.md", "Tbd", "o", "https://github.com/o/tbd", "2026-09-30")
+    (d / "2026-09-30.md").write_text((d / "2026-09-30.md").read_text().replace("## Verdict and reasoning", "## Scores\nTBD\n## Verdict and reasoning"))
+    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
+    full = (out / "full" / "o__tbd.md").read_text()
+    assert "TBD" not in full and "## Scores" not in full
+
+
+def test_export_shows_unscored_codes_as_na_and_drops_adjudication_notes(tmp_path, lib):
+    d = lib / "projects" / "o__rep"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-30.md", "Rep", "o", "https://github.com/o/rep", "2026-09-30", verdict=1, project_type="jev-replacement")
+    f = d / "2026-09-30.md"; f.write_text(f.read_text().replace("verdict_1_code: none", "verdict_1_code: 1r"))
+    e = lib / "projects" / "o__fm"; e.mkdir(parents=True)
+    make_rating(e / "2026-09-30.md", "Fm", "o", "https://github.com/o/fm", "2026-09-30", verdict=1)
+    g = e / "2026-09-30.md"; g.write_text(g.read_text().replace("verdict_1_code: none", "verdict_1_code: 1a").replace("Test fixture.", "Test fixture.\nAdjudicated 2026-10-01: internal note."))
+    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
+    readme = (out / "README.md").read_text()
+    assert "**n.a. (replaces Jev, not yet rated)**" in readme and "**1 Replaces" not in readme
+    assert "**1 False marketing: Jev in name only**" in readme
+    assert readme.index("o__fm") < readme.index("o__rep")
+    assert "Not rated yet: replaces Jev" in (out / "o__rep.md").read_text()
+    assert "Adjudicated" not in (out / "full" / "o__fm.md").read_text()
 
 
 def test_add_numbers_after_highest_same_day_and_keeps_evidence_separate(tmp_path, lib):
@@ -1050,7 +1117,8 @@ def test_export_label_for_1t(tmp_path, lib):
     r.write_text(re.sub(r"- F(?!0\b)\d+ .*\n", "", r.read_text()))
     assert run(lib, "add", str(r)).returncode == 0
     out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
-    assert "Guide, not yet rated" in (out / "o__u.md").read_text()
+    assert "Not rated yet: guide" in (out / "o__u.md").read_text()
+    assert "**n.a. (guide, not yet rated)**" in (out / "README.md").read_text()
 
 
 # --- Task 4c fix round 1 ---
