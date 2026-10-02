@@ -1,7 +1,14 @@
 """Run one grader call through Claude or Codex and return {result, usage, commands[, error]}, the shape score.py reads."""
 import json, os, pathlib, shutil, subprocess, tempfile
 
-KEEP = ("agent_message", "reasoning")  # Codex items that are the answer itself; anything else counts as tool use
+KEEP = ("agent_message", "reasoning")
+# Turned off so the grader sees only Codex's built-in tools. HOME is also pointed at the temp home (see env()),
+# because Codex finds the user's skills in ~/.agents/skills whatever CODEX_HOME says (found 2026-10-02).
+OFF = ("apps", "multi_agent", "plugins", "remote_plugin", "skill_search", "goals")
+
+
+def env(home):
+    return {**os.environ, "CODEX_HOME": str(home), "HOME": str(home)}  # Codex items that are the answer itself; anything else counts as tool use
 
 
 def claude_cmd(system_file, model, effort):
@@ -24,14 +31,14 @@ def codex_ready(home):
     if not shutil.which("codex"):
         return "codex not found: install it (npm install -g @openai/codex) and run codex login"
     r = subprocess.run(["codex", "login", "status"], capture_output=True, text=True, timeout=60,
-                       env={**os.environ, "CODEX_HOME": str(home)})
+                       env=env(home))
     return None if r.returncode == 0 else "codex is not logged in: run codex login"
 
 
 def codex_cmd(system_file, model, effort, cwd):
     return ["codex", "exec", "--ephemeral", "--skip-git-repo-check", "-s", "read-only", "-C", str(cwd), "-m", model,
-            "-c", f"model_reasoning_effort={effort}", "-c", 'web_search="disabled"', "--disable", "apps",
-            "--disable", "multi_agent", "-c", f"model_instructions_file={pathlib.Path(system_file).resolve()}", "--json"]
+            "-c", f"model_reasoning_effort={effort}", "-c", 'web_search="disabled"',
+            *[x for f in OFF for x in ("--disable", f)], "-c", f"model_instructions_file={pathlib.Path(system_file).resolve()}", "--json"]
 
 
 def parse_codex(stdout):
@@ -51,7 +58,7 @@ def parse_codex(stdout):
             u = e.get("usage") or {}
             out["usage"] = {"input_tokens": u.get("input_tokens", 0) - u.get("cached_input_tokens", 0),
                             "cache_read_input_tokens": u.get("cached_input_tokens", 0),
-                            "cache_creation_input_tokens": 0, "output_tokens": u.get("output_tokens", 0)}
+                            "cache_creation_input_tokens": u.get("cache_write_input_tokens", 0), "output_tokens": u.get("output_tokens", 0)}
         if e.get("type") in ("turn.failed", "error"):
             out["error"] = json.dumps(e.get("error") or e)
     return out
@@ -69,7 +76,7 @@ def call(runner, system_file, prompt, model, effort, home=None, timeout=900):
     cwd = tempfile.mkdtemp(prefix="codex-cwd-")
     try:
         r = subprocess.run(codex_cmd(system_file, model, effort, cwd), input=prompt, capture_output=True, text=True,
-                           timeout=timeout, env={**os.environ, "CODEX_HOME": str(home)})
+                           timeout=timeout, env=env(home))
     except subprocess.TimeoutExpired:
         return {"result": "", "usage": {}, "commands": [], "error": f"timed out after {timeout}s"}
     finally:

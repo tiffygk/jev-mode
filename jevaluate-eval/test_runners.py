@@ -49,3 +49,10 @@ def test_score_quiz_runs_on_a_saved_quiz(tmp_path):
     (run / "r1_g0.json").write_text(json.dumps({"result": "[]", "usage": {}}))
     r = subprocess.run([sys.executable, str(HERE / "quiz" / "score_quiz.py"), str(run)], capture_output=True, text=True)
     assert "Traceback" not in r.stderr and "Overall:" in r.stdout
+
+def test_codex_cmd_turns_off_extras_and_env_hides_home(tmp_path):
+    cmd = runners.codex_cmd("s.md", "gpt-6-sol", "medium", tmp_path)
+    for f in ("apps", "multi_agent", "plugins", "remote_plugin", "skill_search", "goals"):
+        assert cmd[cmd.index(f) - 1] == "--disable"
+    e = runners.env(tmp_path)
+    assert e["HOME"] == str(tmp_path) and e["CODEX_HOME"] == str(tmp_path)
