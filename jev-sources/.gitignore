@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+# downloaded TypeSafe pages belong in $JEV_SOURCES_DATA, never here
+docs/
+cookbooks/
+patterns/
+sections.jsonl
+NEW_PAGES.txt
