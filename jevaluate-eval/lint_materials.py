@@ -91,7 +91,7 @@ def named_files_problems(skill_dir):
             if name in ALLOW_NAMED or name.rsplit("/", 1)[-1] in ALLOW_NAMED: continue
             if "/" in name:
                 if not (skill_dir / name).exists(): problems.append(f"{md.name}: names {name}, which does not exist")
-            elif name.endswith(".md") and not any((d / name).exists() for d in (skill_dir, skill_dir / "evals", skill_dir / "scripts", *(skill_dir.parent / n for n in ("jevaluate", "jevaluate-harness", "jevaluate-eval")))):
+            elif name.endswith(".md") and not any((d / name).exists() for d in (skill_dir, skill_dir / "evals", skill_dir / "scripts", *(skill_dir.parent / n for n in ("jevaluate", "jevaluate-harness", "jevaluate-eval", "shared")))):
                 problems.append(f"{md.name}: names {name}, which does not exist")
     return problems
 

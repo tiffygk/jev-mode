@@ -1511,13 +1511,13 @@ def test_export_two_raters_two_rows_two_pages(tmp_path, lib):
     assert (out / "full" / "o__proj--gpt-6-sol.md").exists()
     readme = (out / "README.md").read_text()
     assert "| Project | Type | Verdict | Why | Rated | Rated by |" in readme
-    assert readme.count("| [o/proj](") == 2 and "| GPT-6 Sol |" in readme and "| Sonnet 5.5 |" in readme
+    assert readme.count("](o__proj") == 2 and "| GPT-6 Sol |" in readme and "| Sonnet 5.5 |" in readme
     assert "(o__proj--gpt-6-sol.md)" in readme
 
 def test_export_sonnet_only_one_row(tmp_path, lib):
     seed_export(tmp_path, lib)
     out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
-    assert (out / "README.md").read_text().count("| [o/proj](") == 1 and not list(out.glob("*--*.md"))
+    assert (out / "README.md").read_text().count("](o__proj") == 1 and not list(out.glob("*--*.md"))
 
 def test_rater_family_unknown_is_sonnet():
     import importlib.util
