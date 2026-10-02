@@ -55,7 +55,7 @@ The [system page](https://tiffygk.github.io/jev-mode/system/) shows the whole fl
 
 ## What it checks
 
-After routing, 23 facts in four groups: core principles, question design, execution, and the evidence behind claims. The full list is in [`rubric.md`](rubric.md); each rule in `jev-rules.md` cites its source: TypeSafe's docs, one of its 18 cookbooks, or a finding from rating projects.
+After routing, 23 facts in four groups: core principles, question design, execution, and the evidence behind claims. The full list is in [`rubric.md`](rubric.md); each rule in [`shared/jev-rules.md`](../shared/jev-rules.md) cites its source: TypeSafe's docs, one of its 18 cookbooks, or a finding from rating projects.
 
 ## Install and use
 
@@ -63,7 +63,7 @@ Needs Claude Code or Codex, git, Python 3.8+ and the GitHub CLI (`gh`, logged in
 
 ```
 git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate ~/.claude/skills/
+cp -r jev-mode/jevaluate jev-mode/shared ~/.claude/skills/
 ```
 
 Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort, for comparable ratings; in Codex, `gpt-6-sol` at medium effort. A rating costs 100-160k tokens for a small repo. Ratings save to `~/.claude/jevaluate-library/` (or `$JEVALUATE_LIBRARY`).

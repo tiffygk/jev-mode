@@ -203,3 +203,13 @@ def test_template_fact_lines_are_not_written_facts():
     assert S.missing("facts", t) == []
     t = t.replace("- F1 Check1 -- yes. Found it (a.py:1)", tline("- F1 "))
     assert S.missing("facts", t) == ["F1"]
+
+
+def test_facts_serve_the_shared_rules_file_with_rating_rules(tmp_path):
+    r = tmp_path / "t.md"
+    r.write_text(INTAKE.replace("---\n", "---\nkind: uses\nproject_type: workflow\nverdict_1_code: none\ntop_stakes: low\ncitation: none\n", 1)
+                 + "## Decisions\n- flag it | Noul | low | acts at a.py:9 | shows it\n## Facts\n- F0 Calls hosted Jev -- yes. Calls it (a.py:3)\n")
+    step(tmp_path / "lib", "next", str(r)); out = step(tmp_path / "lib", "next", str(r)).stdout
+    assert "## Jevaluate's rating rules (not TypeSafe's)" in out and "R1" in out and "R2" in out
+    repo = pathlib.Path(__file__).resolve().parents[2]
+    assert (repo / "shared" / "jev-rules.md").exists() and not (repo / "jevaluate" / "jev-rules.md").exists()
