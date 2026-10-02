@@ -43,7 +43,6 @@ def test_read_prints_header_and_file_caveats():
     assert out.startswith("SOURCE: cookbooks/rerank_typesafe.md#") and "KIND: cookbook example" in out
     assert "for clarity" in out
 
-# reviewer round 1 (2026-10-01)
 def test_singular_candidate_routes_to_rerank():
     ids = [s["id"] for s in route("a cookbook does one request per candidate; must we?")["sections"]]
     assert any(i.startswith("cookbooks/rerank_typesafe") for i in ids), ids
@@ -51,7 +50,6 @@ def test_singular_candidate_routes_to_rerank():
 def test_topic_words_need_word_start():
     assert route("does Jev handle accounts and updates well")["topics"] == []
 
-# final gate round (2026-10-01)
 def test_incident_questions_list_noul_structured_instructions():
     for q in ["30 passages as 30 Nouls in one request with the query as state",
               "the rerank cookbook does one request per candidate, must we?"]:
