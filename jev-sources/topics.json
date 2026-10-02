@@ -1,0 +1,169 @@
+{
+ "_note": "Topic -> pages, seeded from jev-mode/jevaluate/fix-catalog.md (rubric facts F0-F23) and Jev Cookbook Index.md. match is a case-insensitive regex on the question.",
+ "topics": [
+  {
+   "name": "batching / many questions per call",
+   "match": "one (call|request)|per (call|request|candidate|pair|passage)|batch|together|at once|parallel|many questions|several questions|fan.?out|\\d+ (passages|questions|candidates|items)|\\d+ (passage|question|candidate|item)s?|single (call|request|api)|thirty",
+   "paths": [
+    "docs/primitives__noul.md#Structured instructions",
+    "docs/primitives__noul.md#Good practice: ask more than one question per call",
+    "docs/concepts__state.md",
+    "docs/primitives.md",
+    "patterns/fan-out.md",
+    "cookbooks/parallel_questions.md",
+    "cookbooks/rerank_typesafe.md"
+   ]
+  },
+  {
+   "name": "datasets of rows",
+   "match": "dataset|rows\\b|records|spreadsheet|table of|inverted",
+   "paths": [
+    "patterns/fan-out.md",
+    "cookbooks/parallel_questions.md"
+   ]
+  },
+  {
+   "name": "re-ranking / retrieval",
+   "match": "rerank|re-rank|ranking|retriev|passages?|search results|candidates?",
+   "paths": [
+    "cookbooks/rerank_typesafe.md",
+    "cookbooks/classifying_rag_passages.md",
+    "cookbooks/semantic_find.md",
+    "docs/primitives__noul.md#Structured instructions"
+   ]
+  },
+  {
+   "name": "atomic questions / decomposition",
+   "match": "compound|atomic|decompos|split (the|a) question|two things|broad question",
+   "paths": [
+    "docs/concepts__how-to-build-with-system-one.md"
+   ]
+  },
+  {
+   "name": "which primitive",
+   "match": "which primitive|noul or|choice or|score or|yes/no or|right primitive",
+   "paths": [
+    "docs/primitives.md",
+    "docs/primitives__score.md"
+   ]
+  },
+  {
+   "name": "state structure",
+   "match": "state\\b|json|fields|context",
+   "paths": [
+    "docs/concepts__state.md",
+    "docs/concepts__how-to-build-with-system-one.md"
+   ]
+  },
+  {
+   "name": "thresholds / confidence routing",
+   "match": "threshold|cut.?off|confiden|review queue|route to (a )?(person|human)|gate\\b|gating",
+   "paths": [
+    "docs/confidence.md",
+    "patterns/confidence-routing.md"
+   ]
+  },
+  {
+   "name": "no invented values (counting, dates, math)",
+   "match": "count(s|ing)?\\b|arithmetic|math|calculat|days\\b|dates?\\b|numbers|compute|timestamps?|age\\b|subtract",
+   "paths": [
+    "docs/model-jaggedness__jev-1.13.md",
+    "cookbooks/date_extraction_cookbook.md",
+    "cookbooks/pre_parsed_value_extraction_cookbook.md"
+   ]
+  },
+  {
+   "name": "measuring / evals",
+   "match": "measur|eval|accuracy|precision|recall|sample size|baseline|held.?out",
+   "paths": [
+    "cookbooks/classification_using_confidence.md",
+    "docs/confidence.md"
+   ]
+  },
+  {
+   "name": "options cover every case / other option",
+   "match": "overlap|exhaustive|other option|none of|unclear option|escape|out of range",
+   "paths": [
+    "docs/primitives__choice.md",
+    "docs/primitives.md"
+   ]
+  },
+  {
+   "name": "choice option order / consistency",
+   "match": "option order|order of (the )?options|shuffle|position bias|consisten|flip|order (i|we) list|list order|bias",
+   "paths": [
+    "cookbooks/consistency_choice_cookbook.md",
+    "cookbooks/consistency_noul_cookbook.md"
+   ]
+  },
+  {
+   "name": "model version",
+   "match": "pin(ned|ning)?\\b|version|model id|upgrade|jev-1",
+   "paths": [
+    "docs/models.md"
+   ]
+  },
+  {
+   "name": "size limits",
+   "match": "tokens|64k|32k|too (long|large)|size limit|large state|truncat",
+   "paths": [
+    "docs/models.md",
+    "docs/model-jaggedness__jev-1.13.md"
+   ]
+  },
+  {
+   "name": "typed answers, not text",
+   "match": "free text|parse|string.?match|reasoning text|typed",
+   "paths": [
+    "docs/primitives.md"
+   ]
+  },
+  {
+   "name": "data in fields, not templates",
+   "match": "template|f-string|splice|interpolat|instructions (field|object)|per.question data",
+   "paths": [
+    "docs/primitives__advanced.md"
+   ]
+  },
+  {
+   "name": "untrusted text / injection",
+   "match": "inject|adversarial|untrusted|steer|jailbreak|guardrail",
+   "paths": [
+    "docs/model-jaggedness__jev-1.13.md",
+    "cookbooks/classifying_rag_passages.md",
+    "cookbooks/llm_guardrails.md"
+   ]
+  },
+  {
+   "name": "large option lists / taxonomies",
+   "match": "many (categories|options|labels|classes)|too many|taxonomy|hierarch|255|categories|\\d+ (labels|classes|options)|labels\\b",
+   "paths": [
+    "docs/primitives__advanced.md",
+    "cookbooks/hierarchical_classification.md"
+   ]
+  },
+  {
+   "name": "non-English",
+   "match": "language|non.english|spanish|translat|multilingual",
+   "paths": [
+    "docs/concepts__state.md"
+   ]
+  },
+  {
+   "name": "cascades / cost",
+   "match": "cascade|cheap(er)? model|cost|escalat",
+   "paths": [
+    "cookbooks/sde_cascade.md",
+    "cookbooks/parallel_questions.md"
+   ]
+  },
+  {
+   "name": "closing the loop / tuning",
+   "match": "calibrat|tune|loop\\b|autoresearch|improve the questions",
+   "paths": [
+    "docs/confidence.md",
+    "cookbooks/autoresearch_feature_discovery.md"
+   ]
+  }
+ ]
+}
