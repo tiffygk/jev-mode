@@ -1,4 +1,5 @@
-"""Shared patterns for the jev-sources hooks (jev-prompt-reminder, jev-dispatch-check, jev-claim-check)."""
+"""Shared patterns for the jev-sources hooks. The claim patterns (CLAIM, DESIGN, RELAY, WEAK, source_read)
+serve an optional reply checker that is not shipped here."""
 import re
 from datetime import datetime
 import os

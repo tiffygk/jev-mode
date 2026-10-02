@@ -17,14 +17,16 @@ Jev Sources finds the TypeSafe docs and cookbook sections that answer a Jev ques
 ## Sample
 
 > **route.py** on "can I put 30 passages in one call?"
-> ### 3 reference rules to read in full
+> ### 10 sections to read in full, reference rules first
 > Topics matched: batching, re-ranking
 >
 > - `docs/primitives__noul.md#Structured instructions`
 > - `docs/primitives__noul.md#Good practice: ask more than one question per call`
 > - `docs/concepts__state.md#State can be a simple string or a structured JSON value`
 >
-> **Next:** `read.py` each one, then answer with a quote and its heading.
+> - ...7 more, including patterns and cookbook examples
+>
+> **Next:** `read.py` every READ FULL item before any claim.
 
 ## Results
 
@@ -66,9 +68,12 @@ git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jev-sources ~/.claude/skills/
 bash ~/.claude/skills/jev-sources/refresh.sh --fetch
 python3 ~/.claude/skills/jev-sources/scripts/route.py "can I put 30 passages in one call?"
+python3 ~/.claude/skills/jev-sources/scripts/read.py 'docs/primitives__noul#7'
 ```
 
-The hooks are optional: [`hooks/install-hooks.md`](hooks/install-hooks.md) has the settings lines. Run the tests with `python3 -m pytest tests`.
+`read.py` takes the id that `route.py` prints under each item. The first fetch downloads about 110 pages.
+
+The hooks are optional: [`hooks/install-hooks.md`](hooks/install-hooks.md) has the settings lines. Run the tests with `python3 -m pytest tests` after the fetch; they need the downloaded pages.
 
 ## Limits
 

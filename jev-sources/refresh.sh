@@ -19,7 +19,7 @@ copy() {  # copy src/{docs,cookbooks,patterns}/*.md into dst, skipping extracts 
   done
 }
 if [ "${1:-}" = "--fetch" ]; then
-  python3 "$HERE/scripts/fetch.py" || echo "some pages failed (listed above); the index is built from the rest"
+  python3 "$HERE/scripts/fetch.py" || echo "the fetch reported problems (above); building the index from what was downloaded"
   [ -n "${JEV_VAULT:-}" ] && copy "$DATA" "$JEV_VAULT"
 elif [ -n "${JEV_VAULT:-}" ]; then
   copy "$JEV_VAULT" "$DATA"

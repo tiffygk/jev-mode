@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Download every page TypeSafe lists in llms.txt into the data folder: docs/, cookbooks/, patterns/.
 A page that fails (404, rate limit) is named and skipped; the run carries on. Exit 1 if any failed."""
-import datetime, os, re, sys, time, urllib.request
+import datetime, os, re, sys, time, urllib.error, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import CODE, DATA
 

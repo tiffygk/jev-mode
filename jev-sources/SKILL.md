@@ -12,7 +12,7 @@ Answers about Jev rest on TypeSafe sections you opened in full this session, fou
 1. Route: `python3 ~/.claude/skills/jev-sources/scripts/route.py "<the question, in your words>"`. Route each separate question on its own.
 2. Read every **READ FULL** item: `python3 ~/.claude/skills/jev-sources/scripts/read.py '<id>'`. Read the reference rules first, then the patterns, then the cookbook examples.
 3. An **EXTRACT** item (`read.py '<id>' --extract <word> <word>`) can point you somewhere. A claim resting on it is labeled **unverified**.
-4. If the router prints "no section found", say so, then run the refresh steps or read `Jev Docs Index.md`. Never fill the gap from memory.
+4. If the router prints "no section found", say so, then run `refresh.sh --fetch` and route again. Never fill the gap from memory.
 
 ## What a claim looks like
 
