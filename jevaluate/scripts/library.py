@@ -599,12 +599,28 @@ def publishable(p):
     depth = front(p).get("depth", "").split()[:1]
     return depth == ["full"] or (depth == ["extract"] and "skipped: scoped" in section(p.read_text(errors="ignore"), "Coverage"))
 
+def rater_family(rater):
+    """codex for a GPT rater, else sonnet (including unknown, which predates the rater field)."""
+    return "codex" if str(rater).strip().lower().startswith("gpt-") else "sonnet"
+
+def rater_label(rater):
+    r = str(rater).strip().lower()
+    if r.startswith("gpt-"): return "GPT-" + "-".join(w.capitalize() for w in r[4:].split("-")).replace("-", " ", 1)
+    m = re.match(r"claude-sonnet-(\d+)-(\d+)", r)
+    return f"Sonnet {m.group(1)}.{m.group(2)}" if m else "Sonnet"
+
+def page_slug(p):
+    """A rating's page name: the project folder for Sonnet ratings (unchanged), plus --<rater> for Codex ones."""
+    rater = front(p).get("rater", "unknown").split()[0] if front(p).get("rater") else "unknown"
+    return p.parent.name if rater_family(rater) == "sonnet" else f"{p.parent.name}--{rater.lower()}"
+
 def latest_per_project(full_only=False):
+    """{page slug: newest rating}, one per project per rater family, so Sonnet and Codex ratings both show."""
     best = {}
     for p in ratings_glob():
         if full_only and not publishable(p): continue
-        key = rating_key(p)
-        if p.parent.name not in best or key > best[p.parent.name][0]: best[p.parent.name] = (key, p)
+        key, k = rating_key(p), page_slug(p)
+        if k not in best or key > best[k][0]: best[k] = (key, p)
     return {k: v[1] for k, v in best.items()}
 
 FACT_LINE = re.compile(r"^\s*[-*]\s*\**([FG])(\d+)\**\s*(.*?)\s*\**\s*(?:—|--)\s*\**(yes|no|n\.a\.|n/a|unknown)\**[.,:]?\s*(.*)$", re.I)
@@ -703,12 +719,12 @@ def why_line(t, d):
 def dots(x):
     return "●" * int(x) + "○" * (3 - int(x)) if str(x).isdigit() else "n.a."
 
-def export_pages(p):
-    """-> (detail page, full page, front matter, rubric, why) for one rating."""
+def export_pages(p, slug=None):
+    """-> (detail page, full page, front matter, rubric, why) for one rating; slug is its page name."""
     t = re.sub(r"(?m)^Adjudicated [^\n]*\n?", "", p.read_text(errors="ignore"))  # internal provenance, not for public pages
     d = front_text(t); v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
     r = d.get("rubric", "").split(); r = r[0] if r else ""
-    slug = p.parent.name; label = verdict_label(t, v); unscored = not_rated(d)
+    slug = slug or p.parent.name; label = verdict_label(t, v); unscored = not_rated(d)
     who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
     commit = d.get("commit", "").split()[0] if d.get("commit") else ""
     at = (f"at [`{commit[:7]}`]({d['url'].rstrip('/')}/tree/{commit})" if re.fullmatch(r"[0-9a-f]{7,40}", commit) and re.search(r"github\.com|huggingface\.co", d.get("url", ""))
@@ -762,16 +778,16 @@ def export(outdir):
     outdir = pathlib.Path(outdir); pages = {}; rows = []; any_stale = False
     # Only full reads and approved scopes are published; quick (extract) ratings stay in the library.
     for slug, p in sorted(latest_per_project(full_only=True).items()):
-        detail, full, d, r, why = export_pages(p); pages[slug] = (p, detail, full)
+        detail, full, d, r, why = export_pages(p, slug); pages[slug] = (p, detail, full)
         v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
         stale = r < RUBRIC; any_stale |= stale
         who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
         ptype = (d.get("project_type", "").split() or [""])[0]
         ptype = "" if ptype == "unrecorded" else ptype.replace("-", " ")
         un = not_rated(d); shown = f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(p.read_text(errors='ignore'), v)}"
-        rows.append((1 if un else -int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{shown}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} |"))
+        rows.append((1 if un else -int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{shown}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} | {rater_label((d.get('rater') or 'unknown').split()[0])} |"))
     tpl = SKILL / "ratings-template"
-    readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n| Project | Type | Verdict | Why | Rated |\n|---|---|---|---|---|\n" + "\n".join(r for _, r in sorted(rows)) + "\n"
+    readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n| Project | Type | Verdict | Why | Rated | Rated by |\n|---|---|---|---|---|---|\n" + "\n".join(r for _, r in sorted(rows)) + "\n"
     if any_stale: readme += "\n† Rated under an earlier rubric; a re-rating is queued.\n"
     pt = LIB / "private-terms.txt"; pats = []
     if pt.exists():
@@ -785,7 +801,7 @@ def export(outdir):
                 if pat.search(line):
                     src = ""
                     if name != "README.md":
-                        sp = pages[name.split("/")[-1][:-3]][0]
+                        sp = pages[name.split("/")[-1][:-3]][0]  # page slug, which may carry --<rater>
                         j = next((k for k, l in enumerate(sp.read_text(errors="ignore").splitlines(), 1) if l.strip() and l.strip() in line), None)
                         src = f" (source {sp}" + (f":{j}" if j else "") + ")"
                     hits.append(f"{name}:{i}: matches private term /{pat.pattern}/{src}")

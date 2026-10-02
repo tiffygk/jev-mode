@@ -1493,3 +1493,34 @@ def test_default_library_keeps_existing_claude_library(tmp_path):
     assert r.returncode == 0, r.stderr
     assert (old / "index.md").exists()
     assert not (tmp_path / ".jevaluate-library").exists()
+
+
+# ---- export: one row per rater family (Sonnet and Codex ratings in one table) ----
+
+def _codex_rating(tmp_path, lib, rated="2026-10-03", rater="gpt-6-sol"):
+    r = make_rating(tmp_path / f"c-{rated}.md", "Proj", "o", "https://github.com/o/proj", rated, summary="Codex summary.")
+    r.write_text(r.read_text().replace("rater: claude-sonnet-5-5", f"rater: {rater}", 1))
+    assert run(lib, "add", str(r)).returncode == 0
+
+def test_export_two_raters_two_rows_two_pages(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    out = tmp_path / "out"; p = run(lib, "export", str(out))
+    assert p.returncode == 0, p.stdout + p.stderr
+    assert "Uses Jev for triage" in (out / "o__proj.md").read_text()
+    assert "Codex summary." in (out / "o__proj--gpt-6-sol.md").read_text()
+    assert (out / "full" / "o__proj--gpt-6-sol.md").exists()
+    readme = (out / "README.md").read_text()
+    assert "| Project | Type | Verdict | Why | Rated | Rated by |" in readme
+    assert readme.count("| [o/proj](") == 2 and "| GPT-6 Sol |" in readme and "| Sonnet 5.5 |" in readme
+    assert "(o__proj--gpt-6-sol.md)" in readme
+
+def test_export_sonnet_only_one_row(tmp_path, lib):
+    seed_export(tmp_path, lib)
+    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
+    assert (out / "README.md").read_text().count("| [o/proj](") == 1 and not list(out.glob("*--*.md"))
+
+def test_rater_family_unknown_is_sonnet():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    assert m.rater_family("unknown") == "sonnet" and m.rater_family("claude-sonnet-5-5") == "sonnet" and m.rater_family("gpt-6-sol") == "codex"
+    assert m.rater_label("gpt-6-sol") == "GPT-6 Sol" and m.rater_label("claude-sonnet-5-5") == "Sonnet 5.5" and m.rater_label("unknown") == "Sonnet"
