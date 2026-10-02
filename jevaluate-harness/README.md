@@ -21,7 +21,7 @@ For a different LLM rating skill, this one won't run, but its pattern carries ov
 The skill is a short guide that opens one of three files, each a numbered list with the check that must pass:
 
 1. `rubric-change.md` changes the rubric: a meaning and an example for every value, one row per stakes level where the rule changes with stakes, and a code check for every rule. Then Jevaluate Eval tests it.
-2. `rating-round.md` runs a round: screen a list against two known controls, size each repo, brief raters, log ratings one at a time, scan each rater's transcript, send big verdict moves to a reviewer that sees only the facts.
+2. `rating-round.md` runs a round: screen a list against two known controls, size each repo, brief raters, scan each rater's transcript, log ratings one at a time, send big verdict moves to a reviewer that sees only the facts.
 3. `publish.md` exports a preview, has a reviewer check every page for private context, runs the release check (tests, a fresh clone, a passing eval on this rubric), and opens one pull request.
 
 Written steps alone slipped in earlier rounds, so scripts check each one:
