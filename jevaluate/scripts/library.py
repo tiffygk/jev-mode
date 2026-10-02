@@ -670,6 +670,12 @@ def cell(x): return x.replace("|", "/").replace("\n", " ")
 CODE_LABEL = {"1a": "False marketing: Jev in name only", "1b": "Not a Jev integration", "1c": "Jev answers unused",
               "1g": "Misleading guide", "1r": "Replaces Jev, not yet rated", "1t": "Guide, not yet rated"}
 
+NOT_RATED = {"1r": "replaces Jev", "1t": "guide"}
+
+def not_rated(d):
+    """Plain words for a verdict-1 code the scale doesn't score yet (1r, 1t), else ''. Pages show these as n.a., never as a 1."""
+    return NOT_RATED.get(d.get("verdict_1_code", "").split("#")[0].strip(), "")
+
 def verdict_label(t, v):
     code = front_text(t).get("verdict_1_code", "").split("#")[0].strip()
     if v == "1" and code in CODE_LABEL: return CODE_LABEL[code]
@@ -694,9 +700,10 @@ def dots(x):
 
 def export_pages(p):
     """-> (detail page, full page, front matter, rubric, why) for one rating."""
-    t = p.read_text(errors="ignore"); d = front_text(t); v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
+    t = re.sub(r"(?m)^Adjudicated [^\n]*\n?", "", p.read_text(errors="ignore"))  # internal provenance, not for public pages
+    d = front_text(t); v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
     r = d.get("rubric", "").split(); r = r[0] if r else ""
-    slug = p.parent.name; label = verdict_label(t, v)
+    slug = p.parent.name; label = verdict_label(t, v); unscored = not_rated(d)
     who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
     commit = d.get("commit", "").split()[0] if d.get("commit") else ""
     at = (f"at [`{commit[:7]}`]({d['url'].rstrip('/')}/tree/{commit})" if re.fullmatch(r"[0-9a-f]{7,40}", commit) and re.search(r"github\.com|huggingface\.co", d.get("url", ""))
@@ -718,7 +725,7 @@ def export_pages(p):
     known = [m.group(1) for m in re.finditer(r"^\s*[-*]\s*`?([\w./-]+)`?\s+--", cov, re.M)]
     L = lambda x: linkify(x, d, known)
     detail = ["[← All ratings](README.md)", ""] + stale + [
-        f"> **{who}** {at}" + (f" · {ptype}" if ptype else ""), f"> ### Verdict {v}: {label}", f"> {scores}", ">"]
+        f"> **{who}** {at}" + (f" · {ptype}" if ptype else ""), (f"> ### Not rated yet: {unscored}" if unscored else f"> ### Verdict {v}: {label}"), f"> {scores}", ">"]
     detail += [f"> - {L(x)}" for x in summ_lines]
     if top: detail += [">", f"> **Top fix:** {L(top)}"]
     detail += ["", "## What holds it back", ""] + ([f"- **{n_}** ({fid(n)}): {L(f)}" for n, n_, _, f in major] or ["Nothing that lowers the verdict."])
@@ -727,7 +734,7 @@ def export_pages(p):
         detail += ["", "## Fixes (from reading the code; not tested against it)", ""] + [f"{i}. {L(x)}" for i, x in enumerate(fixes[:3], 1)]
     if minor: detail += ["", "**Minor:** " + "; ".join(f"{n_} ({fid(n)})" for n, n_, _, _ in minor) + ". These are listed fixes and don't lower the verdict."]
     detail += ["", f"[Full rating: every fact, its evidence and the files read →](full/{slug}.md)", ""]
-    head = f"**Verdict {v}, {label}**" + (f" · {ptype}" if ptype else "") + f" · rated {d.get('rated', '')} {at} · read: {d.get('depth', '').split()[0] if d.get('depth') else ''} · rubric {r or 'unrecorded'}{' (earlier)' if stale else ''} · {d.get('rater', 'rater unrecorded')}" + (f", {d['effort'].split()[0]} effort" if d.get("effort") else "")
+    head = (f"**Not rated yet: {unscored}**" if unscored else f"**Verdict {v}, {label}**") + (f" · {ptype}" if ptype else "") + f" · rated {d.get('rated', '')} {at} · read: {d.get('depth', '').split()[0] if d.get('depth') else ''} · rubric {r or 'unrecorded'}{' (earlier)' if stale else ''} · {d.get('rater', 'rater unrecorded')}" + (f", {d['effort'].split()[0]} effort" if d.get("effort") else "")
     full = [f"[← Summary](../{slug}.md)", "", f"# {d.get('project', slug)}: full rating", "", head, ""] + stale + ["## Summary", "", L(summ), "",
             "## What fails", "", "| Fact | Finding |", "|---|---|"]
     full += [f"| {cell(n_)} ({fid(n)}) | **{val}.** {cell(L(f))} |" for n, n_, val, f in rows if n == 0 or val in ("no", "unknown")]
@@ -756,7 +763,8 @@ def export(outdir):
         who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
         ptype = (d.get("project_type", "").split() or [""])[0]
         ptype = "" if ptype == "unrecorded" else ptype.replace("-", " ")
-        rows.append((-int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{v} {verdict_label(p.read_text(errors='ignore'), v)}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} |"))
+        un = not_rated(d); shown = f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(p.read_text(errors='ignore'), v)}"
+        rows.append((1 if un else -int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{shown}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} |"))
     tpl = SKILL / "ratings-template"
     readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n| Project | Type | Verdict | Why | Rated |\n|---|---|---|---|---|\n" + "\n".join(r for _, r in sorted(rows)) + "\n"
     if any_stale: readme += "\n† Rated under an earlier rubric; a re-rating is queued.\n"

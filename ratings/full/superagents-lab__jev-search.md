@@ -55,7 +55,6 @@ Jev Search sends each request to Jev as one set of typed questions that picks a 
 ## Why this verdict
 
 Verdict 3, Use with a fix: F11 fails on the low window and query Choices, which act at any confidence, and that caps the verdict at 3. Execution is 2 and Fit is 2. F22 fails but only caps at very high stakes, and every decision is low. Ranking results for the person who searched is low, and the window, source and query decisions are low because chips show each choice and one click overrides it.
-Adjudicated 2026-10-01: ranking results for the person who searched is low stakes, so F11 on the window and query Choices is no.
 
 ## Fixes (from reading the code; not tested against it)
 

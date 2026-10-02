@@ -2,7 +2,7 @@
 
 # system-one-adapter-python: full rating
 
-**Verdict 1, Replaces Jev, not yet rated** · jev replacement · rated 2026-09-30 at [`e1d4cc9`](https://github.com/typesafe-ai/system-one-adapter-python/tree/e1d4cc9382) · read: extract · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
+**Not rated yet: replaces Jev** · jev replacement · rated 2026-09-30 at [`e1d4cc9`](https://github.com/typesafe-ai/system-one-adapter-python/tree/e1d4cc9382) · read: extract · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
 
 ## Summary
 

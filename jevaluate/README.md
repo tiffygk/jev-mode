@@ -28,7 +28,7 @@ Each dimension scores 0 to 3. The verdict comes from these rules, never an avera
 | **4&nbsp;Use&nbsp;it** | Correct use, minor gaps | Execution and Fit 2 or better, no failed core fact |
 | **3&nbsp;Use&nbsp;with&nbsp;a&nbsp;fix** | Right idea, fixable flaws | A failed core fact, or results claimed with no measurement |
 | **2&nbsp;Rework&nbsp;it** | Core rules broken | Execution 1 or 0, or a fatal flaw: Jev computes values, or confidence is ignored on a high-stakes action |
-| **1&nbsp;with&nbsp;a&nbsp;code** | Not rated on the scale | 1a claims Jev and never calls it; 1b uses the name without claiming a call; 1c ignores Jev's answers; 1r replaces Jev and 1t teaches it (both unscored) |
+| **1&nbsp;with&nbsp;a&nbsp;code** | Not rated on the scale | 1a claims Jev and never calls it; 1b uses the name, claiming no call; 1c ignores Jev's answers; 1r replaces Jev and 1t teaches it, shown as n.a. |
 | **Can't&nbsp;rate&nbsp;yet** | Too little visible to judge | README only, or no traced call to Jev found yet |
 
 ## How it works

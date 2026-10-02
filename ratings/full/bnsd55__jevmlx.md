@@ -2,7 +2,7 @@
 
 # jevmlx: full rating
 
-**Verdict 1, Replaces Jev, not yet rated** · jev replacement · rated 2026-09-30 at [`7e0d746`](https://github.com/bnsd55/jevmlx/tree/7e0d746081b8) · read: extract · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
+**Not rated yet: replaces Jev** · jev replacement · rated 2026-09-30 at [`7e0d746`](https://github.com/bnsd55/jevmlx/tree/7e0d746081b8) · read: extract · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
 
 ## Summary
 

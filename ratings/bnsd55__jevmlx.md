@@ -1,7 +1,7 @@
 [← All ratings](README.md)
 
 > **bnsd55/jevmlx** at [`7e0d746`](https://github.com/bnsd55/jevmlx/tree/7e0d746081b8) · jev replacement
-> ### Verdict 1: Replaces Jev, not yet rated
+> ### Not rated yet: replaces Jev
 > Execution n.a. · Fit n.a. · Coverage n.a. · Evidence n.a.
 >
 > - jevmlx is a local Apple Silicon engine that scores every option of typed fields from logits in one batched pass, and its server offers a `/v1/systemone` endpoint that accepts Jev's request shape and returns Jev-style typed answers (README.md).

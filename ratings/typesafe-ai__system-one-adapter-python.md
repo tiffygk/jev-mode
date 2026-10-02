@@ -1,7 +1,7 @@
 [← All ratings](README.md)
 
 > **typesafe-ai/system-one-adapter-python** at [`e1d4cc9`](https://github.com/typesafe-ai/system-one-adapter-python/tree/e1d4cc9382) · jev replacement
-> ### Verdict 1: Replaces Jev, not yet rated
+> ### Not rated yet: replaces Jev
 > Execution n.a. · Fit n.a. · Coverage n.a. · Evidence n.a.
 >
 > - This Python package imitates TypeSafe's `system_one` API by sending the same Noul, Choice and Score questions to OpenAI, Anthropic or Gemini models and returning typed answers.

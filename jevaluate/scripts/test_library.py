@@ -564,6 +564,22 @@ def test_export_drops_placeholder_scores(tmp_path, lib):
     assert "TBD" not in full and "## Scores" not in full
 
 
+def test_export_shows_unscored_codes_as_na_and_drops_adjudication_notes(tmp_path, lib):
+    d = lib / "projects" / "o__rep"; d.mkdir(parents=True)
+    make_rating(d / "2026-09-30.md", "Rep", "o", "https://github.com/o/rep", "2026-09-30", verdict=1, project_type="jev-replacement")
+    f = d / "2026-09-30.md"; f.write_text(f.read_text().replace("verdict_1_code: none", "verdict_1_code: 1r"))
+    e = lib / "projects" / "o__fm"; e.mkdir(parents=True)
+    make_rating(e / "2026-09-30.md", "Fm", "o", "https://github.com/o/fm", "2026-09-30", verdict=1)
+    g = e / "2026-09-30.md"; g.write_text(g.read_text().replace("verdict_1_code: none", "verdict_1_code: 1a").replace("Test fixture.", "Test fixture.\nAdjudicated 2026-10-01: internal note."))
+    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
+    readme = (out / "README.md").read_text()
+    assert "**n.a. (replaces Jev, not yet rated)**" in readme and "**1 Replaces" not in readme
+    assert "**1 False marketing: Jev in name only**" in readme
+    assert readme.index("o__fm") < readme.index("o__rep")
+    assert "Not rated yet: replaces Jev" in (out / "o__rep.md").read_text()
+    assert "Adjudicated" not in (out / "full" / "o__fm.md").read_text()
+
+
 def test_add_numbers_after_highest_same_day_and_keeps_evidence_separate(tmp_path, lib):
     d = lib / "projects" / "o__n"; d.mkdir(parents=True)
     make_rating(d / "2026-09-28-2.md", "N", "o", "https://github.com/o/n", "2026-09-28")
@@ -1101,7 +1117,8 @@ def test_export_label_for_1t(tmp_path, lib):
     r.write_text(re.sub(r"- F(?!0\b)\d+ .*\n", "", r.read_text()))
     assert run(lib, "add", str(r)).returncode == 0
     out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
-    assert "Guide, not yet rated" in (out / "o__u.md").read_text()
+    assert "Not rated yet: guide" in (out / "o__u.md").read_text()
+    assert "**n.a. (guide, not yet rated)**" in (out / "README.md").read_text()
 
 
 # --- Task 4c fix round 1 ---

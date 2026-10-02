@@ -1,7 +1,7 @@
 [← All ratings](README.md)
 
 > **Jev-Omni** at [`5addda8`](https://huggingface.co/akhilaaa3/Jev-Omni/tree/5addda86ddee) · jev replacement
-> ### Verdict 1: Replaces Jev, not yet rated
+> ### Not rated yet: replaces Jev
 > Execution n.a. · Fit n.a. · Coverage n.a. · Evidence n.a.
 >
 > - Jev-Omni is an open 12B Gemma 4 fine-tune that returns a probability per option for a state, question and options, over text, image, audio and video.

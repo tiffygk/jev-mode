@@ -2,7 +2,7 @@
 
 # Jev-Omni: full rating
 
-**Verdict 1, Replaces Jev, not yet rated** · jev replacement · rated 2026-09-30 at [`5addda8`](https://huggingface.co/akhilaaa3/Jev-Omni/tree/5addda86ddee) · read: full · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
+**Not rated yet: replaces Jev** · jev replacement · rated 2026-09-30 at [`5addda8`](https://huggingface.co/akhilaaa3/Jev-Omni/tree/5addda86ddee) · read: full · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
 
 ## Summary
 
