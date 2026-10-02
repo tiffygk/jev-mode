@@ -18,22 +18,20 @@ def prompt(scen):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--system", required=True, choices=["routing", "vocab"])
     ap.add_argument("--reps", type=int, default=3); ap.add_argument("--out", required=True); ap.add_argument("--ids", default="")
+    ap.add_argument("--effort", default="medium"); run_eval.add_runner_args(ap)
     a = ap.parse_args()
     probs = run_eval.preflight_out(a.out) + run_eval.preflight_repo(SKILL.parent)
     if probs: print("\n".join(probs), file=sys.stderr); sys.exit(2)
     key = json.loads((HERE / "expected.json").read_text())
     ids = [i for i in a.ids.split(",") if i] or sorted(key)
     scen = [s for s in json.loads((HERE / "scenarios.json").read_text()) if s["id"] in ids]
+    model, home, suffix = run_eval.runner_setup(a)
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    run_eval.write_stamp(out, "baseline", SKILL.parent)
-    (out / "system.md").write_text(system(a.system)); groups = [scen[i:i + 4] for i in range(0, len(scen), 4)]
+    run_eval.write_stamp(out, "baseline", SKILL.parent, a.reps, a.runner, model, a.effort)
+    (out / "system.md").write_text(system(a.system) + suffix); groups = [scen[i:i + 4] for i in range(0, len(scen), 4)]
     for rep in range(1, a.reps + 1):
         for gi, g in enumerate(groups):
-            res = subprocess.run(["claude", "-p", "--setting-sources", "", "--strict-mcp-config", "--tools", "",
-                                  "--system-prompt-file", str(out / "system.md"), "--model", "claude-sonnet-5-5",
-                                  "--effort", "medium", "--output-format", "json"], input=prompt(g), capture_output=True, text=True)
-            (out / f"r{rep}_g{gi}.json").write_text(res.stdout or json.dumps({"result": "", "error": res.stderr}))
-            print(f"rep {rep} group {gi}: {len(g)} scenarios, exit {res.returncode}")
+            run_eval.run_call(a, model, home, out / "system.md", prompt(g), out / f"r{rep}_g{gi}.json", f"rep {rep} group {gi}: {len(g)} scenarios")
 
 if __name__ == "__main__":
     main()

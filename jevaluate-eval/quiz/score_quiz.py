@@ -1,4 +1,4 @@
-"""Score a quiz run against the owner's key, per scenario and per rule tag. Usage: score_quiz.py <run dir>"""
+"""Score a quiz run against the owner's key, per scenario and per rule tag. Usage: score_quiz.py <run dir> [--reps N] (--reps only for a run whose run.json has none)"""
 import json, pathlib, sys
 HERE = pathlib.Path(__file__).parent; sys.path.insert(0, str(HERE.parent))
 import score
@@ -18,7 +18,10 @@ def by_tag(rows):
 
 if __name__ == "__main__":
     if sys.argv[1:2] in (["-h"], ["--help"]): print(__doc__); sys.exit(0)
-    rows, passed, tok = score.score(sys.argv[1], gold())
+    argv_reps = int(sys.argv[sys.argv.index("--reps") + 1]) if "--reps" in sys.argv else None
+    reps, problem = score.planned_reps(sys.argv[1], argv_reps)
+    if problem: print(problem, file=sys.stderr); sys.exit(2)
+    rows, passed, tok = score.score(sys.argv[1], gold(), reps)
     print(score.table(rows, tok)); print("\n| Rule tag | Scenarios | Passed |\n|---|---|---|")
     for t, d in sorted(by_tag(rows).items()): print(f"| {t} | {d['scenarios']} | {d['passed']} |")
     print(f"\nOverall: {'PASS' if passed else 'FAIL'}")
