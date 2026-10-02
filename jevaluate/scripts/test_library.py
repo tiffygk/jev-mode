@@ -1524,3 +1524,8 @@ def test_rater_family_unknown_is_sonnet():
     spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     assert m.rater_family("unknown") == "sonnet" and m.rater_family("claude-sonnet-5-5") == "sonnet" and m.rater_family("gpt-6-sol") == "codex"
     assert m.rater_label("gpt-6-sol") == "GPT-6 Sol" and m.rater_label("claude-sonnet-5-5") == "Sonnet 5.5" and m.rater_label("unknown") == "Sonnet"
+
+def test_rater_family_other_models_kept_apart():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    assert m.rater_family("claude-opus-5-5") == "claude-opus-5-5" and m.rater_label("claude-opus-5-5") == "claude-opus-5-5"

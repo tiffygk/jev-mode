@@ -57,30 +57,6 @@
       "skills": [
         "./jev-lens"
       ]
-    },
-    {
-      "name": "jev-sources",
-      "source": "./",
-      "strict": false,
-      "description": "Finds the TypeSafe docs and cookbook sections that answer a Jev question, and makes the agent read them before any claim.",
-      "author": {
-        "name": "tiffygk",
-        "url": "https://github.com/tiffygk"
-      },
-      "homepage": "https://github.com/tiffygk/jev-mode/tree/main/jev-sources",
-      "repository": "https://github.com/tiffygk/jev-mode",
-      "license": "PolyForm-Noncommercial-1.0.0",
-      "keywords": [
-        "jev",
-        "typesafe",
-        "system-one",
-        "docs",
-        "sources"
-      ],
-      "category": "development",
-      "skills": [
-        "./jev-sources"
-      ]
     }
   ]
 }

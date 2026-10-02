@@ -601,18 +601,20 @@ def publishable(p):
 
 def rater_family(rater):
     """codex for a GPT rater, else sonnet (including unknown, which predates the rater field)."""
-    return "codex" if str(rater).strip().lower().startswith("gpt-") else "sonnet"
+    r = str(rater).strip().lower()
+    if r.startswith("gpt-"): return "codex"
+    return "sonnet" if r in ("", "unknown") or r.startswith("claude-sonnet-") else r
 
 def rater_label(rater):
     r = str(rater).strip().lower()
     if r.startswith("gpt-"): return "GPT-" + "-".join(w.capitalize() for w in r[4:].split("-")).replace("-", " ", 1)
     m = re.match(r"claude-sonnet-(\d+)-(\d+)", r)
-    return f"Sonnet {m.group(1)}.{m.group(2)}" if m else "Sonnet"
+    return f"Sonnet {m.group(1)}.{m.group(2)}" if m else ("Sonnet" if r in ("", "unknown") else str(rater))
 
 def page_slug(p):
     """A rating's page name: the project folder for Sonnet ratings (unchanged), plus --<rater> for Codex ones."""
     rater = front(p).get("rater", "unknown").split()[0] if front(p).get("rater") else "unknown"
-    return p.parent.name if rater_family(rater) == "sonnet" else f"{p.parent.name}--{rater.lower()}"
+    return p.parent.name if rater_family(rater) == "sonnet" else f"{p.parent.name}--{rater.lower()}"  # any other rater gets its own page
 
 def latest_per_project(full_only=False):
     """{page slug: newest rating}, one per project per rater family, so Sonnet and Codex ratings both show."""

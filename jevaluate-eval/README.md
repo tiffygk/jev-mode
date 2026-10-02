@@ -81,7 +81,7 @@ Needs Claude Code with the `claude` CLI logged in and Python 3.8+.
 
 ```
 git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate jev-mode/jevaluate-eval jev-mode/shared ~/.claude/skills/
+cp -r jev-mode/{jevaluate,jevaluate-eval,shared} ~/.claude/skills/
 ```
 
 From the repo, try `python3 jevaluate-eval/lint_materials.py`; every command is in `commands.md`. Then ask Claude Code: `test the jevaluate rubric after my change`.

@@ -20,7 +20,7 @@ Jevaluate reads a Jev project's code and rates how well it uses Jev. Every findi
 >
 > **Top fix:** the threshold was tuned on the sample it reports on. Re-check it on a fresh slice.
 
-Each dimension scores 0 to 3. The verdict comes from these rules, never an average:
+The verdict comes from these rules, never an average:
 
 | Verdict | Definition | Set by |
 |---|---|---|
@@ -46,7 +46,6 @@ Written instructions alone didn't hold. In round 1, a rater recorded a partial r
 
 - `step.py` serves the rubric in five parts (routing, facts, scores, past-rating comparison, verdict), each only after the last is written, with only the rows that apply to this project.
 - Raters can't skip ahead: routing changed after the facts is refused, the previous rating appears only after the facts, and a transcript scan flags a rater that opens the rubric or past ratings directly.
-- Data files over 25,000 characters are sampled by content.
 - `library.py check` refuses a rating that breaks a rule and names the line to redo; `add` fills in the kind, the top stakes and every "not applicable".
 
 <a href="https://tiffygk.github.io/jev-mode/system/#d2-h"><picture><source media="(prefers-color-scheme: dark)" srcset="images/routing-dark.png"><img alt="Routing flowchart" src="images/routing-light.png"></picture></a>
@@ -66,7 +65,7 @@ git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jevaluate jev-mode/shared ~/.claude/skills/
 ```
 
-Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort, for comparable ratings; in Codex, `gpt-6-sol` at medium effort. A rating costs 100-160k tokens for a small repo. Ratings save to `~/.claude/jevaluate-library/` (or `$JEVALUATE_LIBRARY`).
+Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex), for comparable ratings. A rating costs 100-160k tokens for a small repo. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
 
 ## Published ratings
 

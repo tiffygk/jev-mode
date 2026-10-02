@@ -61,16 +61,14 @@ Every rule cites TypeSafe's docs or cookbooks, dated, in [`shared/jev-rules.md`]
 
 ## Install and use
 
-Needs Claude Code or Codex, Python 3.9+, and [uv](https://docs.astral.sh/uv/) (or `pip install pillow typesafe-sdk`). The Jev check needs `TYPESAFE_API_KEY`; everything else runs without it. Install the plugin from the marketplace: see [Install](../README.md#install).
-
-Or copy it by hand:
+Needs Claude Code or Codex, Python 3.9+, and [uv](https://docs.astral.sh/uv/) (or `pip install pillow typesafe-sdk`). The Jev check needs `TYPESAFE_API_KEY`; everything else runs without it. Install the plugin from the marketplace ([Install](../README.md#install)) or copy it:
 
 ```
 git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jev-lens jev-mode/shared ~/.claude/skills/
 ```
 
-Then ask your agent: `turn these photos into a Jev state`. Ten images take about 155k tokens in Light mode and 445k in Heavy (measured in Claude Code); the Jev API costs under a cent.
+Then ask your agent: `turn these photos into a Jev state`. Ten images take about 155k tokens in Light mode and 445k in Heavy; the Jev API costs under a cent.
 
 ## Limits
 
