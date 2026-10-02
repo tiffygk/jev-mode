@@ -52,3 +52,23 @@ def test_reading_the_capped_files_folder_is_not_flagged(tmp_path):
 def test_rater_brief_says_never_read_files_full():
     brief = (pathlib.Path(__file__).parent / "rater-brief.md").read_text()
     assert "files_full" in brief and "never read" in brief.lower()
+
+
+# Codex raters: `codex exec --json` logs, one event per line
+def codex(tmp_path, item):
+    p = tmp_path / "c.jsonl"
+    p.write_text(json.dumps({"type": "item.started", "item": item}) + "\n" + json.dumps({"type": "item.completed", "item": item}) + "\n")
+    return scan([str(p)], "r.md")
+
+def test_codex_shell_read_flagged_once(tmp_path):
+    f = codex(tmp_path, {"type": "command_execution", "command": "/bin/zsh -lc 'cat jevaluate/rubric.md'"})
+    assert len(f) == 1 and "rubric.md" in f[0]
+def test_codex_double_quoted_wrapper(tmp_path):
+    assert codex(tmp_path, {"type": "command_execution", "command": '/bin/zsh -lc "sed -n 1,9p ../ratings/x.md"'})
+def test_codex_allowed_step_full_not_flagged(tmp_path):
+    assert not codex(tmp_path, {"type": "command_execution", "command": "/bin/zsh -lc 'python3 jevaluate/scripts/step.py full r.md ~/.claude/jevaluate-library/projects/x/y.md'"})
+def test_codex_file_change_flagged(tmp_path):
+    assert codex(tmp_path, {"type": "file_change", "changes": [{"path": "/a/routing_revised.json", "kind": "add"}]})
+def test_codex_mcp_and_web_calls_flagged(tmp_path):
+    assert codex(tmp_path, {"type": "mcp_tool_call", "server": "fs", "tool": "read_file", "arguments": {"path": "/x/rubric.md"}})
+    assert codex(tmp_path, {"type": "web_search", "query": "jevaluate rubric.md"})
