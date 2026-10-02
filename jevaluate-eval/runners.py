@@ -4,7 +4,10 @@ import json, os, pathlib, shutil, subprocess, tempfile
 KEEP = ("agent_message", "reasoning")
 # Turned off so the grader sees only Codex's built-in tools. HOME is also pointed at the temp home (see env()),
 # because Codex finds the user's skills in ~/.agents/skills whatever CODEX_HOME says (found 2026-10-02).
-OFF = ("apps", "multi_agent", "plugins", "remote_plugin", "skill_search", "goals")
+# Shell, image and other tools are off too: with a shell, the grader searched the disk for rubric.md and read it,
+# even in a read-only sandbox (2026-10-02 vocab control). What remains is a JavaScript sandbox with no file access.
+OFF = ("apps", "multi_agent", "plugins", "remote_plugin", "skill_search", "goals",
+       "shell_tool", "unified_exec", "view_image", "image_generation", "sleep_tool", "tool_suggest")
 
 
 def env(home):
