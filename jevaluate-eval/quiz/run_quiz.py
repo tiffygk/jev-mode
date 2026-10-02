@@ -32,6 +32,7 @@ def main():
     for rep in range(1, a.reps + 1):
         for gi, g in enumerate(groups):
             run_eval.run_call(a, model, home, out / "system.md", prompt(g), out / f"r{rep}_g{gi}.json", f"rep {rep} group {gi}: {len(g)} scenarios")
+    if home: run_eval.runners.close_home(home)
 
 if __name__ == "__main__":
     main()

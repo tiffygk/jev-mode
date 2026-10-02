@@ -56,3 +56,10 @@ def test_codex_cmd_turns_off_extras_and_env_hides_home(tmp_path):
         assert cmd[cmd.index(f) - 1] == "--disable"
     e = runners.env(tmp_path)
     assert e["HOME"] == str(tmp_path) and e["CODEX_HOME"] == str(tmp_path)
+
+def test_warning_with_answer_is_not_an_error(tmp_path, monkeypatch):
+    ev = [{"type": "error", "message": "reconnecting"}, {"type": "item.completed", "item": {"type": "agent_message", "text": "[]"}}]
+    monkeypatch.setenv("PATH", fake_codex(tmp_path, ev) + os.pathsep + os.environ["PATH"])
+    (tmp_path / "s.md").write_text("sys")
+    d = runners.call("codex", tmp_path / "s.md", "p", "gpt-6-sol", "medium", home=tmp_path)
+    assert d["result"] == "[]" and "error" not in d and d["commands"] == []

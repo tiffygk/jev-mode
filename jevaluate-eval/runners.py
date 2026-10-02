@@ -29,6 +29,15 @@ def codex_home():
     return home
 
 
+def close_home(home):
+    """Remove a run's temp home. If Codex replaced the auth symlink with a refreshed file, copy it back first."""
+    a = pathlib.Path(home) / "auth.json"
+    real = pathlib.Path(os.environ.get("JEV_CODEX_AUTH") or pathlib.Path.home() / ".codex" / "auth.json")
+    if a.exists() and not a.is_symlink() and a.stat().st_mtime > real.stat().st_mtime:
+        shutil.copy2(a, real)
+    shutil.rmtree(home, ignore_errors=True)
+
+
 def codex_ready(home):
     """None when codex can run, else one sentence. Check before writing any run file."""
     if not shutil.which("codex"):
@@ -55,15 +64,17 @@ def parse_codex(stdout):
         if e.get("type") == "item.completed":
             if it.get("type") == "agent_message":
                 out["result"] = it.get("text", "")
-            elif it.get("type") not in KEEP:
+            elif it.get("type") not in KEEP + ("error",):
                 out["commands"].append(f'{it.get("type")}: {it.get("command") or it.get("path") or it.get("query") or ""}')
         if e.get("type") == "turn.completed":
             u = e.get("usage") or {}
             out["usage"] = {"input_tokens": u.get("input_tokens", 0) - u.get("cached_input_tokens", 0),
                             "cache_read_input_tokens": u.get("cached_input_tokens", 0),
                             "cache_creation_input_tokens": u.get("cache_write_input_tokens", 0), "output_tokens": u.get("output_tokens", 0)}
-        if e.get("type") in ("turn.failed", "error"):
-            out["error"] = json.dumps(e.get("error") or e)
+        if e.get("type") in ("turn.failed", "error") or it.get("type") == "error":
+            out["warning"] = json.dumps(e.get("error") or it or e)
+    if not out["result"] and "warning" in out:
+        out["error"] = out.pop("warning")
     return out
 
 
@@ -73,7 +84,9 @@ def call(runner, system_file, prompt, model, effort, home=None, timeout=900):
         try:
             d = json.loads(r.stdout)
         except ValueError:
-            d = {"result": "", "error": r.stderr}
+            d = None
+        if not isinstance(d, dict):
+            d = {"result": "", "error": r.stderr or "no JSON object from claude"}
         d.setdefault("commands", [])
         return d
     cwd = tempfile.mkdtemp(prefix="codex-cwd-")

@@ -4,7 +4,7 @@ sys.path.insert(0, str(HERE)); import compare_runs
 
 def run(tmp, name, system="S", packets=None):
     d = tmp / name; (d / "packets").mkdir(parents=True)
-    (d / "system.md").write_text(system)
+    (d / "system.md").write_text(system); (d / "task.md").write_text("T")
     for k, v in (packets or {"a.md": "A"}).items(): (d / "packets" / k).write_text(v)
     return d
 
@@ -26,3 +26,14 @@ def test_report_self_compare(tmp_path):
     r = subprocess.run([sys.executable, str(HERE / "compare_runs.py"), "report", str(src), str(src), "--reps", "3"], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert "| jev-omni | tuning | 3/3 | 3/3 |" in r.stdout and "Inputs: identical" in r.stdout
+
+def test_task_md_difference_caught(tmp_path):
+    a, b = run(tmp_path, "s"), run(tmp_path, "c"); (b / "task.md").write_text("T2")
+    assert "task.md differs" in compare_runs.same_inputs(a, b)[0]
+
+def test_close_home_copies_back_a_refreshed_login(tmp_path, monkeypatch):
+    import runners, time
+    real = tmp_path / "real.json"; real.write_text("old"); monkeypatch.setenv("JEV_CODEX_AUTH", str(real))
+    home = tmp_path / "h"; home.mkdir(); time.sleep(0.01); (home / "auth.json").write_text("new")
+    runners.close_home(home)
+    assert real.read_text() == "new" and not home.exists()

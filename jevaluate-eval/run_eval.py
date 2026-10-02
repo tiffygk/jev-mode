@@ -46,7 +46,7 @@ def runner_setup(a):
     model = a.model or MODELS[a.runner]
     if a.runner == "claude": return model, None, ""
     home = runners.codex_home(); problem = runners.codex_ready(home)
-    if problem: print(problem, file=sys.stderr); sys.exit(2)
+    if problem: runners.close_home(home); print(problem, file=sys.stderr); sys.exit(2)
     notes = (HERE / "codex-notes.md").read_text().strip()
     return model, home, ("\n\n" + notes if notes else "")
 
@@ -66,7 +66,7 @@ def main():
     write_stamp(out, a.phase, repo, a.reps, a.runner, model, a.effort)
     status = build(json.loads((HERE / "sources.json").read_text()), pk)
     (out / "status.json").write_text(json.dumps(status, indent=1))
-    (out / "system.md").write_text(system_prompt() + suffix)
+    (out / "system.md").write_text(system_prompt() + suffix); (out / "task.md").write_text((HERE / "task.md").read_text())
     ready = [s for s, st in status.items() if st == "ok"]
     groups = [ready[i:i + 4] for i in range(0, len(ready), 4)]
     for rep in range(1, a.reps + 1):
@@ -74,6 +74,7 @@ def main():
             prompt = (HERE / "task.md").read_text() + "".join("\n\n" + (pk / f"{s}.md").read_text() for s in g)
             run_call(a, model, home, out / "system.md", prompt, out / f"r{rep}_g{gi}.json", f"rep {rep} group {gi}: {len(g)} cases")
     print("skipped:", {s: st for s, st in status.items() if st != "ok"})
+    if home: runners.close_home(home)
 
 if __name__ == "__main__":
     main()
