@@ -1,8 +1,8 @@
 # Jev Lens
 
-Jev Lens uses an LLM with good vision to decode images for Jev, TypeSafe's text-only model, and hands back a JSON state for each image, all built on one shared schema.
+Jev Lens uses an LLM with good vision, in Claude Code or Codex, to decode images for Jev, TypeSafe's text-only model, and hands back a JSON state for each image, all built on one shared schema.
 
-In the Jev check step, Jev answers the state description it gets, so we need to prevent bias from the decoder llm context from leaking into the JSON state it writes. The decoder LLM agents work blind to prevent bias ruining your dataset, while calibration steps measure agreement between fresh decoding subagents to ensure consistency across a batch of iamges.
+In the Jev check step, Jev answers the state description it gets, so we need to prevent bias from the decoder llm context from leaking into the JSON state it writes. The decoder LLM agents work blind to prevent bias ruining your dataset, while calibration steps measure agreement between fresh decoding subagents to ensure consistency across a batch of images.
 
 | Situation | Use |
 |---|---|
