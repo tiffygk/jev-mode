@@ -69,7 +69,7 @@ def stakes_rows(section, t):
 
 def serve(step, t):
     if step == "routing": return rt.section(1)
-    if step == "facts": return stakes_rows(rt.section(2), t) + "\n\n## Jev rules and sources\n" + (lib.SKILL / "jev-rules.md").read_text()
+    if step == "facts": return stakes_rows(rt.section(2), t) + "\n\n## Jev rules and sources\n" + (lib.SKILL.parent / "shared" / "jev-rules.md").read_text()
     if step == "scores": return rt.section(3) + "\n" + rt.section(4)
     if step == "compare":
         d = lib.front_text(t); cards = lib.cards(d, exclude=f"{d.get('owner', '')}/{d.get('project', '')}")

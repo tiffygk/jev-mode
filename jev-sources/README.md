@@ -57,7 +57,7 @@ Written instructions alone didn't hold:
 
 ## Where the rules come from
 
-This skill holds no rules. It decides what to read; TypeSafe's pages say what Jev allows, and [`jevaluate/jev-rules.md`](../jevaluate/jev-rules.md) holds the design rules. For example, a cookbook that sends one request per candidate shows one way to build it. Whether you must do the same is answered by a docs page.
+This skill holds no rules. It decides what to read; TypeSafe's pages say what Jev allows, and [`shared/jev-rules.md`](../shared/jev-rules.md) holds the design rules. For example, a cookbook that sends one request per candidate shows one way to build it. Whether you must do the same is answered by a docs page.
 
 ## Install and use
 

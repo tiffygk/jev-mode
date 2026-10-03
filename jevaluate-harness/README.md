@@ -38,11 +38,11 @@ The [system page](https://tiffygk.github.io/jev-mode/system/) also shows the rou
 
 ## Install and use
 
-Needs Claude Code, Python 3.8+, the GitHub CLI (`gh`, logged in) and Jevaluate itself.
+Needs Claude Code or Codex, Python 3.8+, the GitHub CLI (`gh`, logged in) and Jevaluate itself.
 
 ```
 git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate jev-mode/jevaluate-harness ~/.claude/skills/
+cp -r jev-mode/jevaluate jev-mode/jevaluate-harness jev-mode/shared ~/.claude/skills/
 ```
 
 Put your never-publish regexes in `$JEVALUATE_LIBRARY/private-terms.txt`, and optionally set `$JEVALUATE_OVERLAY` to a markdown note of your own rules for these workflows (see the skill's Settings). Then ask Claude Code: `run a jevaluate re-rate round`.

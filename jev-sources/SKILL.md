@@ -5,7 +5,7 @@ description: Use when a question, review, design or claim involves Jev, TypeSafe
 
 # Jev sources
 
-Answers about Jev rest on TypeSafe sections you opened in full this session, found by the router, not by grep or memory. This skill decides what to read; deciding what it means for a design belongs to `jev-mode/jevaluate/jev-rules.md`.
+Answers about Jev rest on TypeSafe sections you opened in full this session, found by the router, not by grep or memory. This skill decides what to read; deciding what it means for a design belongs to `jev-mode/shared/jev-rules.md`.
 
 ## Before any Jev claim
 

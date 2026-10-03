@@ -13,6 +13,11 @@ The single source of rules for building with Jev, each citing its public source.
 | Cookbooks (18) | 2026-09-24 | script extracts, not full reads |
 | Launch post, evals.typesafe.ai | 2026-09-24 | sentences on training, calibration and evals |
 
+## Jevaluate's rating rules (not TypeSafe's)
+These decide how a rating is made, not how to build with Jev. They come from rating community projects, not from a TypeSafe page.
+- R1 **A call is proven by a traced request,** never by a name, a README, docs, fixtures or code that imitates Jev's API. (`rubric.md` F0; from the 2026-09-28 rating round)
+- R2 **Stakes decide which flaws cap a verdict.** Unguarded user text and spliced values cap a verdict only where the code acts, with no review, on personal data, money or access. Almost no community project guards against injection, so a flat cap measured only that. (`rubric.md`, Stakes; own rule, 2026-09-28)
+
 ## State
 - S1 **An object with descriptive field names** is the default; **a plain string is fine** when the use case is one piece of text. An array suits a sequence of messages or records. (`concepts/state`)
 - S2 **Group related information** in one state when the decision compares its parts. (`concepts/state`)

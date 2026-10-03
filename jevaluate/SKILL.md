@@ -13,7 +13,7 @@ Follow `read.md`; `scripts/step.py` serves the rubric, the fix rows and past rat
 
 ## Model
 
-Run on a Sonnet-class model at medium effort, the same one every time: ratings stay comparable only if the rater doesn't change. Record both in the rating (`rater`, `effort`).
+Run on a Sonnet-class model at medium effort, the same one every time: ratings stay comparable only if the rater doesn't change. In Codex, run on `gpt-6-sol` at medium effort. In another harness, pick one model and effort and keep them. Record both in the rating (`rater`, `effort`); a rating by a different model is a different rater's.
 
 ## Verdicts
 
@@ -21,8 +21,12 @@ Verdicts run from 5 "Learn from it" down to the verdict-1 codes and "Can't rate 
 
 ## The library
 
-Ratings are logged outside this skill, in `$JEVALUATE_LIBRARY` if set, else `~/.claude/jevaluate-library/`; `scripts/library.py` creates it. Never overwrite a past rating: a re-rating is a new dated entry.
+Ratings are logged outside this skill, in `$JEVALUATE_LIBRARY` if set, else `~/.claude/jevaluate-library/` if it exists (libraries made before Codex support), else `~/.jevaluate-library/`; `scripts/library.py` creates it. Never overwrite a past rating: a re-rating is a new dated entry.
 
 ## Sources
 
 Only public sources: the docs at docs.typesafe.ai (page list: `https://docs.typesafe.ai/llms.txt`; append `.md` to any page for markdown) and the project's own public files. Credit a repo to its GitHub owner, never to its banner or branding. A project's claims about its own results are claims until the rating checks them.
+
+## In Codex
+
+Codex's default sandbox blocks the network and writes outside the workspace. Fetching a repo (`gh`, `git`) and `library.py add` need your approval, or run with network access and the library folder as a writable root.
