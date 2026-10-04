@@ -88,7 +88,7 @@ From the repo, try `python3 jevaluate-eval/lint_materials.py`; every command is 
 
 ## Limits
 
-It runs on Claude and doesn't call Jev, so it needs no TypeSafe key. It scores routing only: type, calls Jev, the verdict-1 code and stakes. The owner's answers are the key, so an owner who misreads a rule tunes graders to that reading. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
+It runs on Claude and doesn't call Jev, so it needs no TypeSafe key. It only scores projects that call Jev through the TypeSafe API, not guides or Jev replacements that work like Jev yet. It will alert you to Jev projects that are false marketing and only falsely claim to use Jev. The owner's answers are the key when you change the rubric or need to resolve an edge case, so misreading a rule tunes graders to that reading. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
 
 ## License
 
