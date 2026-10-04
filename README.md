@@ -1,6 +1,8 @@
 # Jev Mode
 
-Skills for Claude Code and Codex, and a study course, for building with Jev, TypeSafe's System One model. Not every skill calls Jev: some are guides and evaluators for building with it. The table says which, and each folder's README gives the details.
+Skills for Claude Code and Codex, and a study course, for building with Jev, TypeSafe's System One model. In the Ratings folder find the list of rated Jev projects and our eval methodology for user safety and quality.
+
+Not every skill calls Jev: some are guides and LLM evaluators for building with it. 
 
 | Name | What it does | Calls Jev | Status |
 |---|---|---|---|
