@@ -266,7 +266,7 @@ def store_derived(text):
         if re.search(r"^top_stakes:.*$", head, re.M): head = re.sub(r"^top_stakes:.*$", f"top_stakes: {top}", head, count=1, flags=re.M)
         elif re.search(r"^verdict_1_code:.*$", head, re.M): head = re.sub(r"^(verdict_1_code:.*)$", lambda x: x.group(1) + f"\ntop_stakes: {top}", head, count=1, flags=re.M)
         else: head += f"\ntop_stakes: {top}"
-    kind = rubric_text.KIND_OF.get(d.get("project_type", "").split("#")[0].strip())
+    kind = rubric_text.KIND_OF.get(rubric_text.canon_type(d.get("project_type", "").split("#")[0].strip()))
     if kind:
         if re.search(r"^kind:.*$", head, re.M): head = re.sub(r"^kind:.*$", f"kind: {kind}", head, count=1, flags=re.M)
         elif re.search(r"^project_type:.*$", head, re.M): head = re.sub(r"^(project_type:.*)$", lambda x: x.group(1) + f"\nkind: {kind}", head, count=1, flags=re.M)

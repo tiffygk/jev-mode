@@ -44,7 +44,7 @@ def missing(step, t):
             if fm(t, k) not in vals.get(k, []): need.append(k)
         f0 = re.search(r"^\s*-\s*F0\b.*$", t, re.M)
         if not f0 or is_placeholder(f0.group(0)): need.append("the F0 calls-Jev line (still the template's text, or missing)")
-        if rt.KIND_OF.get(fm(t, "project_type")) == "uses" and fm(t, "project_type") != "client" and fm(t, "verdict_1_code") not in ROUTED and not lib.decisions(t)[0]:
+        if rt.KIND_OF.get(rt.canon_type(fm(t, "project_type"))) == "uses" and fm(t, "project_type") != "client" and fm(t, "verdict_1_code") not in ROUTED and not lib.decisions(t)[0]:
             need.append("## Decisions (one line per decision Jev makes: " + lib.DECISION_FORMAT + ")")
         if fm(t, "project_type") == "jev-mention-only":
             need += [k for k in ("citation", "type_best_match", "code_functionality", "replaces_jev", "intended_call") if not fm(t, k)]

@@ -98,6 +98,7 @@ def derive_key(saved):
     vals = rubric_text.allowed_values(); key, problems = {}, []
     for i, a in sorted(saved.items()):
         typ, calls, code, stakes = (str(a.get(k, "")).strip() for k in ("project_type", "calls_jev", "verdict_1_code", "stakes"))
+        typ = rubric_text.canon_type(typ) if typ else typ  # answers saved under an old type name
         bad = False
         for name, v, ok in (("type", typ, vals["project_type"]), ("calls Jev", calls, CALLS), ("verdict-1 code", code, vals["verdict_1_code"])):
             if v not in ok: problems.append(f"{i}: {name} '{v}' is not one of {', '.join(ok)}; answer it in the form"); bad = True
