@@ -30,7 +30,10 @@ In Claude Code:
 claude plugin marketplace add tiffygk/jev-mode
 claude plugin install jevaluate@jev-mode
 claude plugin install jev-lens@jev-mode
+claude plugin install jev-sources@jev-mode
 ```
+
+After installing Jev Sources, ask Claude to run its refresh once: it downloads TypeSafe's docs and cookbooks into `~/.claude/jev-sources-data`.
 
 In Codex:
 
@@ -42,7 +45,7 @@ codex plugin add jev-lens@jev-mode
 
 Pull later changes with `claude plugin marketplace update jev-mode` or `codex plugin marketplace upgrade jev-mode`.
 
-Jev Sources installs by copy only. To install without the plugin system, copy a skill's folder into `~/.claude/skills/`:
+In Codex, Jev Sources installs by copy. To install without the plugin system, copy a skill's folder into `~/.claude/skills/`:
 
 ```
 git clone https://github.com/tiffygk/jev-mode

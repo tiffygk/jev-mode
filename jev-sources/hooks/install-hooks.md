@@ -1,6 +1,6 @@
 # Installing the hooks (optional)
 
-Two hooks keep Claude reading sources on Jev work. Add them to `~/.claude/settings.json` under `"hooks"`:
+Two hooks keep Claude reading sources on Jev work. The Claude Code plugin install adds them automatically; don't also add them to `settings.json`, or both fire. For a copy install, add them to `~/.claude/settings.json` under `"hooks"`:
 
 ```json
 "UserPromptSubmit": [
