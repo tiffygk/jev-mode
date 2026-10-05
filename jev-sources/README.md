@@ -63,6 +63,17 @@ This skill holds no rules. It decides what to read; TypeSafe's pages say what Je
 
 Needs Claude Code, git and Python 3.8+. No packages.
 
+As a Claude Code plugin, which also installs the hooks:
+
+```
+claude plugin marketplace add tiffygk/jev-mode
+claude plugin install jev-sources@jev-mode
+```
+
+Then ask Claude to refresh Jev Sources once; it runs `refresh.sh --fetch` from the plugin's folder.
+
+By copy:
+
 ```
 git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jev-sources ~/.claude/skills/
@@ -73,7 +84,7 @@ python3 ~/.claude/skills/jev-sources/scripts/read.py 'docs/primitives__noul#7'
 
 `read.py` takes the id that `route.py` prints under each item. The first fetch downloads about 110 pages.
 
-The hooks are optional: [`hooks/install-hooks.md`](hooks/install-hooks.md) has the settings lines. Run the tests with `python3 -m pytest tests` after the fetch; they need the downloaded pages.
+For a copy install the hooks are optional: [`hooks/install-hooks.md`](hooks/install-hooks.md) has the settings lines. Run the tests with `python3 -m pytest tests` after the fetch; they need the downloaded pages.
 
 ## Limits
 

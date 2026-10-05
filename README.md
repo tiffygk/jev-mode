@@ -33,7 +33,7 @@ claude plugin install jev-lens@jev-mode
 claude plugin install jev-sources@jev-mode
 ```
 
-After installing Jev Sources, ask Claude to run its refresh once: it downloads TypeSafe's docs and cookbooks into `~/.claude/jev-sources-data`.
+After installing Jev Sources, ask Claude to refresh Jev Sources once: it runs `refresh.sh --fetch`, which downloads TypeSafe's docs and cookbooks into `~/.claude/jev-sources-data`.
 
 In Codex:
 

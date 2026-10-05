@@ -80,8 +80,7 @@
       "category": "development",
       "skills": [
         "./"
-      ],
-      "hooks": "./hooks/hooks.json"
+      ]
     }
   ]
 }
