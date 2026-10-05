@@ -83,8 +83,13 @@ def serve(step, t):
             and (not re.match(r"\| [FG]\d+\b", l) or re.match(r"\| ([FG]\d+)\b", l).group(1) in failed)]
     return rt.section(5) + ("\n\n## Fix-catalog rows for the failed checks\n" + "\n".join(rows) if rows else "")
 
+def gate():
+    g = lib.rubric_gate()
+    if g: print("step.py: " + g, file=sys.stderr); sys.exit(4)
+    return rt.frozen_status()[0]
+
 def next_step(rating):
-    t = rating.read_text(); log = [e for e in read_log(rating) if not e["step"].startswith("full:")]
+    status = gate(); t = rating.read_text(); log = [e for e in read_log(rating) if not e["step"].startswith("full:")]
     if not log:
         est = estimate(manifest_for(rating)); print(f"Estimated cost: about {est // 1000}k tokens.")
         if est > 200_000 and approved(rating) < est:
@@ -95,18 +100,18 @@ def next_step(rating):
         if need: print("Write these before the next section: " + ", ".join(need), file=sys.stderr); sys.exit(1)
         if cur == "verdict": print("All sections served. Log the rating with library.py add.", file=sys.stderr); sys.exit(1)
         step = "compare" if cur == "routing" and fm(t, "verdict_1_code") in ROUTED else ORDER[ORDER.index(cur) + 1]  # a routed code skips facts and scores, never the comparison (read.md phase 3)
-    full_log = read_log(rating) + [{"step": step, "time": now(), "routing": routing_print(t)}]
+    full_log = read_log(rating) + [{"step": step, "time": now(), "routing": routing_print(t), "rubric": status}]
     log_path(rating).write_text(json.dumps(full_log, indent=1)); print(serve(step, t))
 
 def full(rating, past):
-    t = rating.read_text(); d = lib.front_text(t)
+    status = gate(); t = rating.read_text(); d = lib.front_text(t)
     allowed = [str(c["path"]) for c in lib.cards(d, exclude=f"{d.get('owner', '')}/{d.get('project', '')}")[:2]]
     prev = lib.latest_rating_for(d.get("url", ""))
     served = [e["step"] for e in read_log(rating)]
     if not (prev and str(past) == str(prev)) and str(past) not in allowed:
         sys.exit("Only the two closest past ratings, or this project's previous rating, can be read in full.")
     if "compare" not in served: sys.exit("Full ratings are served after the compare step: run step.py next until it prints the comparison cards.")
-    log = read_log(rating) + [{"step": f"full:{past}", "time": now(), "routing": routing_print(t)}]
+    log = read_log(rating) + [{"step": f"full:{past}", "time": now(), "routing": routing_print(t), "rubric": status}]
     log_path(rating).write_text(json.dumps(log, indent=1)); print(pathlib.Path(past).read_text())
 
 if __name__ == "__main__":

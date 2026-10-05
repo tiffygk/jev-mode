@@ -135,10 +135,18 @@ def planned_reps(run, argv_reps):
     if not reps: return None, f"{run}/run.json has no rep count (a run made before run_eval.py wrote one); rerun score.py with --reps N, the number of reps that run planned"
     return int(reps), None
 
+def rubric_note(run):
+    """"" for a run on the frozen rubric (or an older run that didn't record it), else why it isn't a result of record."""
+    try: info = json.loads((pathlib.Path(run) / "run.json").read_text())
+    except (OSError, ValueError): return ""
+    st = info.get("rubric_status")
+    if st in (None, "frozen", "no-git"): return ""
+    return f" (CANDIDATE rubric, {info.get('rubric_detail', st)}: not a result of record)"
+
 def stamp_line(run, passed):
     """First output line: what was run, on which rubric and commit, and whether it passed."""
     info = json.loads((pathlib.Path(run) / "run.json").read_text())
-    return f"Run: phase={info.get('phase')} rubric={info.get('rubric', 'unknown')} commit={info.get('head')} passed={'yes' if passed else 'no'}"  # the rubric the run was made on
+    return f"Run: phase={info.get('phase')} rubric={info.get('rubric', 'unknown')} commit={info.get('head')} passed={'yes' if passed else 'no'}" + rubric_note(run)  # the rubric the run was made on
 
 if __name__ == "__main__":
     args = sys.argv[1:]; argv_reps = None

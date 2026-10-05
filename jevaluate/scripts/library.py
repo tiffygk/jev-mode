@@ -42,6 +42,25 @@ def default_lib():
     return old if old.is_dir() else pathlib.Path.home() / ".jevaluate-library"
 
 LIB = pathlib.Path(os.environ.get("JEVALUATE_LIBRARY") or default_lib())
+TEST_ESCAPE = "JEVALUATE_TEST_UNFROZEN"  # lets the test suite run on a rubric-change branch; never honored on the real library
+OK_RUBRIC = ("frozen", "no-git")
+
+def real_library():
+    return LIB.resolve() in {(pathlib.Path.home() / ".claude/jevaluate-library").resolve(), (pathlib.Path.home() / ".jevaluate-library").resolve()}
+
+def escape_on(): return bool(os.environ.get(TEST_ESCAPE)) and not real_library()
+
+def rubric_gate():
+    """None when ratings may use this rubric, else why not. Ratings use only the frozen rubric (2026-10-05: an agent
+    edited the live rubric, so the lock sits in the code that serves and checks it, not only in a hook)."""
+    status, detail = rubric_text.frozen_status()
+    if status in OK_RUBRIC or escape_on(): return None
+    return (f"the rubric isn't the frozen one ({detail}). Ratings use only a frozen rubric: restore it with "
+            "git restore jevaluate/rubric.md, or change it through jevaluate-harness/rubric-change.md")
+
+def served_unfrozen(log):
+    """True when any served step recorded a rubric that wasn't frozen."""
+    return any(e.get("rubric", "frozen") not in OK_RUBRIC for e in log)
 RAT = LIB / "ratings"
 PROJ = LIB / "projects"
 
@@ -457,7 +476,10 @@ def check_steps(src, d, t, err, prefix=False):
     src = pathlib.Path(src); p = pathlib.Path(str(src) + ".steps.json"); ev = evidence_dir_for(src)
     if not p.exists() and ev and (ev / (src.name + ".steps.json")).exists(): p = ev / (src.name + ".steps.json")
     if not p.exists(): err.append("no step log: rate with step.py next, one section at a time"); return
-    log = [e for e in json.loads(p.read_text()) if not e["step"].startswith("full:")]
+    full_log = json.loads(p.read_text())
+    if served_unfrozen(full_log) and not escape_on():
+        err.append("the step log shows sections served from a rubric that wasn't frozen; rate again from the frozen rubric")
+    log = [e for e in full_log if not e["step"].startswith("full:")]
     seen = [e["step"] for e in log]
     code = d.get("verdict_1_code", "").split("#")[0].strip()
     want = ["routing", "compare", "verdict"] if code in ROUTED_CODES else STEP_ORDER
@@ -493,6 +515,8 @@ def check(src, evidence=None, text=None):
     for k in ("project", "owner", "rated", "commit", "depth", "verdict", "scores", "rubric") + REQUIRED_FIELDS:
         if not d.get(k): err.append(f"missing front-matter field: {k}")
     ev = pathlib.Path(evidence) if evidence else evidence_dir_for(p)
+    gate = rubric_gate()
+    if gate: err.append(gate)
     check_coverage(t, d, ev, err, WARNINGS)
     if d.get("rubric") and rubric_date(d["rubric"]) < rubric_date(RUBRIC): err.append(f"rubric {d['rubric']} is older than {RUBRIC}; rate with the current rubric")
     if "not recorded" in d.get("commit", ""): err.append("commit not recorded")

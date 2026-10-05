@@ -375,3 +375,10 @@ def test_old_runs_answering_demo_score_as_display():
     g = {"type": "display", "kind": "uses"}
     assert score.type_matches({"project_type": "demo"}, g) and score.type_matches({"project_type": "display"}, g)
     assert not score.type_matches({"project_type": "workflow"}, g)
+
+def test_candidate_rubric_is_labeled_not_of_record(tmp_path):
+    import json, score
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2099-01-01", "rubric_status": "unfrozen", "rubric_detail": "no tag"}))
+    assert "not a result of record" in score.rubric_note(tmp_path) and "CANDIDATE" in score.stamp_line(tmp_path, True)
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2026-09-29.1", "rubric_status": "frozen"}))
+    assert score.rubric_note(tmp_path) == ""

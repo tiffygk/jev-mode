@@ -72,3 +72,9 @@ def test_codex_file_change_flagged(tmp_path):
 def test_codex_mcp_and_web_calls_flagged(tmp_path):
     assert codex(tmp_path, {"type": "mcp_tool_call", "server": "fs", "tool": "read_file", "arguments": {"path": "/x/rubric.md"}})
     assert codex(tmp_path, {"type": "web_search", "query": "jevaluate rubric.md"})
+
+def test_flags_the_unfrozen_test_escape(tmp_path):
+    import json
+    t = tmp_path / "t.jsonl"
+    t.write_text(json.dumps({"type": "item.completed", "item": {"type": "command_execution", "command": "/bin/zsh -lc 'JEVALUATE_TEST_UNFROZEN=1 python3 /x/jevaluate/scripts/step.py next /r/rating.md'"}}) + "\n")
+    assert scan([str(t)], "/r/rating.md")
