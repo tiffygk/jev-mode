@@ -88,7 +88,7 @@
   "type": "workflow",
   "f0": "yes",
   "code": "none",
-  "top_stakes": "high"
+  "top_stakes": "very high"
  },
  "q21": {
   "kind": "uses",
@@ -102,7 +102,7 @@
   "type": "workflow",
   "f0": "yes",
   "code": "none",
-  "top_stakes": "high"
+  "top_stakes": "very high"
  },
  "q23": {
   "kind": "uses",
