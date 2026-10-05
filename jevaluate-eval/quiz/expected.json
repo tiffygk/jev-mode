@@ -15,7 +15,7 @@
  },
  "q03": {
   "kind": "uses",
-  "type": "demo",
+  "type": "display",
   "f0": "yes",
   "code": "none",
   "top_stakes": "low"
@@ -50,7 +50,7 @@
  },
  "q08": {
   "kind": "uses",
-  "type": "demo",
+  "type": "display",
   "f0": "yes",
   "code": "none",
   "top_stakes": "low"
@@ -72,6 +72,41 @@
  "q11": {
   "kind": "uses",
   "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "q19": {
+  "kind": "uses",
+  "type": "display",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "q20": {
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "very high"
+ },
+ "q21": {
+  "kind": "uses",
+  "type": "display",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "low"
+ },
+ "q22": {
+  "kind": "uses",
+  "type": "workflow",
+  "f0": "yes",
+  "code": "none",
+  "top_stakes": "very high"
+ },
+ "q23": {
+  "kind": "uses",
+  "type": "display",
   "f0": "yes",
   "code": "none",
   "top_stakes": "low"

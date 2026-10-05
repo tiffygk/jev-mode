@@ -1,6 +1,6 @@
 [← All ratings](README.md)
 
-> **RileyCarney/JevTools** at [`7f6907b`](https://github.com/RileyCarney/JevTools/tree/7f6907b461) · demo
+> **RileyCarney/JevTools** at [`7f6907b`](https://github.com/RileyCarney/JevTools/tree/7f6907b461) · display
 > ### Verdict 3: Use with a fix
 > Execution ●●○ · Fit ●●● · Coverage ●●● · Evidence ●○○
 >

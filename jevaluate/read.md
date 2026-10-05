@@ -43,7 +43,7 @@ url: <url>
 owner: <github owner>
 rated: YYYY-MM-DD
 rubric: 2026-09-29   # the date in rubric.md's title
-project_type: workflow | library | client | agent-tool | demo | guide | jev-replacement | jev-mention-only
+project_type: workflow | library | client | agent-tool | display | guide | jev-replacement | jev-mention-only
 verdict_1_code: 1a | 1b | 1c | 1r | 1t | none
 citation: <the exact claim to use or call Jev, with file:line> | none
 # jev-mention-only only: type_best_match, code_functionality, replaces_jev, intended_call (rubric.md section 1)

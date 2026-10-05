@@ -148,3 +148,11 @@ def test_cards_cli_writes_a_form(tmp_path):
     out = tmp_path / "f.html"
     r = subprocess.run([sys.executable, str(HERE / "build_answer_form.py"), "--cards", str(tmp_path / "cards.json"), "--out", str(out)], capture_output=True, text=True)
     assert r.returncode == 0 and "data-id='stub'" in out.read_text()
+
+def test_ids_form_shows_only_named_scenarios():
+    page = baf.build_form(0, ids="q02,q05")
+    assert "<h2>q02</h2>" in page and "<h2>q05</h2>" in page and "<h2>q01</h2>" not in page
+
+def test_saved_answer_with_old_type_name_keys_under_new_name():
+    key, probs = baf.derive_key({"q03": {"project_type": "demo", "calls_jev": "yes", "verdict_1_code": "none", "stakes": "low"}})
+    assert not probs and key["q03"]["type"] == "display" and key["q03"]["kind"] == "uses"

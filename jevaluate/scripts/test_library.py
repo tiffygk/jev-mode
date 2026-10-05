@@ -1529,3 +1529,17 @@ def test_rater_family_other_models_kept_apart():
     import importlib.util
     spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     assert m.rater_family("claude-opus-5-5") == "claude-opus-5-5" and m.rater_label("claude-opus-5-5") == "claude-opus-5-5"
+
+def test_point_version_is_not_stale():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    assert m.rubric_date("2026-09-29.1") == "2026-09-29" and m.rubric_date("2026-09-29") == "2026-09-29"
+    assert not m.rubric_date("2026-09-29") < m.rubric_date("2026-09-29.1")
+    assert m.rubric_date("2026-09-29") < m.rubric_date("2026-10-10")
+
+def test_routing_print_accepts_the_old_type_name():
+    import importlib.util, hashlib
+    spec = importlib.util.spec_from_file_location("libmod2", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    d = {"project_type": "display", "verdict_1_code": "none"}
+    old = hashlib.sha1("|".join(["demo", "uses", "none", m.derive_top_stakes(d, "") or ""]).encode()).hexdigest()
+    assert old in m.routing_prints(d, "") and m.routing_print(d, "") in m.routing_prints(d, "")

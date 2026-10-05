@@ -49,7 +49,7 @@
    "askjevs"
   ],
   "kind": "uses",
-  "type": "demo",
+  "type": "display",
   "f0": "yes",
   "code": "none",
   "top_stakes": "low"
@@ -140,7 +140,7 @@
    "jev-web-analyzer"
   ],
   "kind": "uses",
-  "type": "demo",
+  "type": "display",
   "f0": "yes",
   "code": "none",
   "top_stakes": "low"

@@ -2,13 +2,18 @@
 import pathlib, re
 
 RUBRIC_MD = pathlib.Path(__file__).resolve().parent.parent / "rubric.md"
-KIND_OF = {"workflow": "uses", "library": "uses", "client": "uses", "agent-tool": "uses", "demo": "uses",
+KIND_OF = {"workflow": "uses", "library": "uses", "client": "uses", "agent-tool": "uses", "display": "uses",
            "guide": "teaches", "jev-replacement": "replaces", "jev-mention-only": "mentions"}
+
+# Renamed types: older answers and runs still score under the new name (demo became display on 2026-10-05).
+RENAMED = {"demo": "display"}
+
+def canon_type(t): t = str(t).strip().lower(); return RENAMED.get(t, t)
 
 def _text(text): return text if text is not None else RUBRIC_MD.read_text()
 
 def version(text=None):
-    m = re.search(r"^# Jevaluate rubric \((\d{4}-\d\d-\d\d[a-z]?)\)", _text(text), re.M)
+    m = re.search(r"^# Jevaluate rubric \((\d{4}-\d\d-\d\d(?:\.\d+|[a-z])?)\)", _text(text), re.M)
     return m.group(1) if m else "unknown"
 
 def allowed_values(text=None):
