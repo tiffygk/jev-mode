@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 import os
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # this install's jev-sources folder
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))  # this install's jev-sources folder; realpath, since hooks are often symlinked into ~/.claude/hooks
 
 # A Jev term. "choice", "score" and "state" alone are common words, so they count only in compounds.
 _JEV_CI = re.compile(r"\b(jevs?|jevaluate[\w-]*|nouls?)\b|\b(choice|score)s? (primitive|question)s?\b", re.I)

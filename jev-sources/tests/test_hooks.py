@@ -44,3 +44,11 @@ def test_brief_and_reminder_name_this_install():
     assert f"{root}/scripts/route.py" in out["hookSpecificOutput"]["additionalContext"]
     out = run("jev-dispatch-check.py", {"tool_input": {"prompt": "Review this Jev design."}})
     assert f"{root}/scripts" in out["hookSpecificOutput"]["permissionDecisionReason"]
+
+def test_symlinked_hook_names_the_real_install(tmp_path):
+    for f in ("jev-prompt-reminder.py", "jev_terms.py"):
+        os.symlink(os.path.join(H, f), tmp_path / f)
+    r = subprocess.run([sys.executable, str(tmp_path / "jev-prompt-reminder.py")], input=json.dumps({"prompt": "is a Noul right here?"}),
+                       capture_output=True, text=True)
+    root = os.path.dirname(os.path.realpath(H))
+    assert f"{root}/scripts/route.py" in json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
