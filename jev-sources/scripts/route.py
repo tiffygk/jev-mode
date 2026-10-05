@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Route a Jev question to the source sections to read, and how deeply.
 
-  python3 ~/.claude/skills/jev-sources/scripts/route.py "can I put 30 passages in one call?"
+  python3 scripts/route.py "can I put 30 passages in one call?"
   ... --json   machine-readable
 
 Ranks sections with BM25 over the section index, after expanding the question with
@@ -14,7 +14,7 @@ import json, math, os, re, sys
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import CODE as CODE_DIR, DATA
+from paths import CODE as CODE_DIR, DATA, SCRIPTS, REFRESH
 ROOT = DATA
 CONSTRAINT = re.compile(r"\b(must|require[sd]?|only|can'?t|cannot|one call|per request|per call|limit|allowed|wrong|correct|need to|have to)\b", re.I)
 CODE = re.compile(r"\b(sdk|python|javascript|typescript|client|method|install|import|async|http|api)\b", re.I)
@@ -34,10 +34,10 @@ def load():
     try:
         rows = [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
     except FileNotFoundError:
-        sys.exit("no section found: the library index is missing; run bash ~/.claude/skills/jev-sources/refresh.sh --fetch")
+        sys.exit(f"no section found: the library index is missing; run {REFRESH}")
     texts = {}
     if not rows:
-        sys.exit("no section found: the library index is empty; run bash ~/.claude/skills/jev-sources/refresh.sh --fetch")
+        sys.exit(f"no section found: the library index is empty; run {REFRESH}")
     keep, missing = [], set()
     for r in rows:
         try:
@@ -48,7 +48,7 @@ def load():
         body = "\n".join(lines[r["line_start"] - 1:r["line_end"]])
         texts[r["id"]] = toks(r["heading"] + " " + r["heading"] + " " + body)  # heading counts double
     for p in sorted(missing):
-        print(f"missing source {p}; run bash ~/.claude/skills/jev-sources/refresh.sh --fetch", file=sys.stderr)
+        print(f"missing source {p}; run {REFRESH}", file=sys.stderr)
     return keep, texts
 
 
@@ -137,14 +137,14 @@ def main():
     if "--json" in sys.argv:
         print(json.dumps(res, indent=1)); return
     if not res["sections"] and not res["definitions"]:
-        print("no section found; refresh the library (bash ~/.claude/skills/jev-sources/refresh.sh --fetch) or read the indexes"); return
+        print(f"no section found; refresh the library ({REFRESH}) or read the indexes"); return
     label = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference", "other": "other"}
     print(f"Question: {res['question']}" + ("  [limits a design: read in full]" if res["constraint"] else ""))
     if res["topics"]:
         print("Topics matched: " + "; ".join(res["topics"]))
     for s in res["sections"] + res["definitions"]:
         print(f"{s['depth']:9} | {label[s['kind']]:16} | {s['path']}#{s['heading']} | {s['tokens']} tok\n"
-              f"          python3 ~/.claude/skills/jev-sources/scripts/read.py '{s['id']}'")
+              f"          python3 {SCRIPTS}/read.py '{s['id']}'")
     print("READ FULL items: read every one with read.py before any claim. EXTRACT items: claims from them are unverified until read in full.")
 
 

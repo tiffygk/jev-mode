@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Print one source section in full, with the file's scope caveats and captions.
 
-  python3 ~/.claude/skills/jev-sources/scripts/read.py 'cookbooks/rerank_typesafe#7'
+  python3 scripts/read.py 'cookbooks/rerank_typesafe#7'
   ... --extract "<terms>"   12 lines around each hit, capped at 1,500 tokens (marked as an extract)
 
 The first line is the citation to quote: SOURCE: <path>#<heading> | KIND | READ.
@@ -9,7 +9,7 @@ The first line is the citation to quote: SOURCE: <path>#<heading> | KIND | READ.
 import json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA
+from paths import DATA, REFRESH
 ROOT = DATA
 LABEL = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference", "other": "other"}
 
@@ -21,12 +21,12 @@ def main():
     try:
         rows = [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
     except FileNotFoundError:
-        sys.exit("library index missing; run bash ~/.claude/skills/jev-sources/refresh.sh --fetch")
+        sys.exit(f"library index missing; run {REFRESH}")
     r = next((x for x in rows if x["id"] == sid), None)
     if not r:
         sys.exit(f"no section {sid!r}; run route.py to get ids")
     if not os.path.exists(os.path.join(ROOT, r["path"])):
-        sys.exit(f"missing source {r['path']}; run bash ~/.claude/skills/jev-sources/refresh.sh --fetch")
+        sys.exit(f"missing source {r['path']}; run {REFRESH}")
     lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
     extract = "--extract" in sys.argv
     if extract:

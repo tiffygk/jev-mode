@@ -3,7 +3,7 @@
 which the prompt-reminder hook shows on the next Jev message. Run weekly (launchd) or by hand; network: one fetch."""
 import json, os, re, sys, urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA
+from paths import DATA, REFRESH
 ROOT = DATA
 OUT = os.path.join(ROOT, "NEW_PAGES.txt")
 
@@ -29,7 +29,7 @@ def main():
     lines = []
     if new:
         lines.append(f"TypeSafe added {len(new)} page(s) since the last refresh: {', '.join(new)}. "
-                     "Run `bash ~/.claude/skills/jev-sources/refresh.sh --fetch`, then propose topics.json entries for them.")
+                     f"Run `{REFRESH}`, then propose topics.json entries for them.")
     if gone:
         lines.append(f"{len(gone)} library page(s) are no longer listed by TypeSafe: {', '.join(gone[:10])}.")
     os.makedirs(ROOT, exist_ok=True)

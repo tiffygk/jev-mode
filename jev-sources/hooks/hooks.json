@@ -1,0 +1,4 @@
+{"hooks": {
+  "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/jev-prompt-reminder.py\""}]}],
+  "PreToolUse": [{"matcher": "Agent", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/jev-dispatch-check.py\""}]}]
+}}

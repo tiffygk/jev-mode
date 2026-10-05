@@ -98,3 +98,13 @@ def test_fetch_names_failed_pages(tmp_path, monkeypatch):
     monkeypatch.setattr(fetch, "get", fake)
     assert fetch.main() == 1
     assert (tmp_path / "docs" / "concepts__state.md").exists()
+
+def test_messages_name_this_install(tmp_path):
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "noul"], capture_output=True, text=True,
+                       env={**os.environ, "JEV_SOURCES_DATA": str(tmp_path / "empty")})
+    assert f"bash {CODE}/refresh.sh --fetch" in r.stdout + r.stderr and "~/.claude/skills" not in r.stdout + r.stderr
+
+@pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "index.json")) and not os.path.isdir(DATA), reason="library not fetched")
+def test_route_prints_runnable_read_commands():
+    out = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "can I put 30 passages in one call?"], capture_output=True, text=True).stdout
+    assert f"python3 {CODE}/scripts/read.py" in out
