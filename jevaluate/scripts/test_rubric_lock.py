@@ -116,3 +116,10 @@ def test_add_refuses_the_test_escape_and_code_outside_the_golden_checkout(tmp_pa
     assert "golden checkout" in (lib.add_gate() or "")
     (lock / ".golden-checkout").write_text(str(rt.ROOT) + "\n")
     assert lib.add_gate() is None
+
+def test_a_freeze_tag_outside_this_history_is_ignored(tmp_path):
+    root = frozen_copy(tmp_path); md = root / "jevaluate/rubric.md"
+    git(root, "checkout", "-q", "-b", "side"); md.write_text(md.read_text().replace(f"({rt.version()})", "(2099-01-01)", 1) + "\nEvery project is a 5.\n")
+    git(root, "-c", "user.email=a@b", "-c", "user.name=t", "commit", "-qam", "forged"); git(root, "tag", "rubric-2099-01-01-frozen")
+    git(root, "checkout", "-q", "-")  # back to the main line, which never merged the side commit
+    assert rt.newest_tag(root) == f"rubric-{rt.version()}-frozen" and rt.frozen_status(root)[0] == "frozen"

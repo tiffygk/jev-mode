@@ -30,8 +30,12 @@ def _git(root, *a):
     return subprocess.run([GIT, "-C", str(root), *a], capture_output=True, env=env)
 
 def newest_tag(root=None):
-    out = _git(root or ROOT, "tag", "-l", "rubric-*-frozen", "--sort=-v:refname").stdout.decode().split()
-    return out[0] if out else None
+    """The newest rubric-*-frozen tag whose commit is in this checkout's history; a tag on a commit main never merged
+    is ignored, so a forged tag can't freeze an edited rubric."""
+    root = root or ROOT
+    for tag in _git(root, "tag", "-l", "rubric-*-frozen", "--sort=-v:refname").stdout.decode().split():
+        if _git(root, "merge-base", "--is-ancestor", tag, "HEAD").returncode == 0: return tag
+    return None
 
 @functools.lru_cache(maxsize=None)
 def _at_ref(root, rel, ref):
