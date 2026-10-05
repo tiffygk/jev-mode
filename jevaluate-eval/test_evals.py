@@ -369,3 +369,9 @@ def test_write_stamp_records_the_rubric_version(tmp_path):
     out = tmp_path / "out"; out.mkdir()
     re_.write_stamp(out, "baseline", repo, 3)
     assert json.loads((out / "run.json").read_text())["rubric"] == sc.rubric_text.version()
+
+def test_old_runs_answering_demo_score_as_display():
+    import score
+    g = {"type": "display", "kind": "uses"}
+    assert score.type_matches({"project_type": "demo"}, g) and score.type_matches({"project_type": "display"}, g)
+    assert not score.type_matches({"project_type": "workflow"}, g)

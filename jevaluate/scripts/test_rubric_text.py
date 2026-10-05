@@ -24,3 +24,7 @@ def test_trailing_note_is_not_a_value():
 
 def test_point_version_in_title():
     assert rt.version("# Jevaluate rubric (2026-09-29.1)\n") == "2026-09-29.1"
+
+def test_demo_renamed_display():
+    assert "display" in rt.allowed_values()["project_type"] and "demo" not in rt.allowed_values()["project_type"]
+    assert rt.KIND_OF["display"] == "uses" and rt.canon_type("demo") == "display" and rt.canon_type("Workflow") == "workflow"

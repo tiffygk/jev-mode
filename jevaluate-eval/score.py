@@ -13,6 +13,11 @@ from library import highest_stakes
 
 NOT_MEASURED = "Not measured: facts F1-F23, verdicts 2 to 5, guide scoring."
 
+
+def type_matches(answer, g):
+    """The answer's type, under its current name, equals the key's."""
+    return rubric_text.canon_type(answer.get("project_type", "")) == g["type"]
+
 def _level(s):
     s = str(s or "").lower().strip()
     return "n.a." if s in ("n.a.", "n.a", "na", "n/a") else "very high" if "very high" in s else "high" if "high" in s else "low" if "low" in s else None
@@ -95,12 +100,12 @@ def score(rundir, gold, reps=None):
         got = [a for a in hits if a]
         ok = lambda f: sum(1 for a in got if f(a))
         row = dict(base, answered=len(got),
-                   kind_ok=ok(lambda a: rubric_text.KIND_OF.get(str(a.get("project_type", "")).lower()) == g["kind"]),  # kind is derived from the answer's type
-                   type_ok=ok(lambda a: str(a.get("project_type", "")).lower() == g["type"]),
+                   kind_ok=ok(lambda a: rubric_text.KIND_OF.get(rubric_text.canon_type(a.get("project_type", ""))) == g["kind"]),  # kind is derived from the answer's type
+                   type_ok=ok(lambda a: type_matches(a, g)),
                    f0_ok=ok(lambda a: _f0_ok(a, g)),
                    code_ok=ok(lambda a: str(a.get("verdict_1_code", "")).lower() == g["code"]),
                    stakes_ok=ok(lambda a: not _stakes_gold(g) or _top_stakes(a) == g["top_stakes"]),
-                   types_seen=sorted({str(a.get("project_type", "")).lower() for a in got}))
+                   types_seen=sorted({rubric_text.canon_type(a.get("project_type", "")) for a in got}))
         need = len(reps) if g["set"] == "tuning" else need_some
         row["pass"] = all(row[k] >= need for k in ("kind_ok", "type_ok", "f0_ok", "code_ok")) and (not _stakes_gold(g) or row["stakes_ok"] >= need_some)
         passed &= row["pass"]; rows.append(row)

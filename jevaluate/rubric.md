@@ -7,7 +7,7 @@ Route first, check facts second, score third, set the verdict last. Every ruling
 Four calls come before any fact: type, calls Jev (F0), the verdict-1 code and each decision's stakes. Kind follows from type; `library.py add` fills it in. They decide which facts apply and how a failure counts, so a wrong call makes the rating wrong however carefully the facts are checked. Type decides how F0 counts. A project that calls Jev is a uses type; one that doesn't is a guide, jev-replacement or jev-mention-only, and only a jev-mention-only or a jev-replacement can get 1a, and only a jev-mention-only 1b.
 
 - `kind` values: uses, teaches, replaces, mentions (filled in by code from the type)
-- `project_type` values: workflow, library, client, agent-tool, demo, guide, jev-replacement, jev-mention-only
+- `project_type` values: workflow, library, client, agent-tool, display, guide, jev-replacement, jev-mention-only
 - `verdict_1_code` values: 1a, 1b, 1c, 1r, 1t, none
 - `stakes` values: very high, high, low
 - `top_stakes` values: very high, high, low, n.a.
@@ -29,7 +29,7 @@ flowchart TD
   Q2 -- acts on them --> Q2b{Do others import it into their own code?}
   Q2b -- no --> W[workflow]
   Q2b -- yes --> L
-  Q2 -- only shows them to a person --> D[demo]
+  Q2 -- only shows them to a person --> D[display]
   Q2 -- hands them back to a caller --> Q3{Who calls it?}
   Q3 -- an agent, at run time --> A[agent-tool]
   Q3 -- code that imports it; it writes questions --> L[library]
@@ -57,7 +57,7 @@ Pick the type by what the code does when it runs, not what the README calls it. 
 | Type | Kind | Means | Example | What it changes |
 |---|---|---|---|---|
 | `workflow` | uses | Its own code writes questions, sends them to Jev and acts on the answers. | A CI step asks whether a pull request touches billing code and adds a required reviewer if so. | Every fact applies; stakes come from what it does. |
-| `demo` | uses | Shows Jev's answers to people and does nothing else with them. | A page where you paste a product review and see Jev's sentiment probabilities as bars. | Every design fact applies; stakes are low. |
+| `display` | uses | Shows Jev's answers to people, and no code acts on them. | A page where you paste a product review and see Jev's sentiment probabilities as bars. | Every design fact applies; stakes are low. |
 | `agent-tool` | uses | Hands Jev's answers to an agent, which decides what to do. | An editor extension the coding agent calls to ask whether a diff touches auth; it returns the probability. | Rate the templates and guidance it ships; stakes come from what the tool does, usually low. |
 | `library` | uses | Code others import that writes its own questions, wording or thresholds, whether it hands the answers back or acts on them itself. | A Python package whose `is_spam(text)` builds the Noul question and applies a 0.8 cut-off. | Rate its defaults, docs and examples; users copy them. |
 | `client` | uses | An SDK, proxy or gateway that passes the caller's questions through and ships no question wording or defaults. | A Go SDK that sends whatever questions the caller supplies. | Only F0, F4, F12, F14 and F19 apply; every other fact is n.a. Execution and Fit use only those. It makes no decisions of its own, so `top_stakes` is n.a. |
@@ -65,7 +65,7 @@ Pick the type by what the code does when it runs, not what the README calls it. 
 | `jev-replacement` | replaces | Offers others Jev-style answers without Jev: a model, weights, engine or API that accepts Jev's request format or returns its typed answers. | A small fine-tuned model served locally that accepts Jev's request format. | Verdict 1r until its own track exists, or 1a if it claims to be or to call Jev. A model used only inside the project's own features, offered to no one as a stand-in for Jev, makes it a jev-mention-only. |
 | `jev-mention-only` | mentions | Uses Jev's name or ideas but doesn't call it, teach it, or offer a stand-in for it. | A to-do app called "Jev Tasks" whose README says "powered by Jev" and whose code calls a general chat model. | Facts are n.a.; verdict 1a or 1b; record the five fields below. |
 
-**An AI agent is not a background program.** An agent-tool hands Jev's answer to an AI model, such as a coding assistant, that decides what to do next. A scheduled job or background worker that applies a rule written in advance is the project's own code, so the project is a workflow. *Example: a nightly job that closes any account Jev scores above 0.9 as spam: workflow.* A scheduled job is a workflow only when its code acts on an answer, such as sending, blocking, closing or changing something. A job that only stores Jev's scores so a page can show them is a demo. *Example: a weekly job that scores job postings for clarity, and a page that lists the scores: demo. The same job emailing each employer whose posting scores under 0.3: workflow.*
+**An AI agent is not a background program.** An agent-tool hands Jev's answer to an AI model, such as a coding assistant, that decides what to do next. A scheduled job or background worker that applies a rule written in advance is the project's own code, so the project is a workflow. *Example: a nightly job that closes any account Jev scores above 0.9 as spam: workflow.* A scheduled job is a workflow only when its code acts on an answer, such as sending, blocking, closing or changing something. A job that only stores Jev's scores so a page can show them is a display. *Example: a weekly job that scores job postings for clarity, and a page that lists the scores: display. The same job emailing each employer whose posting scores under 0.3: workflow.*
 
 **Code others import is a library, even when it acts on the answers itself.** If other people's code imports it, it is a library, whether it returns Jev's answers or acts on them; a ready-to-run wrapper it also ships doesn't change that. *Example: a Python package that apps import to screen uploaded photos, whose own code rejects every photo Jev flags: library.*
 
@@ -209,7 +209,7 @@ How a no counts:
 - **2**: measured, with one disclosed weakness. *Example: the builder's own labels, said so.*
 - **1**: numbers without method, tuned and tested on the same data, or only latency or cost measured. *Example: "p95 latency 180 ms" and nothing on accuracy.*
 - **0**: claims results with no measurement shown. *Example: "95% accurate" with nothing behind it.*
-- **n.a.**: claims no results. *Example: a demo that reports no numbers.*
+- **n.a.**: claims no results. *Example: a display that reports no numbers.*
 
 ## 4. Build stages and the loop
 Mark each stage the project implements, with these labels exactly:

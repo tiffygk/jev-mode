@@ -162,7 +162,7 @@
   "text": "Tallyroom reads each night's new support tickets from a Postgres export and sends the ticket text to Jev with the question 'Is this customer frustrated?'. It runs as a cron job at 02:00 and writes the returned probability beside the ticket ID in a scores table. A Streamlit page reads that table and plots a weekly frustration trend by product area. If a run fails, the previous night's numbers stay on the page.",
   "set": "heldout",
   "tags": [
-   "scheduled-job-demo-vs-workflow"
+   "scheduled-job-display-vs-workflow"
   ]
  },
  {
@@ -170,7 +170,7 @@
   "text": "Lapsewatch runs every morning at 06:00 over subscriptions with a failed payment in the last 30 days. For each one it sends the account's last six support messages to Jev and asks 'Is this customer likely to cancel soon?'. The returned probability goes into a database column. Any account scoring above 0.8 is moved by the same script to the retention queue via the billing API, its renewal reminder emails are suspended, and its plan is flagged for a discount offer. Scores under the threshold are only stored.",
   "set": "heldout",
   "tags": [
-   "scheduled-job-demo-vs-workflow"
+   "scheduled-job-display-vs-workflow"
   ]
  },
  {
@@ -178,7 +178,7 @@
   "text": "Diffsight is a CI step that runs after every merge to main. It sends the pull request description and file list to Jev with the question 'Does this change touch authentication?' and receives a score between 0 and 1. The score is written into the build summary as a line of text and uploaded with the other build artifacts so reviewers can see it on the run page.",
   "set": "heldout",
   "tags": [
-   "scheduled-job-demo-vs-workflow"
+   "scheduled-job-display-vs-workflow"
   ]
  },
  {
@@ -186,7 +186,7 @@
   "text": "Shelfguard is a batch job that runs every 15 minutes against the marketplace's queue of new seller listings. For each listing it sends the photos and title to Jev and asks 'Does this listing show a counterfeit item?'. Listings scoring above 0.9 are set to hidden by the job through the marketplace API, and the seller's account gets a hold flag. Listings scoring between 0.5 and 0.9 are written to a spreadsheet for the trust team. Everything below 0.5 is left alone.",
   "set": "heldout",
   "tags": [
-   "scheduled-job-demo-vs-workflow"
+   "scheduled-job-display-vs-workflow"
   ]
  },
  {
@@ -194,7 +194,7 @@
   "text": "Inboxline is a weekly script run by a scheduler on Sunday evenings. It takes each draft in the next day's newsletter folder, sends the text to Jev, and asks 'Is this draft mostly promotional?'. The probability is appended to a CSV, which a dashboard chart reads, showing the share of promotional drafts per month. The CSV is archived monthly.",
   "set": "heldout",
   "tags": [
-   "scheduled-job-demo-vs-workflow"
+   "scheduled-job-display-vs-workflow"
   ]
  }
 ]

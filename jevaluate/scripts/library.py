@@ -418,7 +418,7 @@ def check_schema(d, t, err, ev=None):
     first = lambda k: d.get(k, "").split("#")[0].strip()
     typ, code, v = first("project_type"), first("verdict_1_code"), first("verdict")
     for k, x in (("project_type", typ), ("verdict_1_code", code)):  # kind is derived from the type by code; a rater-entered kind is ignored
-        if x not in vals.get(k, []): err.append(f"{k} '{x}' is not one of {vals.get(k)}")
+        if x not in vals.get(k, []): err.append(f"{k} '{x}' is not one of {vals.get(k)}" + (f": '{x}' was renamed '{rubric_text.canon_type(x)}'" if rubric_text.canon_type(x) != x.lower() else ""))
     claim = first("citation") not in ("", "none")
     if typ == "jev-replacement" and claim and code != "1a":
         err.append(f"a jev-replacement whose citation quotes a claim to be or to call Jev gets 1a, not '{code}': redo verdict_1_code as 1a (or citation as none if the project makes no such claim)")

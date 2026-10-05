@@ -48,7 +48,7 @@ def test_refuses_undescribed_line():
 def test_refuses_action_not_in_packet():
     with pytest.raises(SystemExit, match="not in the packet"): bc.card("x", PACKET, notes(actions=[["src/app.py", 40, "Does a thing."]]))
 
-@pytest.mark.parametrize("word", ["workflow", "very high", "false marketing", "stakes", "1a", "demo", "agent-tool", "low",
+@pytest.mark.parametrize("word", ["workflow", "very high", "false marketing", "stakes", "1a", "display", "agent-tool", "low",
                                   "high-stakes", "very-high", "name-only", "integrations", "libraries", "Mentioned", "clients", "not-yet-rated"])
 def test_refuses_verdict_words(word):
     n = notes(); n["actions"][1][2] = f"Deletes the message, {word}."
