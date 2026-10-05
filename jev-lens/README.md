@@ -2,7 +2,7 @@
 
 Jev Lens uses an LLM with good vision, in Claude Code or Codex, to decode images for Jev, TypeSafe's text-only model, and hands back a JSON state for each image, all built on one shared schema.
 
-In the Jev check step, Jev answers the state description it gets, so we need to prevent bias from the decoder llm context from leaking into the JSON state it writes. The decoder LLM agents work blind to prevent bias ruining your dataset, while calibration steps measure agreement between fresh decoding subagents to ensure consistency across a batch of images.
+Jev answers only the state it's given, so the decoders work blind: fresh subagents that never see your goal, your questions or what you hope the image shows. Calibration first tunes the decode to your judgment. You review the decodes of 1 to 3 images, and a correction that recurs across images becomes a rule in the brief. After that, the brief carries your judgment. In Heavy mode, two blind decoders must agree on at least 90% of each field, on a random sample of the batch, before the batch is accepted. Decoding and agreement run on LLMs today, and Jev is used only to check the finished state. Once this baseline holds, calibration will move to Jev calls, measured against TypeSafe's guidance on state and question design.
 
 | Situation | Use |
 |---|---|
