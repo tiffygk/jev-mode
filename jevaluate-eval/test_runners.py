@@ -84,3 +84,10 @@ def test_close_home_without_real_auth_still_cleans_up(tmp_path, monkeypatch):
     h = runners.codex_home(); (h / "auth.json").write_text("new")
     runners.close_home(h)
     assert not h.exists() and (tmp_path / "missing.json").read_text() == "new"
+
+def test_ids_keep_only_named_cases():
+    import run_eval
+    src = {"a": {"x": 1}, "b": {"x": 2}, "c": {"x": 3}}
+    assert run_eval.select(src, "a,c") == {"a": {"x": 1}, "c": {"x": 3}} and run_eval.select(src, "") == src
+    import pytest
+    with pytest.raises(SystemExit): run_eval.select(src, "a,zzz")

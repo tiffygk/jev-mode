@@ -57,7 +57,8 @@ def run_call(a, model, home, system_file, prompt, out_file, label):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--reps", type=int, default=3); ap.add_argument("--effort", default="medium")
-    ap.add_argument("--phase", required=True, choices=["baseline", "after"]); ap.add_argument("--out", required=True); add_runner_args(ap); a = ap.parse_args()
+    ap.add_argument("--phase", required=True, choices=["baseline", "after"]); ap.add_argument("--out", required=True); ap.add_argument("--ids", default="", help="comma-separated case ids; default all")
+    add_runner_args(ap); a = ap.parse_args()
     repo = SKILL.parent
     probs = score.preflight(json.loads((HERE / "gold.json").read_text())) + preflight_out(a.out) + preflight_repo(repo)
     if probs: print("\n".join(probs), file=sys.stderr); sys.exit(2)
@@ -67,10 +68,17 @@ def main():
     finally:  # copies a refreshed Codex login back even after Ctrl-C or an error
         if home: runners.close_home(home)
 
+def select(sources, ids):
+    """Only the named cases (comma-separated); all when empty. An unknown id exits with one sentence."""
+    want = [i for i in ids.split(",") if i]
+    unknown = [i for i in want if i not in sources]
+    if unknown: print(f"unknown case ids: {', '.join(unknown)}", file=sys.stderr); sys.exit(2)
+    return {k: v for k, v in sources.items() if not want or k in want}
+
 def run_all(a, model, home, suffix, repo):
     out = pathlib.Path(a.out); pk = out / "packets"; out.mkdir(parents=True, exist_ok=True)
     write_stamp(out, a.phase, repo, a.reps, a.runner, model, a.effort)
-    status = build(json.loads((HERE / "sources.json").read_text()), pk)
+    status = build(select(json.loads((HERE / "sources.json").read_text()), a.ids), pk)
     (out / "status.json").write_text(json.dumps(status, indent=1))
     (out / "system.md").write_text(system_prompt() + suffix); (out / "task.md").write_text((HERE / "task.md").read_text())
     ready = [s for s, st in status.items() if st == "ok"]

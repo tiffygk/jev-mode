@@ -1,4 +1,4 @@
-# Jevaluate rubric (2026-09-29)
+# Jevaluate rubric (2026-09-29.1)
 
 Route first, check facts second, score third, set the verdict last. Every ruling below has a one-sentence meaning and an invented example sorted correctly. The examples are made up: none is a real project, and a rating never cites them. The rules' sources are in `jev-rules.md`. When two ratings of one project disagree, tighten the rule they split on.
 
@@ -65,7 +65,7 @@ Pick the type by what the code does when it runs, not what the README calls it. 
 | `jev-replacement` | replaces | Offers others Jev-style answers without Jev: a model, weights, engine or API that accepts Jev's request format or returns its typed answers. | A small fine-tuned model served locally that accepts Jev's request format. | Verdict 1r until its own track exists, or 1a if it claims to be or to call Jev. A model used only inside the project's own features, offered to no one as a stand-in for Jev, makes it a jev-mention-only. |
 | `jev-mention-only` | mentions | Uses Jev's name or ideas but doesn't call it, teach it, or offer a stand-in for it. | A to-do app called "Jev Tasks" whose README says "powered by Jev" and whose code calls a general chat model. | Facts are n.a.; verdict 1a or 1b; record the five fields below. |
 
-**An AI agent is not a background program.** An agent-tool hands Jev's answer to an AI model, such as a coding assistant, that decides what to do next. A scheduled job or background worker that applies a rule written in advance is the project's own code, so the project is a workflow. *Example: a nightly job that closes any account Jev scores above 0.9 as spam: workflow.*
+**An AI agent is not a background program.** An agent-tool hands Jev's answer to an AI model, such as a coding assistant, that decides what to do next. A scheduled job or background worker that applies a rule written in advance is the project's own code, so the project is a workflow. *Example: a nightly job that closes any account Jev scores above 0.9 as spam: workflow.* A scheduled job is a workflow only when its code acts on an answer, such as sending, blocking, closing or changing something. A job that only stores Jev's scores so a page can show them is a demo. *Example: a weekly job that scores job postings for clarity, and a page that lists the scores: demo. The same job emailing each employer whose posting scores under 0.3: workflow.*
 
 **Code others import is a library, even when it acts on the answers itself.** If other people's code imports it, it is a library, whether it returns Jev's answers or acts on them; a ready-to-run wrapper it also ships doesn't change that. *Example: a Python package that apps import to screen uploaded photos, whose own code rejects every photo Jev flags: library.*
 

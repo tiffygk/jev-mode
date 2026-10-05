@@ -138,6 +138,11 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
 SKILL = pathlib.Path(__file__).resolve().parent.parent
 
 RUBRIC = rubric_text.version()
+
+
+def rubric_date(v):
+    """The date part of a rubric version: a point version (2026-09-29.1) clarifies wording, so ratings under its date stay current."""
+    return str(v).split()[0].split(".")[0] if str(v).split() else ""
 REQUIRED_FIELDS = ("project_type", "rater", "effort", "via")
 FIELD_DEFAULTS = {"rater": "unknown", "effort": "medium", "project_type": "unrecorded", "via": "unrecorded"}
 DOC_LINK = re.compile(r"docs\.typesafe\.ai/\S+|\b(?:cookbooks|concepts|patterns|primitives|model-jaggedness)/[\w\-]+(?:/[\w\-]+)*|`(?:primitives|confidence|models)`")
@@ -479,7 +484,7 @@ def check(src, evidence=None, text=None):
         if not d.get(k): err.append(f"missing front-matter field: {k}")
     ev = pathlib.Path(evidence) if evidence else evidence_dir_for(p)
     check_coverage(t, d, ev, err, WARNINGS)
-    if d.get("rubric") and d["rubric"].split()[0] < RUBRIC: err.append(f"rubric {d['rubric']} is older than {RUBRIC}; rate with the current rubric")
+    if d.get("rubric") and rubric_date(d["rubric"]) < rubric_date(RUBRIC): err.append(f"rubric {d['rubric']} is older than {RUBRIC}; rate with the current rubric")
     if "not recorded" in d.get("commit", ""): err.append("commit not recorded")
     body = t.split("## Coverage")[0]
     for m in PROCESS_NOTE.finditer(body):
@@ -567,7 +572,7 @@ def stale():
     for p in sorted(ratings_glob()):
         r = front(p).get("rubric", "").split()
         r = r[0] if r else ""
-        if r < RUBRIC: rows.append(f"{p.parent.name}/{p.name}  rubric {r or 'missing'} (current {RUBRIC})")
+        if rubric_date(r) < rubric_date(RUBRIC): rows.append(f"{p.parent.name}/{p.name}  rubric {r or 'missing'} (current {RUBRIC})")
     print("\n".join(rows) if rows else "no stale ratings")
     return len(rows)
 
@@ -735,7 +740,7 @@ def export_pages(p, slug=None):
     ptype = "" if ptype in ("", "unrecorded") else ptype.replace("-", " ")
     sc = dict(re.findall(r"(\w+):\s*([\w.]+)", d.get("scores", "")))
     scores = " · ".join(f"{k.capitalize()} {dots(sc.get(k, ''))}" for k in ("execution", "fit", "coverage", "evidence"))
-    stale = [f"*Rated under an earlier rubric ({r or 'unrecorded'}). A re-rating is queued.*", ""] if r < RUBRIC else []
+    stale = [f"*Rated under an earlier rubric ({r or 'unrecorded'}). A re-rating is queued.*", ""] if rubric_date(r) < rubric_date(RUBRIC) else []
     rows = fact_rows(t); summ = section(t, "Summary").strip()
     summ_lines = sentences(summ)[:3]
     fixes = [re.sub(r"^\d+\.\s*", "", l).strip() for l in section(t, "Core fixes").splitlines() if re.match(r"^\d+\.", l.strip())]
@@ -782,7 +787,7 @@ def export(outdir):
     for slug, p in sorted(latest_per_project(full_only=True).items()):
         detail, full, d, r, why = export_pages(p, slug); pages[slug] = (p, detail, full)
         v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
-        stale = r < RUBRIC; any_stale |= stale
+        stale = rubric_date(r) < rubric_date(RUBRIC); any_stale |= stale
         who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
         ptype = (d.get("project_type", "").split() or [""])[0]
         ptype = "" if ptype == "unrecorded" else ptype.replace("-", " ")
@@ -849,7 +854,7 @@ def cards(d, exclude, limit=5):
         if s:
             failed = [fid(n) for n, _, v, _ in fact_rows(t) if v == "no"]
             hits.append((s, {"path": p, "verdict": e.get("verdict", ""), "code": e.get("verdict_1_code", "").split("#")[0].strip(),
-                             "why": why_line(t, e), "failed": failed, "old": e.get("rubric", "") < RUBRIC}))
+                             "why": why_line(t, e), "failed": failed, "old": rubric_date(e.get("rubric", "")) < rubric_date(RUBRIC)}))
     hits.sort(key=lambda h: -h[0])
     return [c for _, c in hits[:limit]]
 

@@ -8,7 +8,7 @@ KIND_OF = {"workflow": "uses", "library": "uses", "client": "uses", "agent-tool"
 def _text(text): return text if text is not None else RUBRIC_MD.read_text()
 
 def version(text=None):
-    m = re.search(r"^# Jevaluate rubric \((\d{4}-\d\d-\d\d[a-z]?)\)", _text(text), re.M)
+    m = re.search(r"^# Jevaluate rubric \((\d{4}-\d\d-\d\d(?:\.\d+|[a-z])?)\)", _text(text), re.M)
     return m.group(1) if m else "unknown"
 
 def allowed_values(text=None):
