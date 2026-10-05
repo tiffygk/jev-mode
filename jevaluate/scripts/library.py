@@ -31,7 +31,7 @@ Layout:
 Slugs: github.com/<owner>/<repo> -> <owner>__<repo> (case kept); huggingface.co/<user>/<model> ->
 hf__<user>__<model>; any other URL -> site__<domain> (no www.), plus __<path segments> if the URL has one.
 """
-import os, sys, re, shutil, pathlib, argparse, datetime, json, hashlib
+import os, sys, re, shutil, pathlib, argparse, datetime, json, hashlib, subprocess
 from urllib.parse import urlparse
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import rubric_text
@@ -48,19 +48,46 @@ OK_RUBRIC = ("frozen", "no-git")
 def real_library():
     return LIB.resolve() in {(pathlib.Path.home() / ".claude/jevaluate-library").resolve(), (pathlib.Path.home() / ".jevaluate-library").resolve()}
 
-def escape_on(): return bool(os.environ.get(TEST_ESCAPE)) and not real_library()
+def golden_locked():
+    """The library names the one checkout allowed to add to it (.golden-checkout), so ratings enter only through the
+    reviewed, read-only copy of the code, never a branch or a copy an agent edited."""
+    return (LIB / ".golden-checkout").is_file()
+
+def escape_on(): return bool(os.environ.get(TEST_ESCAPE)) and not real_library() and not golden_locked()
+
+def add_gate():
+    """None when this code may add to this library, else why not."""
+    if os.environ.get(TEST_ESCAPE): return f"{TEST_ESCAPE} is set: the test escape never adds a rating"
+    if golden_locked():
+        want = pathlib.Path((LIB / ".golden-checkout").read_text().strip()).resolve()
+        here = pathlib.Path(__file__).resolve()
+        if want not in here.parents: return f"this library takes ratings only from the golden checkout {want}; this is {here.parent.parent.parent}"
+    return None
 
 def rubric_gate():
     """None when ratings may use this rubric, else why not. Ratings use only the frozen rubric (2026-10-05: an agent
     edited the live rubric, so the lock sits in the code that serves and checks it, not only in a hook)."""
     status, detail = rubric_text.frozen_status()
-    if status in OK_RUBRIC or escape_on(): return None
+    if status == "frozen" or escape_on(): return None
+    if status == "no-git" and not golden_locked(): return None  # a copy install rating into its own library
     return (f"the rubric isn't the frozen one ({detail}). Ratings use only a frozen rubric: restore it with "
             "git restore jevaluate/rubric.md, or change it through jevaluate-harness/rubric-change.md")
 
-def served_unfrozen(log):
-    """True when any served step recorded a rubric that wasn't frozen."""
-    return any(e.get("rubric", "frozen") not in OK_RUBRIC for e in log)
+LOCK_DATE = "2026-10-06"  # ratings logged before the lock have no rubric status in their step logs
+
+def served_unfrozen(log, rated=""):
+    """True when any served step wasn't from the frozen golden set: no status (unless rated before the lock), a status
+    other than frozen, or content that doesn't hash to the newest freeze tag (when this checkout can check it)."""
+    tag = rubric_text.newest_tag()
+    want = rubric_text.golden_hash(ref=tag) if tag else None
+    for e in log:
+        st = e.get("rubric")
+        if st is None:
+            if str(rated)[:10] >= LOCK_DATE: return True
+            continue
+        if st == "no-git" and not golden_locked(): continue
+        if st != "frozen" or (want and e.get("golden") != want): return True
+    return False
 RAT = LIB / "ratings"
 PROJ = LIB / "projects"
 
@@ -121,6 +148,8 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     src = pathlib.Path(src); text = src.read_text(errors="ignore")
     if link_docs: text, _ = fill_docs(text, single_only=False)
     d = front_text(text)
+    gate = add_gate()
+    if gate: sys.exit("not added: " + gate)
     problems = check(src, evidence=evidence, text=text)
     if problems:
         sys.exit("not added; fix these and rerun:\n- " + "\n- ".join(problems))
@@ -153,6 +182,10 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     if old and old.exists() and old != dest.resolve():
         old.unlink(); print(f"removed superseded {old}")
     print(dest); print(f"index: {index()} ratings")
+    if (LIB / ".git").exists():  # the library is versioned: every add is a commit, so any other change shows up as dirty
+        g = lambda *a: subprocess.run(["git", "-C", str(LIB), *a], capture_output=True, text=True)
+        g("add", "-A"); r = g("-c", "user.name=jevaluate", "-c", "user.email=jevaluate@localhost", "commit", "-qm", f"add {dest.relative_to(LIB)}")
+        print("library commit: " + ("ok" if r.returncode == 0 else r.stderr.strip()[:200]))
 
 SKILL = pathlib.Path(__file__).resolve().parent.parent
 
@@ -477,7 +510,7 @@ def check_steps(src, d, t, err, prefix=False):
     if not p.exists() and ev and (ev / (src.name + ".steps.json")).exists(): p = ev / (src.name + ".steps.json")
     if not p.exists(): err.append("no step log: rate with step.py next, one section at a time"); return
     full_log = json.loads(p.read_text())
-    if served_unfrozen(full_log) and not escape_on():
+    if served_unfrozen(full_log, d.get("rated", "")) and not escape_on():
         err.append("the step log shows sections served from a rubric that wasn't frozen; rate again from the frozen rubric")
     log = [e for e in full_log if not e["step"].startswith("full:")]
     seen = [e["step"] for e in log]

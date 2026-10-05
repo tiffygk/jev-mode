@@ -24,4 +24,5 @@ if __name__ == "__main__":
     rows, passed, tok = score.score(sys.argv[1], gold(), reps)
     print(score.table(rows, tok)); print("\n| Rule tag | Scenarios | Passed |\n|---|---|---|")
     for t, d in sorted(by_tag(rows).items()): print(f"| {t} | {d['scenarios']} | {d['passed']} |")
-    print(f"\nOverall: {'PASS' if passed else 'FAIL'}" + score.rubric_note(sys.argv[1]))
+    print("\n" + score.overall_line(passed, sys.argv[1]))
+    sys.exit(3 if not score.of_record(sys.argv[1])[0] else 0 if passed else 1)

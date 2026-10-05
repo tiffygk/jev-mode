@@ -135,13 +135,28 @@ def planned_reps(run, argv_reps):
     if not reps: return None, f"{run}/run.json has no rep count (a run made before run_eval.py wrote one); rerun score.py with --reps N, the number of reps that run planned"
     return int(reps), None
 
-def rubric_note(run):
-    """"" for a run on the frozen rubric (or an older run that didn't record it), else why it isn't a result of record."""
+def of_record(run):
+    """(True, "") only when the run stamped a frozen status and the golden-set hash of the newest freeze tag, and the scoring
+    checkout is frozen too; else (False, why). Checked again at scoring time, so an edit after the run starts, a run.json
+    edited by hand, or a missing stamp all fail closed (2026-10-05)."""
     try: info = json.loads((pathlib.Path(run) / "run.json").read_text())
-    except (OSError, ValueError): return ""
-    st = info.get("rubric_status")
-    if st in (None, "frozen", "no-git"): return ""
-    return f" (CANDIDATE rubric, {info.get('rubric_detail', st)}: not a result of record)"
+    except (OSError, ValueError): return False, "run.json is missing or unreadable"
+    st, detail = rubric_text.frozen_status()
+    if st != "frozen": return False, f"the scoring checkout isn't frozen ({detail})"
+    want = rubric_text.golden_hash(ref=rubric_text.newest_tag())
+    if info.get("rubric_status") != "frozen": return False, f"the run's rubric was {info.get('rubric_status', 'not recorded')} ({info.get('rubric_detail', 'a run made before the lock')})"
+    if info.get("golden") != want: return False, "the run's golden files don't match the newest freeze tag"
+    return True, ""
+
+def rubric_note(run):
+    ok, why = of_record(run)
+    return "" if ok else f" (CANDIDATE: {why}; not a result of record)"
+
+def overall_line(passed, run):
+    """The gate line. Only a run of record can say PASS."""
+    ok, why = of_record(run)
+    if not ok: return f"Overall: CANDIDATE ({'would pass' if passed else 'fails'}; {why}). Not a result of record."
+    return f"Overall: {'PASS' if passed else 'FAIL'}"
 
 def stamp_line(run, passed):
     """First output line: what was run, on which rubric and commit, and whether it passed."""
@@ -164,4 +179,5 @@ if __name__ == "__main__":
     rows, passed, tok = score(run, gold, n)
     print(stamp_line(run, passed))
     print((run / "run.json").read_text())
-    print(table(rows, tok, n)); sys.exit(0 if passed else 1)
+    print(table(rows, tok, n)); print(overall_line(passed, run))
+    sys.exit(3 if not of_record(run)[0] else 0 if passed else 1)

@@ -36,7 +36,7 @@ MODELS = {"claude": "claude-sonnet-5-5", "codex": "gpt-6-sol"}
 
 def write_stamp(out, phase, repo, reps, runner="claude", model=MODELS["claude"], effort="medium"):
     head = _git(repo, "rev-parse", "--short", "HEAD").stdout.strip()
-    (pathlib.Path(out) / "run.json").write_text(json.dumps({"phase": phase, "head": head, "gold_fingerprint": score.fingerprint(HERE), "reps": reps, "rubric": score.rubric_text.version(), "rubric_status": score.rubric_text.frozen_status()[0], "rubric_detail": score.rubric_text.frozen_status()[1], "runner": runner, "model": model, "effort": effort}, indent=1))
+    (pathlib.Path(out) / "run.json").write_text(json.dumps({"phase": phase, "head": head, "gold_fingerprint": score.fingerprint(HERE), "reps": reps, "rubric": score.rubric_text.version(), "rubric_status": score.rubric_text.frozen_status()[0], "rubric_detail": score.rubric_text.frozen_status()[1], "golden": score.rubric_text.golden_hash(), "runner": runner, "model": model, "effort": effort}, indent=1))
 
 def add_runner_args(ap):
     ap.add_argument("--runner", choices=["claude", "codex"], default="claude"); ap.add_argument("--model")

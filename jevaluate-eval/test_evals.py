@@ -284,7 +284,7 @@ def test_cli_refuses_an_old_run_without_a_rep_count_unless_given_reps(tmp_path):
 
 def test_cli_takes_the_rep_count_from_run_json_and_refuses_a_mismatch(tmp_path):
     _write(tmp_path, "r1_g0.json", [OK_A, OK_B])
-    (tmp_path / "run.json").write_text(json.dumps({"phase": "baseline", "head": "abc", "gold_fingerprint": sc.fingerprint(), "reps": 3}))
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "baseline", "head": "abc", "gold_fingerprint": sc.fingerprint(), "reps": 3, "rubric_status": "frozen", "golden": sc.rubric_text.golden_hash(ref=sc.rubric_text.newest_tag())}))
     p = _cli(tmp_path); assert p.returncode == 1 and "/3 |" in p.stdout and "/1 |" not in p.stdout
     p = _cli(tmp_path, "--reps", "1"); assert p.returncode == 2 and "reps" in p.stderr
 
@@ -345,7 +345,7 @@ def test_run_eval_accepts_an_out_folder_that_does_not_exist_yet(tmp_path):
 
 
 def test_stamp_line_reads_run_json(tmp_path):
-    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "head": "abc1234", "rubric": "2026-09-29"}))
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "head": "abc1234", "rubric": "2026-09-29", "rubric_status": "frozen", "golden": sc.rubric_text.golden_hash(ref=sc.rubric_text.newest_tag())}))
     line = sc.stamp_line(tmp_path, True)
     assert line == "Run: phase=after rubric=2026-09-29 commit=abc1234 passed=yes"
     assert sc.stamp_line(tmp_path, False).endswith("passed=no")
@@ -380,5 +380,17 @@ def test_candidate_rubric_is_labeled_not_of_record(tmp_path):
     import json, score
     (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2099-01-01", "rubric_status": "unfrozen", "rubric_detail": "no tag"}))
     assert "not a result of record" in score.rubric_note(tmp_path) and "CANDIDATE" in score.stamp_line(tmp_path, True)
-    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2026-09-29.1", "rubric_status": "frozen"}))
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2026-09-29.1", "rubric_status": "frozen", "golden": score.rubric_text.golden_hash(ref=score.rubric_text.newest_tag())}))
     assert score.rubric_note(tmp_path) == ""
+
+def test_scoring_fails_closed_without_a_verified_frozen_stamp(tmp_path, monkeypatch):
+    import json, score
+    good = score.rubric_text.golden_hash(score.rubric_text.ROOT, ref=score.rubric_text.newest_tag(score.rubric_text.ROOT))
+    (tmp_path / "run.json").write_text(json.dumps({"rubric_status": "frozen", "golden": good}))
+    assert score.of_record(tmp_path)[0]
+    for bad in ({}, {"rubric_status": "frozen"}, {"rubric_status": "frozen", "golden": "0" * 64}, {"rubric_status": "changed", "golden": good}):
+        (tmp_path / "run.json").write_text(json.dumps(bad)); assert not score.of_record(tmp_path)[0], bad
+    (tmp_path / "run.json").write_text(json.dumps({"rubric_status": "frozen", "golden": good}))
+    monkeypatch.setattr(score.rubric_text, "frozen_status", lambda root=None: ("changed", "edited"))
+    assert not score.of_record(tmp_path)[0]
+    assert score.overall_line(True, tmp_path).startswith("Overall: CANDIDATE") and "PASS" not in score.overall_line(True, tmp_path)

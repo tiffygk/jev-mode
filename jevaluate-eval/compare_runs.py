@@ -88,7 +88,7 @@ def report(sonnet, codex, reps=None):
              "Inputs: identical (system prompt, packets, task.md)" + (f"; Codex notes appended:\n{extra.strip()}" if extra.strip() else ""), "",
              *(["INVALID: Sol used tools in some calls, so it may have read files; see the list below.", ""] if used else []),
              side_by_side(rs, rc), "",
-             f"Overall: Sonnet {'PASS' if ps else 'FAIL'}, Sol {'PASS' if pc else 'FAIL'} (today's score.py for both)",
+             f"Overall: Sonnet {score.overall_line(ps, sonnet)[9:]}, Sol {score.overall_line(pc, codex)[9:]} (today's score.py for both)",
              f"Tokens: Sonnet {ts:,}; Sol {tc:,} (Codex carries built-in tool overhead; not a quality measure)", "",
              "Sol calls with tool use or no answer:", *(tool_calls(codex) or ["none"])]
     return "\n".join(lines)
