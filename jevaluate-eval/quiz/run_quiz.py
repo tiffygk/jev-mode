@@ -26,13 +26,18 @@ def main():
     ids = [i for i in a.ids.split(",") if i] or sorted(key)
     scen = [s for s in json.loads((HERE / "scenarios.json").read_text()) if s["id"] in ids]
     model, home, suffix = run_eval.runner_setup(a)
+    try:
+        run_all(a, model, home, suffix, scen)
+    finally:  # copies a refreshed Codex login back even after Ctrl-C or an error
+        if home: run_eval.runners.close_home(home)
+
+def run_all(a, model, home, suffix, scen):
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)
     run_eval.write_stamp(out, "baseline", SKILL.parent, a.reps, a.runner, model, a.effort)
     (out / "system.md").write_text(system(a.system) + suffix); groups = [scen[i:i + 4] for i in range(0, len(scen), 4)]
     for rep in range(1, a.reps + 1):
         for gi, g in enumerate(groups):
             run_eval.run_call(a, model, home, out / "system.md", prompt(g), out / f"r{rep}_g{gi}.json", f"rep {rep} group {gi}: {len(g)} scenarios")
-    if home: run_eval.runners.close_home(home)
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,8 @@
 """Run one grader call through Claude or Codex and return {result, usage, commands[, error]}, the shape score.py reads."""
-import json, os, pathlib, shutil, subprocess, tempfile
+import json, os, pathlib, shutil, signal, subprocess, tempfile
 
-KEEP = ("agent_message", "reasoning")
+# Item types that are tool use; anything else (reasoning, error, todo_list) never invalidates an answer.
+TOOLS = ("command_execution", "file_change", "mcp_tool_call", "web_search", "collab_tool_call")
 # Turned off so the grader sees only Codex's built-in tools. HOME is also pointed at the temp home (see env()),
 # because Codex finds the user's skills in ~/.agents/skills whatever CODEX_HOME says (found 2026-10-02).
 # Shell, image and other tools are off too: with a shell, the grader searched the disk for rubric.md and read it,
@@ -33,8 +34,8 @@ def close_home(home):
     """Remove a run's temp home. If Codex replaced the auth symlink with a refreshed file, copy it back first."""
     a = pathlib.Path(home) / "auth.json"
     real = pathlib.Path(os.environ.get("JEV_CODEX_AUTH") or pathlib.Path.home() / ".codex" / "auth.json")
-    if a.exists() and not a.is_symlink() and a.stat().st_mtime > real.stat().st_mtime:
-        shutil.copy2(a, real)
+    if a.exists() and not a.is_symlink() and (not real.exists() or a.stat().st_mtime > real.stat().st_mtime):
+        tmp = real.with_name(real.name + ".tmp"); shutil.copy2(a, tmp); os.replace(tmp, real)  # atomic for readers
     shutil.rmtree(home, ignore_errors=True)
 
 
@@ -42,8 +43,10 @@ def codex_ready(home):
     """None when codex can run, else one sentence. Check before writing any run file."""
     if not shutil.which("codex"):
         return "codex not found: install it (npm install -g @openai/codex) and run codex login"
-    r = subprocess.run(["codex", "login", "status"], capture_output=True, text=True, timeout=60,
-                       env=env(home))
+    try:
+        r = subprocess.run(["codex", "login", "status"], capture_output=True, text=True, timeout=60, env=env(home))
+    except subprocess.TimeoutExpired:
+        return "codex login status hung for 60s: run codex login status yourself"
     return None if r.returncode == 0 else "codex is not logged in: run codex login"
 
 
@@ -64,13 +67,14 @@ def parse_codex(stdout):
         if e.get("type") == "item.completed":
             if it.get("type") == "agent_message":
                 out["result"] = it.get("text", "")
-            elif it.get("type") not in KEEP + ("error",):
+            elif it.get("type") in TOOLS:
                 out["commands"].append(f'{it.get("type")}: {it.get("command") or it.get("path") or it.get("query") or ""}')
         if e.get("type") == "turn.completed":
             u = e.get("usage") or {}
-            out["usage"] = {"input_tokens": u.get("input_tokens", 0) - u.get("cached_input_tokens", 0),
-                            "cache_read_input_tokens": u.get("cached_input_tokens", 0),
-                            "cache_creation_input_tokens": u.get("cache_write_input_tokens", 0), "output_tokens": u.get("output_tokens", 0)}
+            add = {"input_tokens": u.get("input_tokens", 0) - u.get("cached_input_tokens", 0),
+                   "cache_read_input_tokens": u.get("cached_input_tokens", 0),
+                   "cache_creation_input_tokens": u.get("cache_write_input_tokens", 0), "output_tokens": u.get("output_tokens", 0)}
+            out["usage"] = {k: out["usage"].get(k, 0) + v for k, v in add.items()}  # summed over turns
         if e.get("type") in ("turn.failed", "error") or it.get("type") == "error":
             out["warning"] = json.dumps(e.get("error") or it or e)
     if not out["result"] and "warning" in out:
@@ -90,13 +94,18 @@ def call(runner, system_file, prompt, model, effort, home=None, timeout=900):
         d.setdefault("commands", [])
         return d
     cwd = tempfile.mkdtemp(prefix="codex-cwd-")
+    # Own process group: `codex` is a node launcher, and a timeout must also stop its native child.
+    p = subprocess.Popen(codex_cmd(system_file, model, effort, cwd), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, text=True, env=env(home), start_new_session=True)
     try:
-        r = subprocess.run(codex_cmd(system_file, model, effort, cwd), input=prompt, capture_output=True, text=True,
-                           timeout=timeout, env=env(home))
+        stdout, stderr = p.communicate(prompt, timeout=timeout)
     except subprocess.TimeoutExpired:
-        return {"result": "", "usage": {}, "commands": [], "error": f"timed out after {timeout}s"}
+        os.killpg(p.pid, signal.SIGKILL); stdout, _ = p.communicate()
+        d = parse_codex(stdout or ""); d["result"] = ""; d["error"] = f"timed out after {timeout}s"  # keeps spent usage
+        return d
     finally:
         shutil.rmtree(cwd, ignore_errors=True)
+    r = subprocess.CompletedProcess(p.args, p.returncode, stdout, stderr)
     out = parse_codex(r.stdout)
     if r.returncode != 0 and "error" not in out:
         out["error"] = f"exit {r.returncode}: " + (r.stderr or "")[-500:]

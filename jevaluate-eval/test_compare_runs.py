@@ -1,4 +1,4 @@
-import json, sys, pathlib, shutil, subprocess
+import json, os, sys, pathlib, shutil, subprocess
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE)); import compare_runs
 
@@ -20,9 +20,9 @@ def test_changed_system_and_packet(tmp_path):
     assert any("system.md" in p for p in probs) and any("a.md" in p for p in probs) and any("b.md" in p for p in probs)
 
 def test_report_self_compare(tmp_path):
-    src = pathlib.Path.home() / "Documents/jev-mode-finish/jevaluate-eval/.work/run-baseline"
+    src = pathlib.Path(os.environ.get("JEV_SAVED_RUN", "/nonexistent"))
     if not src.exists():
-        import pytest; pytest.skip("saved Sonnet run not on this machine")
+        import pytest; pytest.skip("set JEV_SAVED_RUN to a saved run folder to check a self-compare")
     r = subprocess.run([sys.executable, str(HERE / "compare_runs.py"), "report", str(src), str(src), "--reps", "3"], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert "| jev-omni | tuning | 3/3 | 3/3 |" in r.stdout and "Inputs: identical" in r.stdout

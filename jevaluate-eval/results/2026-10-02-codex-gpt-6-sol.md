@@ -43,7 +43,7 @@ none
 
 | Run | Sonnet | Sol |
 |---|---|---|
-| Vocabulary-only control (should stay under 80%) | 8/11 (73%) | 5/11 (45%) |
+| Vocabulary-only control (should stay under 80%) | 7/11 (64%) | 5/11 (45%) |
 | Routing instructions, 3 runs | 10/11 | 9/11 |
 
 Both miss q03 on stakes (0/3). The 2026-09-30 Sonnet quiz passed it; `score.py` now derives stakes from the decisions, so this is scorer drift, not either model.

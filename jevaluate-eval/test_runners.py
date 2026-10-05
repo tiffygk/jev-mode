@@ -63,3 +63,24 @@ def test_warning_with_answer_is_not_an_error(tmp_path, monkeypatch):
     (tmp_path / "s.md").write_text("sys")
     d = runners.call("codex", tmp_path / "s.md", "p", "gpt-6-sol", "medium", home=tmp_path)
     assert d["result"] == "[]" and "error" not in d and d["commands"] == []
+
+def test_todo_list_item_is_not_tool_use(tmp_path, monkeypatch):
+    ev = [{"type": "item.completed", "item": {"type": "todo_list", "items": []}},
+          {"type": "item.completed", "item": {"type": "agent_message", "text": "ok"}}]
+    monkeypatch.setenv("PATH", fake_codex(tmp_path, ev) + os.pathsep + os.environ["PATH"])
+    (tmp_path / "s.md").write_text("sys")
+    assert runners.call("codex", tmp_path / "s.md", "p", "gpt-6-sol", "medium", home=tmp_path)["commands"] == []
+
+def test_timeout_keeps_spent_usage(tmp_path, monkeypatch):
+    b = tmp_path / "bin"; b.mkdir(); f = b / "codex"
+    f.write_text("#!/bin/sh\ncat > /dev/null\necho '%s'\nsleep 5\n" % json.dumps({"type": "turn.completed", "usage": {"input_tokens": 9, "output_tokens": 1}}))
+    f.chmod(f.stat().st_mode | stat.S_IEXEC); monkeypatch.setenv("PATH", str(b) + os.pathsep + os.environ["PATH"])
+    (tmp_path / "s.md").write_text("sys")
+    d = runners.call("codex", tmp_path / "s.md", "p", "gpt-6-sol", "medium", home=tmp_path, timeout=1)
+    assert "timed out" in d["error"] and d["usage"]["output_tokens"] == 1
+
+def test_close_home_without_real_auth_still_cleans_up(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_CODEX_AUTH", str(tmp_path / "missing.json"))
+    h = runners.codex_home(); (h / "auth.json").write_text("new")
+    runners.close_home(h)
+    assert not h.exists() and (tmp_path / "missing.json").read_text() == "new"

@@ -62,6 +62,12 @@ def main():
     probs = score.preflight(json.loads((HERE / "gold.json").read_text())) + preflight_out(a.out) + preflight_repo(repo)
     if probs: print("\n".join(probs), file=sys.stderr); sys.exit(2)
     model, home, suffix = runner_setup(a)
+    try:
+        run_all(a, model, home, suffix, repo)
+    finally:  # copies a refreshed Codex login back even after Ctrl-C or an error
+        if home: runners.close_home(home)
+
+def run_all(a, model, home, suffix, repo):
     out = pathlib.Path(a.out); pk = out / "packets"; out.mkdir(parents=True, exist_ok=True)
     write_stamp(out, a.phase, repo, a.reps, a.runner, model, a.effort)
     status = build(json.loads((HERE / "sources.json").read_text()), pk)
@@ -74,7 +80,6 @@ def main():
             prompt = (HERE / "task.md").read_text() + "".join("\n\n" + (pk / f"{s}.md").read_text() for s in g)
             run_call(a, model, home, out / "system.md", prompt, out / f"r{rep}_g{gi}.json", f"rep {rep} group {gi}: {len(g)} cases")
     print("skipped:", {s: st for s, st in status.items() if st != "ok"})
-    if home: runners.close_home(home)
 
 if __name__ == "__main__":
     main()
