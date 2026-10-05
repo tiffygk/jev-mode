@@ -1,6 +1,6 @@
 [← All ratings](README.md)
 
-> **Ask Jevs** [https://askjevs.site/](https://askjevs.site/), site as captured 2026-09-28 · demo
+> **Ask Jevs** [https://askjevs.site/](https://askjevs.site/), site as captured 2026-09-28 · display
 > ### Verdict 2: Rework it
 > Execution ●○○ · Fit ●●○ · Coverage ●●● · Evidence n.a.
 >

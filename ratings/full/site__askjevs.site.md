@@ -2,7 +2,7 @@
 
 # Ask Jevs: full rating
 
-**Verdict 2, Rework it** · demo · rated 2026-09-30 [https://askjevs.site/](https://askjevs.site/), site as captured 2026-09-28 · read: full · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
+**Verdict 2, Rework it** · display · rated 2026-09-30 [https://askjevs.site/](https://askjevs.site/), site as captured 2026-09-28 · read: full · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
 
 ## Summary
 

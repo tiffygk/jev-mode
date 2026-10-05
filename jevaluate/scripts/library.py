@@ -245,6 +245,16 @@ def routing_print(d, t):
     vals = [first("project_type"), rubric_text.KIND_OF.get(first("project_type"), ""), first("verdict_1_code"), derive_top_stakes(d, t) or ""]
     return hashlib.sha1("|".join(vals).encode()).hexdigest()
 
+def routing_prints(d, t):
+    """The current print, plus the print each old name of the type gave: a rename changes no routing."""
+    typ = d.get("project_type", "").split("#")[0].strip()
+    olds = [o for o, n in rubric_text.RENAMED.items() if n == typ]
+    out = {routing_print(d, t)}
+    for o in olds:
+        vals = [o, rubric_text.KIND_OF.get(typ, ""), d.get("verdict_1_code", "").split("#")[0].strip(), derive_top_stakes(d, t) or ""]
+        out.add(hashlib.sha1("|".join(vals).encode()).hexdigest())
+    return out
+
 def is_new_rubric(d): return bool(d.get("rubric", "").split()[:1]) and d["rubric"].split()[0] >= NEW_RUBRIC
 
 def store_derived(text):
@@ -455,10 +465,10 @@ def check_steps(src, d, t, err, prefix=False):
         if not seen or seen != STEP_ORDER[:len(seen)]: err.append(f"step log {seen}, expected an in-order start of {STEP_ORDER} beginning with routing")
         return
     if seen != want: err.append(f"step log {seen}, expected {want}")
-    cur = routing_print(d, t)
+    cur = routing_prints(d, t)
     later = [e for e in log if e["step"] != "routing"]
     cleared = (src.parent / "routing_revised.json").exists() or bool(ev and (ev / "routing_revised.json").exists())
-    if later and later[0]["routing"] != cur and not cleared:
+    if later and later[0]["routing"] not in cur and not cleared:
         err.append("routing changed after the facts were served; the controller clears a revision with routing_revised.json (reason and time) after checking it")
 
 def check_mechanical(t, d, ev, err):
