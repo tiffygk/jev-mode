@@ -37,3 +37,10 @@ def test_dispatch_allows_other_senses_of_typesafe_and_system_one():
     for p in ["Make the TypeScript API client typesafe and add zod validation.",
               "Summarize Kahneman: system one is fast and intuitive."]:
         assert run("jev-dispatch-check.py", {"tool_input": {"prompt": p}}) is None, p
+
+def test_brief_and_reminder_name_this_install():
+    root = os.path.dirname(H)
+    out = run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?"})
+    assert f"{root}/scripts/route.py" in out["hookSpecificOutput"]["additionalContext"]
+    out = run("jev-dispatch-check.py", {"tool_input": {"prompt": "Review this Jev design."}})
+    assert f"{root}/scripts" in out["hookSpecificOutput"]["permissionDecisionReason"]

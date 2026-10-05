@@ -9,8 +9,10 @@ Answers about Jev rest on TypeSafe sections you opened in full this session, fou
 
 ## Before any Jev claim
 
-1. Route: `python3 ~/.claude/skills/jev-sources/scripts/route.py "<the question, in your words>"`. Route each separate question on its own.
-2. Read every **READ FULL** item: `python3 ~/.claude/skills/jev-sources/scripts/read.py '<id>'`. Read the reference rules first, then the patterns, then the cookbook examples.
+Paths are relative to this skill's folder (the base directory shown when the skill loads).
+
+1. Route: `python3 scripts/route.py "<the question, in your words>"`. Route each separate question on its own.
+2. Read every **READ FULL** item: `python3 scripts/read.py '<id>'`. Read the reference rules first, then the patterns, then the cookbook examples.
 3. An **EXTRACT** item (`read.py '<id>' --extract <word> <word>`) can point you somewhere. A claim resting on it is labeled **unverified**.
 4. If the router prints "no section found", say so, then run `refresh.sh --fetch` and route again. Never fill the gap from memory.
 
@@ -30,7 +32,7 @@ When the reference pages don't settle a question, say "the docs don't say" and s
 Paste this line into the brief (the dispatch hook refuses a Jev brief without it):
 
 ```
-JEV-SOURCES: before any finding, run route.py on the question and read every READ FULL item with read.py (~/.claude/skills/jev-sources/scripts); quote verbatim, give path#heading, label reference rule or cookbook example; findings without this are unverified.
+JEV-SOURCES: before any finding, run route.py on the question and read every READ FULL item with read.py (this skill's scripts folder); quote verbatim, give path#heading, label reference rule or cookbook example; findings without this are unverified.
 ```
 
 ## Relaying a subagent's Jev finding
@@ -39,4 +41,4 @@ Before you pass on a finding, read its cited section with read.py yourself. A fi
 
 ## Refresh
 
-`bash ~/.claude/skills/jev-sources/refresh.sh --fetch` downloads every page TypeSafe lists in llms.txt and rebuilds the index. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`). Run it on first install, and again when a source is missing or older than the question needs.
+`bash refresh.sh --fetch` downloads every page TypeSafe lists in llms.txt and rebuilds the index. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`). Run it on first install, and again when a source is missing or older than the question needs.

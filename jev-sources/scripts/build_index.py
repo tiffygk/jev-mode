@@ -9,7 +9,7 @@ than the one it scopes), captions (diagram captions, image alt text).
 import json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA
+from paths import DATA, REFRESH
 ROOT = DATA
 CAVEAT = re.compile(r"this walkthrough|for clarity|a real application|in a real (app|system)|in practice|"
                     r"for simplicity|to keep (it|this|the example) simple|note:|caveat|not (a|an) (rule|requirement)",
@@ -81,7 +81,7 @@ def main():
             if f.endswith(".md") and not p.startswith(SKIP):
                 out += sections(p)
     if not out:
-        sys.exit(f"no pages in {ROOT}; run bash ~/.claude/skills/jev-sources/refresh.sh --fetch")
+        sys.exit(f"no pages in {ROOT}; run {REFRESH}")
     with open(os.path.join(ROOT, "sections.jsonl"), "w") as fh:
         for r in out:
             fh.write(json.dumps(r) + "\n")

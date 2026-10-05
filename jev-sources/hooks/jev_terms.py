@@ -4,6 +4,8 @@ import re
 from datetime import datetime
 import os
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # this install's jev-sources folder
+
 # A Jev term. "choice", "score" and "state" alone are common words, so they count only in compounds.
 _JEV_CI = re.compile(r"\b(jevs?|jevaluate[\w-]*|nouls?)\b|\b(choice|score)s? (primitive|question)s?\b", re.I)
 # "typesafe" (TypeScript) and "system one" (Kahneman) are common in other senses: match the product names by case.
@@ -50,7 +52,7 @@ def strip_code(text):
     return re.sub(r"```.*?```|`[^`\n]*`", " ", text, flags=re.S)
 MARKER = "JEV-SOURCES:"
 BRIEF = ("JEV-SOURCES: before any finding, run route.py on the question and read every READ FULL item with "
-         "read.py (~/.claude/skills/jev-sources/scripts); quote verbatim, give path#heading, label reference rule or "
+         f"read.py ({ROOT}/scripts); quote verbatim, give path#heading, label reference rule or "
          "cookbook example; findings without this are unverified.")
 
 

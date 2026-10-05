@@ -4,3 +4,5 @@ import os
 
 CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
+SCRIPTS = os.path.join(CODE, "scripts")
+REFRESH = f"bash {os.path.join(CODE, 'refresh.sh')} --fetch"
