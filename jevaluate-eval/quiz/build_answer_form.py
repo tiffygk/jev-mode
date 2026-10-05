@@ -47,8 +47,13 @@ def _select(i, field, label, options):
     opts = "<option value=''>choose</option>" + "".join(f"<option value='{html.escape(v)}'>{html.escape(t)}</option>" for v, t in options)
     return f"<label><span>{label}</span><select data-id='{i}' data-f='{field}'>{opts}</select></label>"
 
-def build_form(count):
+def build_form(count, ids=""):
     scen = json.loads((HERE / "scenarios.json").read_text())
+    want = [i for i in ids.split(",") if i]
+    if want:
+        unknown = sorted(set(want) - {s["id"] for s in scen})
+        if unknown: raise SystemExit(f"unknown scenario ids: {', '.join(unknown)}")
+        scen = [s for s in scen if s["id"] in want]; count = len(scen)
     if count < 1 or count > len(scen): raise SystemExit(f"--count must be between 1 and {len(scen)} (scenarios.json has {len(scen)})")
     vals = rubric_text.allowed_values(); panel = type_panel(); arts = []
     for s in scen[:count]:
@@ -148,12 +153,12 @@ upd();"""
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    g = ap.add_mutually_exclusive_group(required=True); g.add_argument("--count", type=int); g.add_argument("--cards"); g.add_argument("--key")
+    g = ap.add_mutually_exclusive_group(required=True); g.add_argument("--count", type=int); g.add_argument("--ids", help="comma-separated scenario ids, for new scenarios only"); g.add_argument("--cards"); g.add_argument("--key")
     ap.add_argument("--out"); ap.add_argument("--force", action="store_true"); a = ap.parse_args()
     if a.cards:
         out = pathlib.Path(a.out or HERE / "case-answers.html"); out.write_text(build_cards_form(json.loads(pathlib.Path(a.cards).read_text()))); print(out)
-    elif a.count is not None:
-        out = pathlib.Path(a.out or HERE / "quiz-answers.html"); out.write_text(build_form(a.count)); print(out)
+    elif a.count is not None or a.ids:
+        out = pathlib.Path(a.out or HERE / "quiz-answers.html"); out.write_text(build_form(a.count or 0, a.ids or "")); print(out)
     else:
         key, problems = derive_key(json.loads(pathlib.Path(a.key).read_text()))
         if problems: print("not written; fix these and rerun:\n- " + "\n- ".join(problems), file=sys.stderr); sys.exit(1)
