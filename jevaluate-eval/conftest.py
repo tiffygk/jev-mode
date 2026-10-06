@@ -9,3 +9,4 @@ import rubric_text
 @pytest.fixture(autouse=True)
 def github_confirms(monkeypatch):
     monkeypatch.setattr(rubric_text, "github_check", lambda tag, root=None: (True, ""))
+    monkeypatch.setattr(rubric_text, "GITHUB_CACHE", pathlib.Path("/nonexistent/github-freeze-cache.json"))
