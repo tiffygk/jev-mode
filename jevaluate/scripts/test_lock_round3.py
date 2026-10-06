@@ -60,3 +60,45 @@ def test_add_has_no_pre_lock_exemption():
     import library as lib
     assert lib.served_unfrozen([{"step": "routing"}], rated="2026-09-30", strict=True)
     assert not lib.served_unfrozen([{"step": "routing"}], rated="2026-09-30")  # re-checking a stored pre-lock rating
+
+
+# ---- round 4 (2026-10-05 scoped review) ----
+
+def test_supersedes_leaves_the_library_clean(tmp_path):
+    """A re-rate with --supersedes commits the old file's removal, so the next add isn't refused as a dirty library."""
+    from test_library import make_rating, run
+    lib = tmp_path / "lib"; lib.mkdir()
+    subprocess.run(["git", "init", "-q", str(lib)], check=True)
+    r1 = make_rating(tmp_path / "r1.md", "P", "o", "https://github.com/o/p", "2026-09-28", commit="a" * 12)
+    p = run(lib, "add", str(r1)); assert p.returncode == 0, p.stdout + p.stderr
+    old = lib / "projects" / "o__p" / "2026-09-28.md"
+    r2 = make_rating(tmp_path / "r2.md", "P", "o", "https://github.com/o/p", "2026-09-28", commit="b" * 12)
+    p = run(lib, "add", "--supersedes", str(old), str(r2)); assert p.returncode == 0, p.stdout + p.stderr
+    status = subprocess.run(["git", "-C", str(lib), "status", "--porcelain"], capture_output=True, text=True).stdout
+    assert status == "", status
+    r3 = make_rating(tmp_path / "r3.md", "Q", "o", "https://github.com/o/q", "2026-09-28")
+    p = run(lib, "add", str(r3)); assert p.returncode == 0, p.stdout + p.stderr
+
+def test_version_key_never_compares_int_with_str():
+    tags = ["rubric-2026-09-29-frozen", "rubric-2026-09-29.1-frozen", "rubric-2026-10-06a-frozen"]
+    assert max(tags, key=rt._vkey) == "rubric-2026-10-06a-frozen"
+    assert max(tags[:2], key=rt._vkey) == "rubric-2026-09-29.1-frozen"
+
+def test_rate_limit_is_named(tmp_path, monkeypatch):
+    import urllib.error
+    root = frozen_copy(tmp_path); tag = rt.newest_tag(root)
+    def limited(path): raise urllib.error.HTTPError("u", 403, "rate limit", {}, None)
+    rt.github_check.cache_clear(); monkeypatch.setattr(rt, "_github_get", limited)
+    ok, why = rt.github_check(tag, root); assert not ok and "limit" in why
+
+def test_not_newest_names_the_sync(tmp_path, monkeypatch):
+    root = frozen_copy(tmp_path); tag = rt.newest_tag(root); sha = local_sha(root, tag)
+    fake_github(monkeypatch, {tag: sha, "rubric-2099-01-01-frozen": "1" * 40})
+    assert "jev-mode-sync.sh" in rt.github_check(tag, root)[1]
+
+def test_library_dirty_sees_untracked_despite_config(tmp_path, monkeypatch):
+    import library
+    lib = tmp_path / "lib"; lib.mkdir(); subprocess.run(["git", "init", "-q", str(lib)], check=True)
+    subprocess.run(["git", "-C", str(lib), "config", "status.showUntrackedFiles", "no"], check=True)
+    (lib / "stray.md").write_text("x")
+    assert library.library_dirty(lib)

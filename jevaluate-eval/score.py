@@ -149,10 +149,11 @@ def of_record(run):
     st, detail = rubric_text.frozen_status()
     if st != "frozen": return False, f"the scoring checkout isn't frozen ({detail})"
     tag = rubric_text.newest_tag()
-    if not tag_on_origin(tag): return False, f"GitHub doesn't confirm {tag} as the newest approved freeze: {rubric_text.github_check(tag)[1]}"
     want = rubric_text.golden_hash(ref=tag)
     if info.get("rubric_status") != "frozen": return False, f"the run's rubric was {info.get('rubric_status', 'not recorded')} ({info.get('rubric_detail', 'a run made before the lock')})"
     if info.get("golden") != want: return False, "the run's golden files don't match the newest freeze tag"
+    # GitHub last: local checks cost nothing, and GitHub allows 60 unauthenticated calls an hour.
+    if not tag_on_origin(tag): return False, f"GitHub doesn't confirm {tag} as the newest approved freeze: {rubric_text.github_check(tag)[1]}"
     return True, ""
 
 def rubric_note(run):

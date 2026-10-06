@@ -83,7 +83,11 @@ def library_dirty(lib=None):
     """None when the library's git tree is clean (or it isn't versioned), else what's uncommitted."""
     lib = pathlib.Path(lib or LIB)
     if not (lib / ".git").exists(): return None
-    r = subprocess.run(["/usr/bin/git", "-C", str(lib), "status", "--porcelain"], capture_output=True, text=True)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
+    r = subprocess.run(["/usr/bin/git", "--no-replace-objects", "-c", "safe.directory=*", "-C", str(lib), "status", "--porcelain",
+                        "--untracked-files=all"], capture_output=True, text=True, env=env)
+    if r.returncode != 0: return f"git can't read the library's status: {r.stderr.strip()[:200]}"
     return f"the library has uncommitted changes; show the owner and resolve them first:\n{r.stdout.strip()[:400]}" if r.stdout.strip() else None
 
 def served_unfrozen(log, rated="", strict=False):
@@ -162,6 +166,7 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     gate = add_gate() or library_dirty()
     if gate: sys.exit("not added: " + gate)
     log_file = pathlib.Path(str(src) + ".steps.json")
+    if not log_file.exists() and evidence: log_file = pathlib.Path(evidence) / (src.name + ".steps.json")
     if log_file.exists() and served_unfrozen(json.loads(log_file.read_text()), strict=True) and not escape_on():
         sys.exit("not added: the step log has a section not served from the frozen golden set")
     problems = check(src, evidence=evidence, text=text)
@@ -198,7 +203,9 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     print(dest); print(f"index: {index()} ratings")
     if (LIB / ".git").exists():  # the library is versioned: every add is a commit, so any other change shows up as dirty
         g = lambda *a: subprocess.run(["git", "-C", str(LIB), *a], capture_output=True, text=True)
-        g("add", "--", str(dest.relative_to(LIB)), "index.md", *([str(ev_dest.relative_to(LIB))] if ev_dest.exists() else [])); r = g("-c", "user.name=jevaluate", "-c", "user.email=jevaluate@localhost", "commit", "-qm", f"add {dest.relative_to(LIB)}")
+        mine = [str(dest.relative_to(LIB)), "index.md", *([str(ev_dest.relative_to(LIB))] if ev_dest.exists() else []),
+                *([str(old.relative_to(LIB.resolve()))] if old and not old.exists() else [])]  # -A stages the superseded file's removal
+        g("add", "-A", "--", *mine); r = g("-c", "user.name=jevaluate", "-c", "user.email=jevaluate@localhost", "commit", "-qm", f"add {dest.relative_to(LIB)}")
         print("library commit: " + ("ok" if r.returncode == 0 else r.stderr.strip()[:200]))
 
 SKILL = pathlib.Path(__file__).resolve().parent.parent

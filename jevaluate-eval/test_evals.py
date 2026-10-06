@@ -275,7 +275,16 @@ def test_score_needs_the_planned_rep_count(tmp_path):
     with pytest.raises(ValueError, match="--reps"): sc.score(tmp_path, GOLD)
 
 def _cli(run, *extra):
-    return subprocess.run([sys.executable, str(pathlib.Path(sc.__file__)), str(run), *extra], capture_output=True, text=True)
+    """score.py's command line, run in this process so conftest's GitHub stub applies (no API calls from tests)."""
+    import contextlib, io, runpy, types
+    out, err, argv = io.StringIO(), io.StringIO(), sys.argv
+    sys.argv = [sc.__file__, str(run), *extra]; code = 0
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err): runpy.run_path(sc.__file__, run_name="__main__")
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else (0 if e.code is None else (print(e.code, file=err) or 1))
+    finally: sys.argv = argv
+    return types.SimpleNamespace(returncode=code, stdout=out.getvalue(), stderr=err.getvalue())
 
 def test_cli_refuses_an_old_run_without_a_rep_count_unless_given_reps(tmp_path):
     for r in (1, 2, 3): _write(tmp_path, f"r{r}_g0.json", [OK_A, OK_B])

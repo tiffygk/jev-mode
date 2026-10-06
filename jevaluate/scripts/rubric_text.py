@@ -35,13 +35,18 @@ def _git(root, *a):
     return subprocess.run([GIT, "--no-replace-objects", "-C", str(root), *a], capture_output=True, env=env)
 
 def _github_get(path):
+    """GitHub's REST API; a GH_TOKEN or GITHUB_TOKEN raises the hourly limit from 60 calls to 5,000."""
     import urllib.request
-    req = urllib.request.Request(f"https://api.github.com/repos/{GITHUB_REPO}/{path}", headers={"Accept": "application/vnd.github+json"})
+    headers = {"Accept": "application/vnd.github+json"}
+    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if token: headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(f"https://api.github.com/repos/{GITHUB_REPO}/{path}", headers=headers)
     with urllib.request.urlopen(req, timeout=15) as r: return json.loads(r.read())
 
 def _vkey(tag):
+    """Sort key for a freeze tag's version: numbers compare as numbers, any letters after them, never int against str."""
     v = tag[len("rubric-"):-len("-frozen")]
-    return [int(x) if x.isdigit() else x for x in re.split(r"[-.]", v)]
+    return [(0, int(x), "") if x.isdigit() else (1, 0, x) for x in re.split(r"[-.]", v)]
 
 @functools.lru_cache(maxsize=None)
 def github_check(tag, root=None):
@@ -54,7 +59,7 @@ def github_check(tag, root=None):
         tags = {r["ref"].rsplit("/", 1)[-1]: r["object"] for r in refs if r["ref"].endswith("-frozen")}
         if not tags: return False, "GitHub has no freeze tag"
         newest = max(tags, key=_vkey)
-        if newest != tag: return False, f"GitHub's newest freeze is {newest}, not {tag}"
+        if newest != tag: return False, f"GitHub's newest freeze is {newest}, not {tag} (bash ~/.claude/hooks/jev-mode-sync.sh brings it here)"
         obj = tags[tag]
         sha = obj["sha"] if obj.get("type") == "commit" else _github_get(f"git/tags/{obj['sha']}")["object"]["sha"]
         here = _git(root, "rev-parse", f"{tag}^{{commit}}").stdout.decode().strip()
@@ -62,7 +67,9 @@ def github_check(tag, root=None):
         cmp = _github_get(f"compare/{tag}...main")
         if cmp.get("status") not in ("ahead", "identical") or cmp.get("behind_by", 1) != 0: return False, f"{tag} isn't in GitHub main's history"
         return True, ""
-    except (OSError, ValueError, KeyError) as e:
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        if getattr(e, "code", None) in (403, 429):
+            return False, "GitHub's API limit is used up (60 calls an hour without a token); retry after the hour, or set GH_TOKEN"
         return False, f"GitHub can't be reached to confirm the freeze ({type(e).__name__})"
 
 def newest_tag(root=None):
