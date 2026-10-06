@@ -58,7 +58,7 @@
    "name": "eval scripts",
    "sources": [
     "jevaluate-eval/*.py",
-    "jevaluate-eval/calibration/*"
+    "jevaluate-eval/rater_agreement/*"
    ],
    "docs": [
     "jevaluate-eval/README.md",

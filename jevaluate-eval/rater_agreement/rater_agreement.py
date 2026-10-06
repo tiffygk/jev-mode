@@ -1,13 +1,13 @@
-"""Rater calibration: compare two raters' ratings of the same projects, then score both against an owner's answer key.
+"""Rater agreement: compare two raters' ratings of the same projects, then score both against an owner's answer key.
 
 Agreement shows the rubric reads the same way to two raters; only the answer key shows whether either is right.
-Procedure and the checked-risks table: ../calibration.md.
+Procedure and the checked-risks table: ../rater-agreement.md.
 
 Usage (JEVALUATE_LIBRARY picks the library, as for library.py):
-  calib.py agreement [--a sonnet] [--b codex] [--tuning slug,slug] [--out agreement.md]
-  calib.py facts     [--a sonnet] [--b codex] [--tuning slug,slug] --out facts.json      (held-out projects only)
-  calib.py draw      --facts facts.json --split 3 --agreed 4 --seed N [--skip slug,slug] --out draw.json
-  calib.py score     --key raters.json --owner answers.txt
+  rater_agreement.py agreement [--a sonnet] [--b codex] [--tuning slug,slug] [--out agreement.md]
+  rater_agreement.py facts     [--a sonnet] [--b codex] [--tuning slug,slug] --out facts.json      (held-out projects only)
+  rater_agreement.py draw      --facts facts.json --split 3 --agreed 4 --seed N [--skip slug,slug] --out draw.json
+  rater_agreement.py score     --key raters.json --owner answers.txt
 Rater families come from library.rater_family ("sonnet", "codex", or the model ID for any other rater).
 """
 import argparse, json, pathlib, random, re, sys
@@ -124,7 +124,7 @@ def fact_pairs(pairs, tuning=()):
 def report(rep, fa, fb, pairs, tuning):
     pct = lambda k: "n.a." if k is None else f"{k:.2f}"
     lines = [f"# Rater agreement: {fa} vs {fb}", "",
-             "Agreement shows the two raters read the rubric the same way. It does not show either is right; that takes an answer key (calibration.md).", ""]
+             "Agreement shows the two raters read the rubric the same way. It does not show either is right; that takes an answer key (rater-agreement.md).", ""]
     for name, title in (("held_out", "Projects outside the tuning sample (lead with these)"), ("tuning", "Tuning sample (agreement here is partly built in)")):
         r = rep[name]
         if not r["n"]: continue

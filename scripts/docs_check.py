@@ -4,7 +4,8 @@ Usage: python3 scripts/docs_check.py [--base REF] [--head REF] [--body TEXT]
   --base  what the change is compared with (default origin/main); --head the change (default HEAD)
   --body  the PR description, searched for waivers along with the commit messages in base..head
 A waiver line: "Docs checked: <doc> unchanged because <reason>". Also flags counts and rubric versions written into
-hand-written README prose (they go stale). Rules: docs-map.json. Why: CONTRIBUTING.md. Exits 1 with one line per problem.
+hand-written README prose (they go stale), and retired names outside the files listed for them (retired-names.json).
+Rules: docs-map.json. Why: CONTRIBUTING.md. Exits 1 with one line per problem.
 """
 import argparse, fnmatch, json, pathlib, re, subprocess, sys
 
@@ -49,6 +50,37 @@ def count_problems(cfg, root=ROOT):
     return out
 
 
+def retired_problems(cfg, files):
+    """files: {path: text}. A retired name may appear only in its allowed files (globs allowed); each allowed entry must
+    still match a file that contains it, so the list can't go stale."""
+    out = []
+    for n in cfg["names"]:
+        pat = re.compile(n["pattern"], re.I if "i" in n.get("flags", "") else 0)
+        allowed = n.get("allowed", {})
+        used = set()
+        for path in sorted(files):
+            if path == cfg.get("self"): continue
+            hit_globs = [g for g in allowed if fnmatch.fnmatch(path, g)]
+            for i, line in enumerate(files[path].splitlines(), 1):
+                m = pat.search(line)
+                if not m: continue
+                if hit_globs: used.update(hit_globs); continue
+                out.append(f"{path}:{i}: retired name '{m.group(0)}' ({n['why']}); use the new name, or list the file in {cfg.get('self')} with a reason")
+        for g in allowed:
+            if g not in used: out.append(f"{cfg.get('self')}: '{g}' is allowed '{n['pattern']}' but no longer contains it; remove the entry")
+    return out
+
+
+def tracked_text(root=ROOT):
+    out = {}
+    for rel in git("ls-files").split("\n"):
+        f = root / rel
+        if not rel or not f.is_file(): continue
+        try: out[rel] = f.read_text()
+        except (UnicodeDecodeError, OSError): pass
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(); ap.add_argument("--base", default="origin/main"); ap.add_argument("--head", default="HEAD"); ap.add_argument("--body", default="")
     a = ap.parse_args(argv)
@@ -59,6 +91,8 @@ def main(argv=None):
     text = a.body + "\n" + git("log", "--format=%B", f"{a.base}..{a.head}")
     waived = {m.group(1) for m in WAIVER.finditer(text)}
     problems = map_problems(cfg["rules"], changed, added, waived, cfg.get("ignore", ())) + count_problems(cfg["count_lint"])
+    retired = ROOT / "retired-names.json"
+    if retired.exists(): problems += retired_problems(dict(json.loads(retired.read_text()), self="retired-names.json"), tracked_text())
     for p in problems: print("docs check: " + p, file=sys.stderr)
     if not problems: print("docs check: clean")
     return 1 if problems else 0

@@ -9,7 +9,7 @@ Not every skill calls Jev: some are guides and LLM evaluators for building with 
 | [Jevaluate](jevaluate/) | Reads a Jev project's code and rates how well it uses Jev, with provenance for every finding | No: an evaluator that runs on the LLM alone | Available |
 | [Jevaluate, privately](jevaluate-private/) | Rates a project you can't publish, such as a client's code or a local folder, with the same rubric; the rating never reaches the public ratings | No | Available |
 | [Jev Lens](jev-lens/) | Turns images into a neutral JSON state that Jev can read, one shared schema across the set | Only for an optional check of the finished state | Available |
-| [Jevaluate Harness](jevaluate-harness/) | Runs rating rounds, re-rates and rubric calibration for Jevaluate | No | Available |
+| [Jevaluate Harness](jevaluate-harness/) | Runs rating rounds, re-rates and rubric tuning for Jevaluate | No | Available |
 | [Jevaluate Eval](jevaluate-eval/) | Tests whether Jevaluate's rubric leads graders to the right answers, before a rubric change reaches any rating | No | Available |
 | [Jev Sources](jev-sources/) | Finds the TypeSafe docs, patterns and cookbook sections that answer a Jev question, by keyword and by meaning, and tells Claude to read them before any claim | No | Available |
 | [Jev Best Practices Study](study/) | A five-level course: summaries of TypeSafe's cookbooks and docs, then quizzes on the concepts and new glossary terms | No: a web course, nothing to install | **[Open the Claude artifact](https://claude.ai/artifact/W1pVFeGkbcLzndA5xa1RE9)** (recommended, Claude grades your definitions)<br>[Open in GitHub Pages](https://tiffygk.github.io/jev-mode/study/) |

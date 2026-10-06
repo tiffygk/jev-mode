@@ -13,7 +13,7 @@
       "name": "jevaluate",
       "source": "./",
       "strict": false,
-      "description": "Rates how well a project uses Jev, with provenance for every finding. Includes the harness for rating rounds, re-rates and rubric calibration.",
+      "description": "Rates how well a project uses Jev, with provenance for every finding. Includes the harness for rating rounds, re-rates and rubric tuning.",
       "author": {
         "name": "tiffygk",
         "url": "https://github.com/tiffygk"
