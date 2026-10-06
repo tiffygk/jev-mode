@@ -31,7 +31,7 @@ RELAY = re.compile(r"\b(reviewer|gate|subagent|agent|panel)s?\b\W+(?:\w+\W+){0,3
 WEAK = re.compile(r"\b(cookbooks?|primitives?|state|passages?|candidates?|one call)\b", re.I)
 # Evidence that a source was opened, checked per tool call (see source_read).
 READ_PY = re.compile(r"jev-sources/scripts/read\.py")
-SRC_PATH = re.compile(r"jev-sources(-data)?/(docs|cookbooks|patterns)/|_plans/(docs|cookbooks|patterns)/")
+SRC_PATH = re.compile(r"jev-sources(-data)?/(docs|cookbooks|patterns)/|(_plans|TypeSafe)/(docs|cookbooks|patterns)/")
 WEB = re.compile(r"docs\.typesafe\.ai")
 
 
