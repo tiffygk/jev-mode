@@ -3,6 +3,7 @@
 #   bash refresh.sh --fetch   download every page TypeSafe lists in llms.txt (run this first)
 #   bash refresh.sh           rebuild the index from the pages already downloaded
 # Pages go to $JEV_SOURCES_DATA (default ~/.claude/jev-sources-data), never into the repo.
+# Installs model2vec with pip if it's missing, for routing by meaning; JEV_SEMANTIC=off skips that.
 # Optional: set JEV_VAULT to a folder holding docs/, cookbooks/ and patterns/ copies to keep in step with it.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,6 +24,10 @@ if [ "${1:-}" = "--fetch" ]; then
   [ -n "${JEV_VAULT:-}" ] && copy "$DATA" "$JEV_VAULT"
 elif [ -n "${JEV_VAULT:-}" ]; then
   copy "$JEV_VAULT" "$DATA"
+fi
+if [ "${JEV_SEMANTIC:-}" != "off" ] && ! python3 -c "import model2vec" 2>/dev/null; then
+  echo "installing model2vec for routing by meaning (once; JEV_SEMANTIC=off skips this)"
+  python3 -m pip install --user --quiet model2vec || echo "model2vec install failed; routing stays keyword-only"
 fi
 python3 "$HERE/scripts/build_index.py"
 python3 "$HERE/scripts/check_new.py" >/dev/null || true  # clears the notice once the library matches

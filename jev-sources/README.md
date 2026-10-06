@@ -90,7 +90,7 @@ For a copy install the hooks are optional: [`hooks/install-hooks.md`](hooks/inst
 
 Keyword routing comes first and never changes. When the semantic index is on, the router appends up to two sections that match the question by meaning, using a small local embedding model. It runs offline and gives the same answer every run. The last line of the output says `semantic: on` or `semantic: off (<reason>)`.
 
-- **Install:** `python3 -m pip install --user model2vec` (tested on Python 3.9.6, model2vec 0.7.0). The next `refresh.sh` downloads the model once into `$JEV_SOURCES_DATA/models/` and embeds the index. Without model2vec, routing is keyword-only, with a notice.
+- **Install:** automatic. `refresh.sh` installs model2vec with pip if it's missing (tested on Python 3.9.6, model2vec 0.7.0), downloads the model once into `$JEV_SOURCES_DATA/models/` and embeds the index. If the install fails, for example with no network, routing is keyword-only, with a notice. `JEV_SEMANTIC=off bash refresh.sh` skips the install.
 - **Model:** `minishlab/potion-base-8M`, a static embedding model with 256 dimensions. Loading it and embedding one question takes 0.26 s cold. `route.py` takes 0.33 s end to end on an Apple Silicon Mac.
 - **Index:** code, widget markup and link targets are stripped before embedding. Each section is embedded whole and line by line (lines of five words or more), and it scores as its best part.
 - **Rules:** a section matched only by meaning is listed as EXTRACT, not a mandatory read, unless the question limits a design. It is appended only if it scores at least 0.35, isn't already listed, and keeps its file within two sections. A question that shares no word with the library gets no semantic sections.
