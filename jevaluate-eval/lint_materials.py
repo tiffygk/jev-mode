@@ -86,7 +86,8 @@ def named_files_problems(skill_dir):
         if UNBUILT.search(text): problems.append(f"{md.name}: names an unbuilt mode ({UNBUILT.search(text).group(0)!r})")
         for name in sorted(set(PREFIXED.findall(text))):
             if name.rsplit("/", 1)[-1] in ALLOW_NAMED: continue
-            if not (skill_dir.parent / name).exists(): problems.append(f"{md.name}: names {name}, which does not exist")
+            if not ((skill_dir.parent / name).exists() or (skill_dir / name).exists()):  # a skill folder, or the repo root
+                problems.append(f"{md.name}: names {name}, which does not exist")
         for name in sorted(set(NAMED.findall(text))):
             if name in ALLOW_NAMED or name.rsplit("/", 1)[-1] in ALLOW_NAMED: continue
             if "/" in name:
