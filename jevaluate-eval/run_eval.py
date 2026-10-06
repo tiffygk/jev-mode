@@ -1,6 +1,7 @@
 """Run the judgment eval: SKILL.md + rubric section 1 (routing) as the system prompt, 4 packets per call, N reps.
 Refuses (exit 2) on a bad gold file, a dirty or behind-main repo, an --out outside .work/, or an --out folder that already holds files."""
 import argparse, json, pathlib, subprocess, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 from build_packets import build
 import score, runners
 
@@ -14,13 +15,15 @@ def system_prompt():
 def _git(repo, *args):
     return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
 
+GOLDEN_DIRS = ("jevaluate/", "jevaluate-harness/", "jevaluate-eval/", "shared/")
+
 def preflight_repo(repo):
     """Problems that make a paid run meaningless: uncommitted skill changes, or main ahead on the skill folders."""
     probs = []
-    st = _git(repo, "status", "--porcelain", "--", "jevaluate/", "jevaluate-harness/")
+    st = _git(repo, "status", "--porcelain", "--", *GOLDEN_DIRS)
     if st.returncode != 0: return [f"git status failed: {st.stderr.strip()}"]
-    if st.stdout.strip(): probs.append("uncommitted changes in jevaluate/ or jevaluate-harness/; commit them first:\n" + st.stdout.rstrip())
-    lg = _git(repo, "log", "--oneline", "HEAD..main", "--", "jevaluate/", "jevaluate-harness/")
+    if st.stdout.strip(): probs.append("uncommitted changes in the golden folders; commit them first:\n" + st.stdout.rstrip())
+    lg = _git(repo, "log", "--oneline", "HEAD..main", "--", *GOLDEN_DIRS)
     if lg.returncode != 0: probs.append(f"cannot compare with main: {lg.stderr.strip()}")
     elif lg.stdout.strip(): probs.append("main has commits touching jevaluate/ or jevaluate-harness/ that this branch lacks; merge main first:\n" + lg.stdout.rstrip())
     return probs

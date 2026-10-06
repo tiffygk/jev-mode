@@ -1,3 +1,4 @@
+import pytest
 import json, pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import build_packets as bp
@@ -282,6 +283,7 @@ def test_cli_refuses_an_old_run_without_a_rep_count_unless_given_reps(tmp_path):
     p = _cli(tmp_path); assert p.returncode == 2 and "--reps" in p.stderr and "no rep count" in p.stderr
     p = _cli(tmp_path, "--reps", "3"); assert "--reps" not in p.stderr and "Traceback" not in p.stderr
 
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
 def test_cli_takes_the_rep_count_from_run_json_and_refuses_a_mismatch(tmp_path):
     _write(tmp_path, "r1_g0.json", [OK_A, OK_B])
     (tmp_path / "run.json").write_text(json.dumps({"phase": "baseline", "head": "abc", "gold_fingerprint": sc.fingerprint(), "reps": 3, "rubric_status": "frozen", "golden": sc.rubric_text.golden_hash(ref=sc.rubric_text.newest_tag())}))
@@ -344,6 +346,7 @@ def test_run_eval_accepts_an_out_folder_that_does_not_exist_yet(tmp_path):
     assert run_eval.preflight_out(tmp_path / ".work" / "new") == []
 
 
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
 def test_stamp_line_reads_run_json(tmp_path):
     (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "head": "abc1234", "rubric": "2026-09-29", "rubric_status": "frozen", "golden": sc.rubric_text.golden_hash(ref=sc.rubric_text.newest_tag())}))
     line = sc.stamp_line(tmp_path, True)
@@ -376,6 +379,7 @@ def test_old_runs_answering_demo_score_as_display():
     assert score.type_matches({"project_type": "demo"}, g) and score.type_matches({"project_type": "display"}, g)
     assert not score.type_matches({"project_type": "workflow"}, g)
 
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
 def test_candidate_rubric_is_labeled_not_of_record(tmp_path):
     import json, score
     (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2099-01-01", "rubric_status": "unfrozen", "rubric_detail": "no tag"}))
@@ -383,6 +387,7 @@ def test_candidate_rubric_is_labeled_not_of_record(tmp_path):
     (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2026-09-29.1", "rubric_status": "frozen", "golden": score.rubric_text.golden_hash(ref=score.rubric_text.newest_tag())}))
     assert score.rubric_note(tmp_path) == ""
 
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
 def test_scoring_fails_closed_without_a_verified_frozen_stamp(tmp_path, monkeypatch):
     import json, score
     good = score.rubric_text.golden_hash(score.rubric_text.ROOT, ref=score.rubric_text.newest_tag(score.rubric_text.ROOT))
@@ -394,3 +399,12 @@ def test_scoring_fails_closed_without_a_verified_frozen_stamp(tmp_path, monkeypa
     monkeypatch.setattr(score.rubric_text, "frozen_status", lambda root=None: ("changed", "edited"))
     assert not score.of_record(tmp_path)[0]
     assert score.overall_line(True, tmp_path).startswith("Overall: CANDIDATE") and "PASS" not in score.overall_line(True, tmp_path)
+
+
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
+def test_of_record_needs_the_freeze_on_github(tmp_path, monkeypatch):
+    import json, score
+    good = score.rubric_text.golden_hash(ref=score.rubric_text.newest_tag())
+    (tmp_path / "run.json").write_text(json.dumps({"rubric_status": "frozen", "golden": good}))
+    monkeypatch.setattr(score, "tag_on_origin", lambda tag: False)
+    ok, why = score.of_record(tmp_path); assert not ok and "GitHub" in why

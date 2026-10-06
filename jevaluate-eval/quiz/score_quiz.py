@@ -1,5 +1,6 @@
 """Score a quiz run against the owner's key, per scenario and per rule tag. Usage: score_quiz.py <run dir> [--reps N] (--reps only for a run whose run.json has none)"""
 import json, pathlib, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 HERE = pathlib.Path(__file__).parent; sys.path.insert(0, str(HERE.parent))
 import score
 

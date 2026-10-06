@@ -4,7 +4,8 @@ The planned rep count (run.json "reps", or --reps N for an older run) is the den
 with no planned count is refused. Held-out and stakes bars are ceil(2N/3) of N reps.
 Exit 0 on pass, 1 on fail, 2 on a bad gold file, a run whose gold changed since it was made, or no planned rep count.
 Usage: score.py <rundir> [--reps N]"""
-import hashlib, json, pathlib, re, sys
+import functools, hashlib, json, pathlib, re, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "jevaluate" / "scripts"))
@@ -135,6 +136,15 @@ def planned_reps(run, argv_reps):
     if not reps: return None, f"{run}/run.json has no rep count (a run made before run_eval.py wrote one); rerun score.py with --reps N, the number of reps that run planned"
     return int(reps), None
 
+@functools.lru_cache(maxsize=None)
+def tag_on_origin(tag):
+    """True when origin has this freeze tag on the same object as here; False offline or on any mismatch."""
+    root = rubric_text.ROOT
+    here = rubric_text._git(root, "rev-parse", f"refs/tags/{tag}").stdout.decode().strip()
+    r = rubric_text._git(root, "ls-remote", "--tags", "origin", f"refs/tags/{tag}")
+    there = r.stdout.decode().split()[:1] if r.returncode == 0 else []
+    return bool(here) and there == [here]
+
 def of_record(run):
     """(True, "") only when the run stamped a frozen status and the golden-set hash of the newest freeze tag, and the scoring
     checkout is frozen too; else (False, why). Checked again at scoring time, so an edit after the run starts, a run.json
@@ -143,7 +153,9 @@ def of_record(run):
     except (OSError, ValueError): return False, "run.json is missing or unreadable"
     st, detail = rubric_text.frozen_status()
     if st != "frozen": return False, f"the scoring checkout isn't frozen ({detail})"
-    want = rubric_text.golden_hash(ref=rubric_text.newest_tag())
+    tag = rubric_text.newest_tag()
+    if not tag_on_origin(tag): return False, f"{tag} isn't on GitHub with the same commit (or GitHub can't be reached), so the freeze can't be confirmed"
+    want = rubric_text.golden_hash(ref=tag)
     if info.get("rubric_status") != "frozen": return False, f"the run's rubric was {info.get('rubric_status', 'not recorded')} ({info.get('rubric_detail', 'a run made before the lock')})"
     if info.get("golden") != want: return False, "the run's golden files don't match the newest freeze tag"
     return True, ""

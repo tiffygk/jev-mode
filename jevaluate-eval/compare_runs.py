@@ -3,6 +3,7 @@ Usage: compare_runs.py report <sonnet run> <codex run> [--reps N]
 Checks the two runs saw the same system prompt and packets (byte for byte; Codex notes appended at the end are
 reported apart), then scores both with today's score.py and prints one side-by-side table."""
 import json, pathlib, subprocess, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 HERE = pathlib.Path(__file__).parent; sys.path.insert(0, str(HERE))
 import score
 

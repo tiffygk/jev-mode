@@ -32,6 +32,7 @@ Slugs: github.com/<owner>/<repo> -> <owner>__<repo> (case kept); huggingface.co/
 hf__<user>__<model>; any other URL -> site__<domain> (no www.), plus __<path segments> if the URL has one.
 """
 import os, sys, re, shutil, pathlib, argparse, datetime, json, hashlib, subprocess
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 from urllib.parse import urlparse
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import rubric_text
@@ -57,7 +58,7 @@ def escape_on(): return bool(os.environ.get(TEST_ESCAPE)) and not real_library()
 
 def add_gate():
     """None when this code may add to this library, else why not."""
-    if os.environ.get(TEST_ESCAPE): return f"{TEST_ESCAPE} is set: the test escape never adds a rating"
+    if os.environ.get(TEST_ESCAPE) and (real_library() or golden_locked()): return f"{TEST_ESCAPE} is set: the test escape never adds to a real library"
     if golden_locked():
         want = pathlib.Path((LIB / ".golden-checkout").read_text().strip()).resolve()
         here = pathlib.Path(__file__).resolve()

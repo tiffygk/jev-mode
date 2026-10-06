@@ -6,6 +6,7 @@ The form asks only what the owner observes: the type, whether the project calls 
 The key derives everything else by the rules the code enforces: kind from the type, F0 n.a. for a guide,
 top stakes n.a. for a guide, a client and any verdict-1 code."""
 import argparse, html, json, pathlib, re, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 
 HERE = pathlib.Path(__file__).resolve().parent
 SKILL = HERE.parents[1] / "jevaluate"

@@ -1,6 +1,7 @@
 """Serve rubric.md one section at a time. Usage: step.py next <rating.md> | step.py full <rating.md> <past rating> | step.py estimate <manifest.md>.
 Each call checks the current phase is written in the rating file, then prints the next section and logs it."""
 import datetime, hashlib, json, pathlib, re, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import rubric_text as rt
 import library as lib

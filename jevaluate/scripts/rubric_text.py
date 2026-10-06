@@ -20,7 +20,8 @@ def version(text=None):
 # ratings and eval results of record need every one to match the newest rubric-*-frozen tag (2026-10-05).
 GOLDEN = ("jevaluate/rubric.md", "jevaluate/SKILL.md", "jevaluate/read.md", "jevaluate/fix-catalog.md",
           "shared/jev-rules.md", "jevaluate-harness/rater-brief.md", "jevaluate-eval/gold.json", "jevaluate-eval/task.md",
-          "jevaluate-eval/sources.json", "jevaluate-eval/quiz/expected.json", "jevaluate-eval/quiz/scenarios.json")
+          "jevaluate-eval/sources.json", "jevaluate-eval/quiz/expected.json", "jevaluate-eval/quiz/scenarios.json",
+          "jevaluate-eval/codex-notes.md")
 ROOT = RUBRIC_MD.parent.parent
 GIT = "/usr/bin/git" if pathlib.Path("/usr/bin/git").exists() else (shutil.which("git") or "git")
 
