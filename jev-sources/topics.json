@@ -2,6 +2,16 @@
  "_note": "Topic -> pages, seeded from jev-mode/jevaluate/fix-catalog.md (rubric facts F0-F23) and Jev Cookbook Index.md. match is a case-insensitive regex on the question.",
  "topics": [
   {
+   "name": "dependent questions / chains (added 2026-10-05)",
+   "match": "chain|chained|sequential|second request|two requests|depends on|dependent|call pattern|next question|follow.?up (call|request)|previous (step|answer|question|call)|earlier (answer|step|call)|first answer|one after (the )?other|same request|separate requests?|multi.?step|step by step|needs? the (answer|result|output)|before (asking|the next)|in (sequence|order)",
+   "paths": [
+    "docs/primitives.md#When one question depends on another",
+    "cookbooks/hierarchical_classification.md",
+    "cookbooks/autoformat.md",
+    "cookbooks/skill_suggestion.md"
+   ]
+  },
+  {
    "name": "batching / many questions per call",
    "match": "one (call|request)|per (call|request|candidate|pair|passage)|batch|together|at once|parallel|many questions|several questions|fan.?out|\\d+ (passages|questions|candidates|items)|\\d+ (passage|question|candidate|item)s?|single (call|request|api)|thirty",
    "paths": [

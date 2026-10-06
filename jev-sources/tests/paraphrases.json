@@ -1,0 +1,22 @@
+[
+ {"q": "If my second lookup needs the result of the first one, can I send both together or do I have to make separate calls?", "heading": "When one question depends on another"},
+ {"q": "Does the output of one query in a batch get fed into the others sent in that same call?", "heading": "When one question depends on another"},
+ {"q": "I have a list of conditions to check on one input. Should I send them all in a single call or one call each?", "heading": "Good practice: ask more than one question per call"},
+ {"q": "Will adding more checks to one request slow down the response noticeably?", "heading": "Good practice: ask more than one question per call"},
+ {"q": "How much does the model cost, and are output tokens billed?", "heading": "Current models"},
+ {"q": "What happens if I exceed my requests-per-minute allowance, and how big can my input be?", "heading": "Current models"},
+ {"q": "How does the system express how sure it is about an answer, and is that the same thing as the raw likelihood of each outcome?", "heading": "Confidence"},
+ {"q": "Is there a single 0-to-1 number I can compare against a cutoff to decide whether to trust a result, and which answer kinds lack it?", "heading": "Confidence"},
+ {"q": "How do I decide between a pick-one-from-a-list question, a spectrum rating, and a yes/no check?", "heading": "Choose a question type"},
+ {"q": "If I ask 'is this candidate strong in Python?' and get 0.5 back, does that mean medium skill?", "heading": "Choose a question type"},
+ {"q": "Can the input I send be a plain sentence, or can it be structured data with several named fields?", "heading": "State can be a simple string or a structured JSON value"},
+ {"q": "When a decision needs a conversation, an order record and a policy, should I send them as separate inputs or bundle them?", "heading": "State can be a simple string or a structured JSON value"},
+ {"q": "How much better does adding a second-stage relevance pass make the correct passage's position compared with keyword search alone?", "heading": "Re-ranking moves the right answer toward the top"},
+ {"q": "In the passage-retrieval experiment, how many candidates were shortlisted per query and how many model calls were made in total?", "heading": "Re-ranking moves the right answer toward the top"},
+ {"q": "Does the model work well on non-English text such as Chinese or Japanese?", "heading": "Language support"},
+ {"q": "Before I use this for a language other than English, what should I do to check it will be reliable?", "heading": "Language support"},
+ {"q": "Should I include questions in a request even if their answers will only be needed for some inputs?", "heading": "Ask speculative questions"},
+ {"q": "How much cheaper and faster is it to bundle 13 questions in one request versus calling 13 times?", "heading": "Ask speculative questions"},
+ {"q": "Why does accuracy drop when I dump a huge amount of loosely related data into the input, and what should I do instead?", "heading": "Large state full of irrelevant detail"},
+ {"q": "If I can't trim the input in my own code, is there another way to cut out the irrelevant parts?", "heading": "Large state full of irrelevant detail"}
+]
