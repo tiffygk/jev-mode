@@ -9,12 +9,19 @@ synonyms.json. Reference and pattern pages rank above cookbook examples; SDK pag
 last unless the question is about code. At most 2 sections per file, 6 in all. Each gets
 a depth: READ FULL (the question limits a design, or the section is small) or EXTRACT.
 Definitions of any primitive named in the question are added as READ FULL.
+When the semantic index is on (semantic.py), the keyword list stays as it is and up to SEM_ADD
+sections that match by meaning are appended; JEV_SEMANTIC=off, or a missing model or index,
+leaves the keyword list alone.
 """
 import json, math, os, re, sys
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import CODE as CODE_DIR, DATA, SCRIPTS, REFRESH
+try:
+    import semantic
+except ImportError:  # numpy missing: BM25 alone
+    semantic = None
 ROOT = DATA
 CONSTRAINT = re.compile(r"\b(must|require[sd]?|only|can'?t|cannot|one call|per request|per call|limit|allowed|wrong|correct|need to|have to)\b", re.I)
 CODE = re.compile(r"\b(sdk|python|javascript|typescript|client|method|install|import|async|http|api)\b", re.I)
@@ -23,6 +30,7 @@ BOOST = {"reference": 1.35, "pattern": 1.3, "example": 1.0, "other": 0.6, "sdk":
 DEFS = {"noul": "docs/primitives__noul.md", "choice": "docs/primitives__choice.md",
         "score": "docs/primitives__score.md", "state": "docs/concepts__state.md",
         "confidence": "docs/confidence.md"}
+SEM_ADD, SEM_FLOOR = 2, 0.35  # sections appended by meaning; least similarity to append one
 STOP = set("a an the of to in on for is are be it i we you can do does how what should with and or this that my our".split())
 
 
@@ -83,6 +91,15 @@ def route(q):
     rows, texts = load()
     base, extra = expand(q)
     scores = bm25(rows, texts, base, extra)
+    if os.environ.get("JEV_SEMANTIC") == "off":
+        sem, sem_why = None, "off: JEV_SEMANTIC=off"
+    elif semantic is None:
+        sem, sem_why = None, "off: numpy unavailable"
+    else:
+        sem, why = semantic.scores(q, rows)
+        sem_why = "on" if sem else f"off: {why}"
+    if sem and max(scores.values()) == 0:  # no word of the question is in the library: gibberish
+        sem, sem_why = None, "off: no keyword match"
     code = bool(CODE.search(q))
     def final(r):
         boost = BOOST[r["kind"]] if not (code and r["kind"] == "sdk") else 1.0
@@ -116,17 +133,30 @@ def route(q):
                 mapped.append(max(cands, key=lambda r: (scores[r["id"]], -r["line_start"])))
     picked = mapped + [r for r in picked if r["id"] not in {m["id"] for m in mapped}][:max(0, 8 - len(mapped))]
     picked = picked[:10]
+    if sem:  # meaning complements the keyword list: append only, never reorder or drop
+        have, per_file = {r["id"] for r in picked}, Counter(r["path"] for r in picked)
+        added = []
+        for r in sorted(rows, key=lambda r: (-sem[r["id"]], r["id"])):
+            if len(added) == SEM_ADD or sem[r["id"]] < SEM_FLOOR:
+                break
+            if r["id"] not in have and per_file[r["path"]] < 2 and (r["kind"] != "sdk" or code):
+                added.append(r); per_file[r["path"]] += 1
+        picked += added
+    n_keyword = len(picked) - (len(added) if sem else 0)
     constraint = bool(CONSTRAINT.search(q))
     secs = [dict(id=r["id"], path=r["path"], heading=r["heading"], kind=r["kind"], tokens=r["tokens"],
-                 depth="READ FULL" if constraint or r["tokens"] < FULL_UNDER else "EXTRACT") for r in picked]
+                 depth="READ FULL" if constraint or (k < n_keyword and r["tokens"] < FULL_UNDER) else "EXTRACT")
+            for k, r in enumerate(picked)]  # a section matched only by meaning is a pointer, not a mandatory read
     named = {p for w, p in DEFS.items() if re.search(rf"\b{w}s?\b", q, re.I)}
     defs = []
     for p in sorted(named):
         r = next((x for x in rows if x["path"] == p), None)
-        if not r or r["id"] in {x["id"] for x in secs}:
+        if not r or r["id"] in {x["id"] for x in secs[:n_keyword]}:
             continue
         defs.append(dict(id=r["id"], path=p, heading=r["heading"], kind=r["kind"], tokens=r["tokens"], depth="READ FULL"))
-    return {"question": q, "topics": [t["name"] for t in hit], "constraint": constraint, "sections": secs, "definitions": defs}
+    secs = [x for k, x in enumerate(secs) if k < n_keyword or x["id"] not in {d["id"] for d in defs}]
+    return {"question": q, "topics": [t["name"] for t in hit], "constraint": constraint, "sections": secs, "definitions": defs,
+            "semantic": sem_why}
 
 
 def main():
@@ -134,10 +164,13 @@ def main():
     if not args:
         sys.exit('usage: route.py [--json] "<question>"')
     res = route(" ".join(args))
+    if "refresh.sh" in res["semantic"] or "unavailable" in res["semantic"]:  # something to fix
+        print(f"semantic routing {res['semantic']}", file=sys.stderr)
     if "--json" in sys.argv:
         print(json.dumps(res, indent=1)); return
     if not res["sections"] and not res["definitions"]:
-        print(f"no section found; refresh the library ({REFRESH}) or read the indexes"); return
+        print(f"no section found; refresh the library ({REFRESH}) or read the indexes")
+        print(semantic_line(res)); return
     label = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference", "other": "other"}
     print(f"Question: {res['question']}" + ("  [limits a design: read in full]" if res["constraint"] else ""))
     if res["topics"]:
@@ -146,6 +179,11 @@ def main():
         print(f"{s['depth']:9} | {label[s['kind']]:16} | {s['path']}#{s['heading']} | {s['tokens']} tok\n"
               f"          python3 {SCRIPTS}/read.py '{s['id']}'")
     print("READ FULL items: read every one with read.py before any claim. EXTRACT items: claims from them are unverified until read in full.")
+    print(semantic_line(res))
+
+
+def semantic_line(res):
+    return "semantic: on" if res["semantic"] == "on" else f"semantic: off ({res['semantic'][5:]})"
 
 
 if __name__ == "__main__":
