@@ -83,3 +83,36 @@ def test_retired_list_itself_is_skipped():
 def test_upper_case_old_name_fails():
     p = dc.retired_problems(RETIRED, {"x.md": "see CALIBRATION.md", "jevaluate/rubric.md": "calibrates", "ratings/a.md": "calibrated"})
     assert any(q.startswith("x.md:1:") for q in p)
+
+
+import subprocess
+
+
+def _repo(tmp_path, readme):
+    for args in (["init", "-q"], ["config", "user.email", "t@example.com"], ["config", "user.name", "t"]):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True)
+    (tmp_path / "docs-map.json").write_text(json.dumps(
+        {"rules": [], "count_lint": {"files": [], "skip": [], "patterns": [], "why": ""}}))
+    (tmp_path / "retired-names.json").write_text(json.dumps({"names": [
+        {"pattern": r"\bcalib\b", "flags": "i", "allowed": {}, "why": "renamed to rater_agreement"}]}))
+    (tmp_path / "README.md").write_text(readme)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "x"], check=True)
+
+
+def test_main_runs_the_retired_name_check(tmp_path, monkeypatch):
+    _repo(tmp_path, "Run calib.py score\n")
+    monkeypatch.setattr(dc, "ROOT", tmp_path)
+    assert dc.main(["--base", "HEAD", "--head", "HEAD"]) == 1
+    (tmp_path / "README.md").write_text("Run rater_agreement.py score\n")
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qam", "y"], check=True)
+    assert dc.main(["--base", "HEAD", "--head", "HEAD"]) == 0
+
+
+def test_retired_message_names_whole_word_and_the_way_through():
+    p = dc.retired_problems(RETIRED, {"jevaluate/rubric.md": "calibrates", "ratings/a.md": "calibrated",
+                                      "jev-new/SKILL.md": "Jev returns calibrated probabilities"})
+    assert len(p) == 1 and p[0].startswith("jev-new/SKILL.md:1:")
+    assert "'calibrated'" in p[0]
+    assert "list the file in retired-names.json with a reason" in p[0]
+    assert "retired name" not in p[0]

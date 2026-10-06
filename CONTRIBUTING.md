@@ -12,7 +12,7 @@ Three rules keep this repo's docs true as it changes:
 
 ## The docs check
 
-[`docs-map.json`](docs-map.json) lists which docs describe which code: the root README lists the skills, each skill's README describes its scripts, and so on. [`scripts/docs_check.py`](scripts/docs_check.py) runs in CI on every pull request and in the local pre-push hook. It fails a change that touches a source but none of the docs that describe it, and it flags counts or versions written into README prose. Test files never need a doc. It also enforces [`retired-names.json`](retired-names.json): once something is renamed, its old name may appear only in the files listed for it, each with a reason.
+[`docs-map.json`](docs-map.json) lists which docs describe which code: the root README lists the skills, each skill's README describes its scripts, and so on. [`scripts/docs_check.py`](scripts/docs_check.py) runs in CI on every pull request and in the local pre-push hook. It fails a change that touches a source but none of the docs that describe it, and it flags counts or versions written into README prose. Test files never need a doc. It also enforces [`retired-names.json`](retired-names.json): once something is renamed, its old name may appear only in the files listed for it, each with a reason. A file that uses an old name in its other, intended sense goes on the list with that reason, and then passes.
 
 When a change really needs no doc update, say why in the PR description or a commit message:
 

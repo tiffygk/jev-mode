@@ -73,7 +73,7 @@ def enforcement_problems(text=None, rubric=None):
 
 NAMED = re.compile(r"(?<![\w./-])((?:scripts|evals)/[\w./-]+\.\w+|[\w-]+\.(?:md|py|json))(?![\w/-])")
 PREFIXED = re.compile(r"(?<![\w./-])((?:jevaluate|jevaluate-harness|jevaluate-eval)/[\w./-]+\.\w+)(?![\w/-])")
-ALLOW_NAMED = {"rating.md", "prompt.md", "manifest.md", "meta.json", "extract.md", "agreement.md", "rubric-tuning-log.md", "EVAL-RESULTS.md"}
+ALLOW_NAMED = {"rating.md", "prompt.md", "manifest.md", "meta.json", "extract.md", "agreement.md", "rubric-tuning-log.md"}
 UNBUILT = re.compile(r"coming soon|not yet built|\bTODO mode\b", re.I)
 
 

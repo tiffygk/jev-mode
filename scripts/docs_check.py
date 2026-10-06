@@ -33,7 +33,8 @@ def map_problems(rules, changed, added, waived, ignore=()):
     return out
 
 
-def count_problems(cfg, root=ROOT):
+def count_problems(cfg, root=None):
+    root = root or ROOT
     out = []
     pats = [re.compile(p, re.I) for p in cfg["patterns"]]
     files = sorted({p for g in cfg["files"] for p in root.glob(g)})
@@ -65,13 +66,18 @@ def retired_problems(cfg, files):
                 m = pat.search(line)
                 if not m: continue
                 if hit_globs: used.update(hit_globs); continue
-                out.append(f"{path}:{i}: retired name '{m.group(0)}' ({n['why']}); use the new name, or list the file in {cfg.get('self')} with a reason")
+                s, e = m.start(), m.end()
+                while s > 0 and (line[s - 1].isalnum() or line[s - 1] == "_"): s -= 1
+                while e < len(line) and (line[e].isalnum() or line[e] == "_"): e += 1
+                out.append(f"{path}:{i}: '{line[s:e]}' is limited to the files listed in {cfg.get('self')} ({n['why']}). "
+                           f"If this file means it that way on purpose, list the file in {cfg.get('self')} with a reason; otherwise use the new name.")
         for g in allowed:
             if g not in used: out.append(f"{cfg.get('self')}: '{g}' is allowed '{n['pattern']}' but no longer contains it; remove the entry")
     return out
 
 
-def tracked_text(root=ROOT):
+def tracked_text(root=None):
+    root = root or ROOT
     out = {}
     for rel in git("ls-files").split("\n"):
         f = root / rel
@@ -90,9 +96,9 @@ def main(argv=None):
     added = set(git("diff", "--name-only", "--diff-filter=A", rng).split())
     text = a.body + "\n" + git("log", "--format=%B", f"{a.base}..{a.head}")
     waived = {m.group(1) for m in WAIVER.finditer(text)}
-    problems = map_problems(cfg["rules"], changed, added, waived, cfg.get("ignore", ())) + count_problems(cfg["count_lint"])
+    problems = map_problems(cfg["rules"], changed, added, waived, cfg.get("ignore", ())) + count_problems(cfg["count_lint"], ROOT)
     retired = ROOT / "retired-names.json"
-    if retired.exists(): problems += retired_problems(dict(json.loads(retired.read_text()), self="retired-names.json"), tracked_text())
+    if retired.exists(): problems += retired_problems(dict(json.loads(retired.read_text()), self="retired-names.json"), tracked_text(ROOT))
     for p in problems: print("docs check: " + p, file=sys.stderr)
     if not problems: print("docs check: clean")
     return 1 if problems else 0
