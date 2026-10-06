@@ -92,3 +92,8 @@ def test_dispatch_still_denies_jev_in_the_task():
     b = "Review whether this Jev integration sends each Noul in its own request."
     out = run("jev-dispatch-check.py", {"tool_input": {"prompt": b}})
     assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+def test_prompt_reminder_skips_handback_with_session_prefix():
+    # Replay of a real 2026-10-06 transcript: hand-backs can arrive prefixed by this line.
+    p = 'Another Claude session sent a message:\n<agent-message from="a011c59200f9062b3">\n[Subagent hand-back] the Jev rubric...'
+    assert run("jev-prompt-reminder.py", {"prompt": p}) is None

@@ -88,7 +88,7 @@ TOOLING = re.compile(r"route\.py|read\.py|refresh\.sh|build_index|topics\.json|s
 
 
 # 2026-10-06: messages that are subagent reports or task notifications, not the user's words.
-HANDBACK = re.compile(r"^\s*(<agent-message\b|<task-notification>|\[SYSTEM NOTIFICATION)", re.I)
+HANDBACK = re.compile(r"^\s*(Another Claude session sent a message:\s*)?(<agent-message\b|<task-notification>|\[SYSTEM NOTIFICATION)", re.I)
 
 
 def topic_text(text):
