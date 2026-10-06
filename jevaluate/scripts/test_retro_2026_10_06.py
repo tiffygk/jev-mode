@@ -59,7 +59,7 @@ def test_freeze_tag_push_check(tmp_path):
     v = rt.version((root / "jevaluate/rubric.md").read_text())
     assert ftc.problems(root, f"rubric-{v}-frozen", head, head) == []
     assert any("version" in p for p in ftc.problems(root, "rubric-2099-01-01-frozen", head, head))
-    md = root / "jevaluate/rubric.md"; md.write_text(md.read_text() + "\nmore\n"); git(root, "commit", "-qam", "later")
+    md = root / "jevaluate/rubric.md"; md.write_text(md.read_text() + "\nmore\n"); git(root, "-c", "user.email=a@b", "-c", "user.name=t", "commit", "-qam", "later")
     later = git(root, "rev-parse", "HEAD").stdout.strip()
     assert any("main" in p for p in ftc.problems(root, f"rubric-{v}-frozen", later, head))       # not in main's history yet
     assert ftc.problems(root, "v1.0", later, head) == []                                         # other tags are not this check's business
