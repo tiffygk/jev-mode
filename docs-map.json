@@ -1,0 +1,130 @@
+{
+ "_about": "Which docs describe which sources. scripts/docs_check.py fails a change that touches a rule's sources but none of its docs, unless the PR description or a commit message says 'Docs checked: <doc> unchanged because <reason>'. See CONTRIBUTING.md.",
+ "rules": [
+  {
+   "name": "a new skill",
+   "sources": [
+    "*/SKILL.md"
+   ],
+   "added_only": true,
+   "docs": [
+    "README.md"
+   ],
+   "why": "the root README lists every skill"
+  },
+  {
+   "name": "the plugin list",
+   "sources": [
+    ".claude-plugin/marketplace.json"
+   ],
+   "docs": [
+    "README.md"
+   ],
+   "why": "the root README lists what each plugin installs"
+  },
+  {
+   "name": "the published ratings format",
+   "sources": [
+    "jevaluate/ratings-template/*"
+   ],
+   "docs": [
+    "jevaluate/README.md",
+    "jevaluate/ratings-template/README.md"
+   ],
+   "why": "both explain what a ratings page shows and how it gets published"
+  },
+  {
+   "name": "private ratings",
+   "sources": [
+    "jevaluate-private/*"
+   ],
+   "docs": [
+    "jevaluate/README.md",
+    "jevaluate-private/README.md"
+   ],
+   "why": "the Jevaluate README says how to rate privately"
+  },
+  {
+   "name": "the rubric",
+   "sources": [
+    "jevaluate/rubric.md"
+   ],
+   "docs": [
+    "jevaluate/README.md"
+   ],
+   "why": "the Jevaluate README describes what the rubric checks"
+  },
+  {
+   "name": "eval scripts",
+   "sources": [
+    "jevaluate-eval/*.py",
+    "jevaluate-eval/calibration/*"
+   ],
+   "docs": [
+    "jevaluate-eval/README.md",
+    "jevaluate-eval/SKILL.md",
+    "jevaluate-eval/commands.md"
+   ],
+   "why": "the eval README, skill and command list describe each instrument"
+  },
+  {
+   "name": "harness scripts",
+   "sources": [
+    "jevaluate-harness/scripts/*",
+    "jevaluate-harness/*.py"
+   ],
+   "docs": [
+    "jevaluate-harness/README.md",
+    "jevaluate-harness/rating-round.md",
+    "jevaluate-harness/SKILL.md"
+   ],
+   "why": "the harness README and round steps say when each script runs"
+  },
+  {
+   "name": "jev-sources scripts",
+   "sources": [
+    "jev-sources/scripts/*"
+   ],
+   "docs": [
+    "jev-sources/README.md",
+    "jev-sources/SKILL.md"
+   ],
+   "why": "the Jev Sources README and skill describe routing"
+  },
+  {
+   "name": "jev-lens",
+   "sources": [
+    "jev-lens/scripts/*",
+    "jev-lens/*.py"
+   ],
+   "docs": [
+    "jev-lens/README.md",
+    "jev-lens/SKILL.md"
+   ],
+   "why": "the Jev Lens README and skill describe its steps"
+  }
+ ],
+ "count_lint": {
+  "files": [
+   "README.md",
+   "*/README.md"
+  ],
+  "skip": [
+   "ratings/README.md",
+   "jevaluate/ratings-template/README.md"
+  ],
+  "patterns": [
+   "\\b\\d+ (rated )?(ratings|projects|skills|cases|scenarios)\\b",
+   "\\brubric 20\\d\\d-\\d\\d-\\d\\d"
+  ],
+  "why": "a count or version in prose goes stale; link to the table or file that holds it"
+ },
+ "ignore": [
+  "test_*.py",
+  "*/test_*.py",
+  "conftest.py",
+  "*/conftest.py",
+  "*/tests/*",
+  "*/fixtures/*"
+ ]
+}

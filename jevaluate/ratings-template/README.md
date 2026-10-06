@@ -6,6 +6,10 @@ Jev, which TypeSafe launched on September 15, 2026, makes decisions instead of w
 
 These ratings follow TypeSafe's guidelines, not my taste. Every problem cites the code at a pinned commit and links the TypeSafe page it departs from, along with the fix that page recommends. A few rules come from my own testing; those are marked.
 
+## Two raters
+
+Some projects have two ratings, from different AI models that never saw each other's work. The "Rated by" column says which model wrote each one. Where they disagree, both stay up: a disagreement shows where the rubric needs a clearer rule.
+
 ## If your project is here
 
 The fixes are yours. Everything in this folder is released under CC0: use it, change it, ship it, no credit needed. The fixes come from reading your code and haven't been tested against it.

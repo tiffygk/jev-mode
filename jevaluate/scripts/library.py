@@ -119,6 +119,8 @@ def front_text(t):
 def slug_for(url):
     if not url:
         return "unknown"
+    if url.startswith("local:"):  # a private rating of a local folder (jevaluate-private)
+        return "local__" + re.sub(r"[^\w.-]+", "-", url[len("local:"):]).strip("-")
     u = urlparse(url if "://" in url else "https://" + url)
     host = u.netloc.lower()
     if host.startswith("www."):
@@ -165,6 +167,12 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     d = front_text(text)
     gate = add_gate() or library_dirty()
     if gate: sys.exit("not added: " + gate)
+    is_private = d.get("visibility", "").split()[:1] == ["private"]
+    if is_private and not is_private_library():
+        sys.exit(f"not added: a private rating goes only into a private library, never {LIB}. "
+                 "Run `library.py init-private <dir>` and set JEVALUATE_LIBRARY to that folder.")
+    if is_private_library() and not is_private:
+        sys.exit(f"not added: {LIB} is a private library; a rating here needs `visibility: private` in its front matter")
     log_file = pathlib.Path(str(src) + ".steps.json")
     if not log_file.exists() and evidence: log_file = pathlib.Path(evidence) / (src.name + ".steps.json")
     if log_file.exists() and served_unfrozen(json.loads(log_file.read_text()), strict=True) and not escape_on():
@@ -817,13 +825,14 @@ def why_line(t, d):
 def dots(x):
     return "●" * int(x) + "○" * (3 - int(x)) if str(x).isdigit() else "n.a."
 
-def export_pages(p, slug=None):
-    """-> (detail page, full page, front matter, rubric, why) for one rating; slug is its page name."""
+def export_pages(p, slug=None, name=None):
+    """-> (detail page, full page, front matter, rubric, why) for one rating; slug is its page name.
+    name overrides the project name shown, so every rater's page for one project names it the same way."""
     t = re.sub(r"(?m)^Adjudicated [^\n]*\n?", "", p.read_text(errors="ignore"))  # internal provenance, not for public pages
     d = front_text(t); v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
     r = d.get("rubric", "").split(); r = r[0] if r else ""
     slug = slug or p.parent.name; label = verdict_label(t, v); unscored = not_rated(d)
-    who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
+    who = name or display_name(d, slug)
     commit = d.get("commit", "").split()[0] if d.get("commit") else ""
     at = (f"at [`{commit[:7]}`]({d['url'].rstrip('/')}/tree/{commit})" if re.fullmatch(r"[0-9a-f]{7,40}", commit) and re.search(r"github\.com|huggingface\.co", d.get("url", ""))
           else f"[{d.get('url', '')}]({d.get('url', '')}), {d.get('commit', '')}")
@@ -872,14 +881,42 @@ def export_pages(p, slug=None):
         full += ["", "<details>", f"<summary><b>Files read ({len(items) - skipped}{f'; {skipped} skipped' if skipped else ''})</b></summary>", "", cov, "", "</details>"]
     return "\n".join(detail) + "\n", "\n".join(full) + "\n", d, r, why_line(t, d)
 
+def display_name(d, slug):
+    return f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
+
+def is_private_library():
+    """A private library (jevaluate-private) holds ratings that are never published."""
+    return (LIB / "PRIVATE").exists()
+
+def unpublished():
+    """{slug: reason} from ratings-template/unpublished.txt: projects export leaves out (one slug per line, '# reason' after it)."""
+    f = SKILL / "ratings-template" / "unpublished.txt"; out = {}
+    if f.exists():
+        for l in f.read_text().splitlines():
+            if l.strip() and not l.lstrip().startswith("#"):
+                slug, _, why = l.partition("#"); out[slug.strip()] = why.strip() or "listed in unpublished.txt"
+    return out
+
 def export(outdir):
+    if is_private_library():
+        sys.exit(f"export refused: {LIB} is a private library (it holds a PRIVATE marker); private ratings are never published")
     outdir = pathlib.Path(outdir); pages = {}; rows = []; any_stale = False
     # Only full reads and approved scopes are published; quick (extract) ratings stay in the library.
-    for slug, p in sorted(latest_per_project(full_only=True).items()):
-        detail, full, d, r, why = export_pages(p, slug); pages[slug] = (p, detail, full)
+    latest = latest_per_project(full_only=True); skip = unpublished()
+    for slug in [s for s in latest if s.split("--")[0] in skip]:
+        print(f"left out: {slug} ({skip[slug.split('--')[0]]})", file=sys.stderr)
+    latest = {s: p for s, p in latest.items() if s.split("--")[0] not in skip}
+    hidden = [s for s, p in latest.items() if front(p).get("visibility", "").split()[:1] == ["private"]]
+    if hidden:
+        sys.exit("export refused: private ratings in a public library: " + ", ".join(hidden) + ". Move them to a private library.")
+    # One name per project: every rater's row uses the name from the project's own (default-rater) page.
+    names = {s: display_name(front(p), s) for s, p in latest.items() if "--" not in s}
+    for slug, p in sorted(latest.items()):
+        nm = names.get(slug.split("--")[0])
+        detail, full, d, r, why = export_pages(p, slug, nm); pages[slug] = (p, detail, full)
         v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
         stale = rubric_date(r) < rubric_date(RUBRIC); any_stale |= stale
-        who = f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
+        who = nm or display_name(d, slug)
         ptype = (d.get("project_type", "").split() or [""])[0]
         ptype = "" if ptype == "unrecorded" else ptype.replace("-", " ")
         un = not_rated(d); shown = f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(p.read_text(errors='ignore'), v)}"
@@ -1002,12 +1039,17 @@ def list_add(name, entries):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["add", "index", "similar", "check", "blind", "migrate", "list-add", "stale", "export", "migrate-fields", "fill-docs"])
+    ap.add_argument("cmd", choices=["add", "index", "similar", "check", "blind", "migrate", "list-add", "stale", "export", "migrate-fields", "fill-docs", "init-private"])
     ap.add_argument("file", nargs="?")
     ap.add_argument("list_file", nargs="?")
     ap.add_argument("--lineage"); ap.add_argument("--stage"); ap.add_argument("--limit", type=int, default=3); ap.add_argument("--exclude"); ap.add_argument("--out")
     ap.add_argument("--link-docs", action="store_true"); ap.add_argument("--evidence"); ap.add_argument("--supersedes")
     a = ap.parse_intermixed_args()
+    if a.cmd == "init-private":
+        if not a.file: sys.exit("usage: library.py init-private <dir>")
+        d = pathlib.Path(a.file).expanduser(); (d / "projects").mkdir(parents=True, exist_ok=True)
+        (d / "PRIVATE").write_text("A private Jevaluate library: its ratings are never exported or published.\n")
+        print(f"private library ready: {d}\nRate with: JEVALUATE_LIBRARY={d}"); sys.exit(0)
     if a.cmd == "add":
         if not a.file: sys.exit("add needs <rating.md>")
         add(a.file, a.link_docs, a.evidence, a.supersedes)

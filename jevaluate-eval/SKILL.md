@@ -13,7 +13,7 @@ The scripts are in `jevaluate-eval/` (the quiz in `jevaluate-eval/quiz/`); every
 Before each, tell the owner in one line which runs next and what it tests.
 
 1. **Materials check: does what a grader reads say what the rules mean?**
-   - `lint_materials.py` must print "lint clean": allowed values, eval-case names, em-dashes, named files, and a `jevaluate/enforcement.md` row for every rule.
+   - `lint_materials.py` must print "lint clean": allowed values, eval-case names, em-dashes, named files, a `jevaluate/enforcement.md` row for every rule, and no sentence over 35 words added since the newest freeze.
    - A fresh reviewer, briefed as a grader, reads them for contradictions.
    - `build_grader_view.py <out.html>` builds the step-by-step view: the rater's start files, what `step.py` serves at each phase, every stakes row, and the eval grader's prompt. The owner reviews it. Schedule that review after any planned task that moves instructions into code, never before.
 2. **Quiz: does a grader understand the rules on invented projects?**
