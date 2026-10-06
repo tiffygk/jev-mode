@@ -82,10 +82,35 @@ def main():
                 out += sections(p)
     if not out:
         sys.exit(f"no pages in {ROOT}; run {REFRESH}")
+    try:
+        import semantic
+        semantic.clear()  # vectors from an older index must never outlive it
+    except Exception:
+        pass
     with open(os.path.join(ROOT, "sections.jsonl"), "w") as fh:
         for r in out:
             fh.write(json.dumps(r) + "\n")
     print(f"{len(out)} sections from {len({r['path'] for r in out})} files")
+    embed(out)
+
+
+def embed(rows):
+    """Write the semantic index beside sections.jsonl; a missing model only skips it."""
+    try:
+        import semantic
+        semantic.ALLOW_DOWNLOAD = True  # the first refresh downloads the model once
+        ok, why = semantic.available()
+        if ok:
+            texts = []
+            for r in rows:
+                lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")
+                texts.append(semantic.section_text(r, lines))
+            semantic.build(rows, texts)
+            print(f"semantic index: {len(rows)} sections, {semantic.MODEL_ID}")
+        else:
+            print(f"semantic index skipped: {why}")
+    except Exception as e:
+        print(f"semantic index skipped: {type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":
