@@ -139,7 +139,7 @@ flowchart TD
 ## 2. Facts
 Answer each fact the type leaves in play, with evidence.
 - **yes**: the evidence shows it holds; cite file:line. A test counts only when it runs by default or has a recorded result. *Example: F22 no, the injection test is skipped unless a flag is set and no result is recorded.*
-- **no**: the evidence shows it fails, or nothing in the files read shows it holds; cite file:line (or the files checked) and the TypeSafe page behind the rule. A fact that holds for some parts and not others is a no, and the finding says which parts hold. *Example: F14 no, ticket bodies are cut at 30k tokens but attached threads have no limit.*
+- **no**: the evidence shows it fails, or nothing in the files read shows it holds; cite file:line (or the files checked) and the TypeSafe page behind the rule. A fact that holds for some parts and not others is a no when an input like those in the project's README, examples or tests could reach the uncovered part and change what the project does: a different action, a lost result or a failed request. A change only in order or display doesn't count. Write that input in the finding. If there isn't one, it's a yes, and the finding names the gap. *Example: F14 no, bodies are cut at 30k tokens, but a 50-message thread like the README's reaches Jev uncut. F14 yes, bodies are cut at 30k tokens; the subject field isn't cut, but the form stops it at 200 characters.*
 - **n.a.**: the fact doesn't apply to this type, stakes or design; say why in a few words.
 - **unknown**: the file that would answer it wasn't read after a `--also` retry; say which. Unknowns lower depth, not scores: for an anchor, treat an unknown fact as holding. *Example: F14 unknown, `--also src/limits.py` fetch failed.*
 
