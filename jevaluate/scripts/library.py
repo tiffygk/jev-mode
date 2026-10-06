@@ -69,6 +69,9 @@ def rubric_gate():
     """None when ratings may use this rubric, else why not. Ratings use only the frozen rubric (2026-10-05: an agent
     edited the live rubric, so the lock sits in the code that serves and checks it, not only in a hook)."""
     status, detail = rubric_text.frozen_status()
+    if status == "frozen" and golden_locked():  # her library: the freeze must also be GitHub's newest, in GitHub main
+        ok, why = rubric_text.github_check(detail)
+        return None if ok else f"the rubric's freeze isn't confirmed on GitHub ({why})"
     if status == "frozen" or escape_on(): return None
     if status == "no-git" and not golden_locked(): return None  # a copy install rating into its own library
     return (f"the rubric isn't the frozen one ({detail}). Ratings use only a frozen rubric: restore it with "
@@ -76,7 +79,14 @@ def rubric_gate():
 
 LOCK_DATE = "2026-10-06"  # ratings logged before the lock have no rubric status in their step logs
 
-def served_unfrozen(log, rated=""):
+def library_dirty(lib=None):
+    """None when the library's git tree is clean (or it isn't versioned), else what's uncommitted."""
+    lib = pathlib.Path(lib or LIB)
+    if not (lib / ".git").exists(): return None
+    r = subprocess.run(["/usr/bin/git", "-C", str(lib), "status", "--porcelain"], capture_output=True, text=True)
+    return f"the library has uncommitted changes; show the owner and resolve them first:\n{r.stdout.strip()[:400]}" if r.stdout.strip() else None
+
+def served_unfrozen(log, rated="", strict=False):
     """True when any served step wasn't from the frozen golden set: no status (unless rated before the lock), a status
     other than frozen, or content that doesn't hash to the newest freeze tag (when this checkout can check it)."""
     tag = rubric_text.newest_tag()
@@ -84,7 +94,7 @@ def served_unfrozen(log, rated=""):
     for e in log:
         st = e.get("rubric")
         if st is None:
-            if str(rated)[:10] >= LOCK_DATE: return True
+            if strict or str(rated)[:10] >= LOCK_DATE: return True  # adding a new rating: no pre-lock exemption
             continue
         if st == "no-git" and not golden_locked(): continue
         if st != "frozen" or (want and e.get("golden") != want): return True
@@ -149,8 +159,11 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     src = pathlib.Path(src); text = src.read_text(errors="ignore")
     if link_docs: text, _ = fill_docs(text, single_only=False)
     d = front_text(text)
-    gate = add_gate()
+    gate = add_gate() or library_dirty()
     if gate: sys.exit("not added: " + gate)
+    log_file = pathlib.Path(str(src) + ".steps.json")
+    if log_file.exists() and served_unfrozen(json.loads(log_file.read_text()), strict=True) and not escape_on():
+        sys.exit("not added: the step log has a section not served from the frozen golden set")
     problems = check(src, evidence=evidence, text=text)
     if problems:
         sys.exit("not added; fix these and rerun:\n- " + "\n- ".join(problems))
@@ -185,7 +198,7 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     print(dest); print(f"index: {index()} ratings")
     if (LIB / ".git").exists():  # the library is versioned: every add is a commit, so any other change shows up as dirty
         g = lambda *a: subprocess.run(["git", "-C", str(LIB), *a], capture_output=True, text=True)
-        g("add", "-A"); r = g("-c", "user.name=jevaluate", "-c", "user.email=jevaluate@localhost", "commit", "-qm", f"add {dest.relative_to(LIB)}")
+        g("add", "--", str(dest.relative_to(LIB)), "index.md", *([str(ev_dest.relative_to(LIB))] if ev_dest.exists() else [])); r = g("-c", "user.name=jevaluate", "-c", "user.email=jevaluate@localhost", "commit", "-qm", f"add {dest.relative_to(LIB)}")
         print("library commit: " + ("ok" if r.returncode == 0 else r.stderr.strip()[:200]))
 
 SKILL = pathlib.Path(__file__).resolve().parent.parent

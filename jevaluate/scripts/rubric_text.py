@@ -1,5 +1,5 @@
 """Read rubric.md: its version, allowed-value lines and numbered sections. One source for code and instructions."""
-import functools, hashlib, os, pathlib, re, shutil, subprocess
+import functools, hashlib, json, os, pathlib, re, shutil, subprocess
 
 RUBRIC_MD = pathlib.Path(__file__).resolve().parent.parent / "rubric.md"
 KIND_OF = {"workflow": "uses", "library": "uses", "client": "uses", "agent-tool": "uses", "display": "uses",
@@ -25,10 +25,45 @@ GOLDEN = ("jevaluate/rubric.md", "jevaluate/SKILL.md", "jevaluate/read.md", "jev
 ROOT = RUBRIC_MD.parent.parent
 GIT = "/usr/bin/git" if pathlib.Path("/usr/bin/git").exists() else (shutil.which("git") or "git")
 
+GITHUB_REPO = "tiffygk/jev-mode"  # where freezes are approved; checked directly, never through a git remote
+
 def _git(root, *a):
-    """git with every GIT_* variable dropped, so the environment can't point it at another repository or none."""
+    """git with GIT_* variables dropped, the user's and system git config ignored and replace objects off, so neither the
+    environment nor config can point it at another repository or swap a file's content."""
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-    return subprocess.run([GIT, "-C", str(root), *a], capture_output=True, env=env)
+    env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
+    return subprocess.run([GIT, "--no-replace-objects", "-C", str(root), *a], capture_output=True, env=env)
+
+def _github_get(path):
+    import urllib.request
+    req = urllib.request.Request(f"https://api.github.com/repos/{GITHUB_REPO}/{path}", headers={"Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=15) as r: return json.loads(r.read())
+
+def _vkey(tag):
+    v = tag[len("rubric-"):-len("-frozen")]
+    return [int(x) if x.isdigit() else x for x in re.split(r"[-.]", v)]
+
+@functools.lru_cache(maxsize=None)
+def github_check(tag, root=None):
+    """(True, "") when GitHub's newest rubric-*-frozen tag is this one, on the same commit as here, and that commit is in
+    GitHub main's history; else (False, why). GitHub's rulesets stop anyone moving or deleting a freeze tag there and allow
+    main to change only by a pull request, so this is the check a local edit, a fake remote or a forged tag can't pass."""
+    root = root or ROOT
+    try:
+        refs = _github_get("git/matching-refs/tags/rubric-")
+        tags = {r["ref"].rsplit("/", 1)[-1]: r["object"] for r in refs if r["ref"].endswith("-frozen")}
+        if not tags: return False, "GitHub has no freeze tag"
+        newest = max(tags, key=_vkey)
+        if newest != tag: return False, f"GitHub's newest freeze is {newest}, not {tag}"
+        obj = tags[tag]
+        sha = obj["sha"] if obj.get("type") == "commit" else _github_get(f"git/tags/{obj['sha']}")["object"]["sha"]
+        here = _git(root, "rev-parse", f"{tag}^{{commit}}").stdout.decode().strip()
+        if sha != here: return False, f"{tag} points at a different commit here than on GitHub"
+        cmp = _github_get(f"compare/{tag}...main")
+        if cmp.get("status") not in ("ahead", "identical") or cmp.get("behind_by", 1) != 0: return False, f"{tag} isn't in GitHub main's history"
+        return True, ""
+    except (OSError, ValueError, KeyError) as e:
+        return False, f"GitHub can't be reached to confirm the freeze ({type(e).__name__})"
 
 def newest_tag(root=None):
     """The newest rubric-*-frozen tag whose commit is in this checkout's history; a tag on a commit main never merged
@@ -61,7 +96,11 @@ def frozen_status(root=None):
     root = pathlib.Path(root or ROOT).resolve()
     if _git(root, "rev-parse", "--git-dir").returncode != 0: return "no-git", "not a git checkout, so the freeze can't be checked"
     tag = newest_tag(root)
-    if not tag: return "unfrozen", "no rubric-*-frozen tag here (run git fetch --tags)"
+    if not tag:
+        shallow = _git(root, "rev-parse", "--is-shallow-repository").stdout.decode().strip() == "true"
+        return "unfrozen", "no rubric-*-frozen tag in this history (" + ("a shallow clone: run git fetch --unshallow --tags" if shallow else "run git fetch --tags") + ")"
+    flagged = [l[2:] for l in _git(root, "ls-files", "-v", "--", *GOLDEN).stdout.decode().splitlines() if l[:1].islower() or l[:1] == "S"]
+    if flagged: return "changed", f"{', '.join(flagged)} marked assume-unchanged or skip-worktree, so git can't see edits to them"
     v = version(_content(root, "jevaluate/rubric.md").decode(errors="ignore"))
     if f"rubric-{v}-frozen" != tag: return "changed", f"rubric.md is version {v}, but the newest frozen rubric is {tag}"
     diff = [rel for rel in GOLDEN if _content(root, rel) != _content(root, rel, tag)]

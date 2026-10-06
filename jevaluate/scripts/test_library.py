@@ -41,7 +41,8 @@ def with_steps(r):
     d["kind"] = _lib.rubric_text.KIND_OF.get(d.get("project_type"), "")
     fp = hashlib.sha1("|".join(d.get(k, "") for k in ("project_type", "kind", "verdict_1_code", "top_stakes")).encode()).hexdigest()
     steps = ["routing", "compare", "verdict"] if d.get("verdict_1_code") in ("1a", "1b", "1c", "1r", "1t") else ["routing", "facts", "scores", "compare", "verdict"]
-    pathlib.Path(str(r) + ".steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": fp} for i, s in enumerate(steps)]))
+    served = {"rubric": "frozen", "golden": _rt.golden_hash(ref=_rt.newest_tag())}  # what step.py records when it serves the frozen set
+    pathlib.Path(str(r) + ".steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": fp, **served} for i, s in enumerate(steps)]))
     return r
 
 
@@ -862,7 +863,7 @@ def test_workflow_with_f0_no_is_refused(tmp_path, lib):
 def test_routing_changed_after_facts_refused(tmp_path, lib):
     r = make_rating(tmp_path / "s.md", "S", "o", "https://github.com/o/s", "2026-09-29")
     old = hashlib.sha1(b"workflow|uses|none|high").hexdigest()
-    (tmp_path / "s.md.steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": old}
+    (tmp_path / "s.md.steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": old, "rubric": "frozen", "golden": _rt.golden_hash(ref=_rt.newest_tag())}
                                                           for i, s in enumerate(["routing", "facts", "scores", "compare", "verdict"])]))
     code, out = _chk(lib, r)
     assert code != 0 and "routing changed after the facts were served" in out
@@ -870,7 +871,7 @@ def test_routing_changed_after_facts_refused(tmp_path, lib):
 def test_routing_change_cleared_by_controller_passes(tmp_path, lib):
     r = make_rating(tmp_path / "s.md", "S", "o", "https://github.com/o/s", "2026-09-29")
     old = hashlib.sha1(b"workflow|uses|none|high").hexdigest()
-    (tmp_path / "s.md.steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": old}
+    (tmp_path / "s.md.steps.json").write_text(json.dumps([{"step": s, "time": f"2026-09-29T10:0{i}", "routing": old, "rubric": "frozen", "golden": _rt.golden_hash(ref=_rt.newest_tag())}
                                                           for i, s in enumerate(["routing", "facts", "scores", "compare", "verdict"])]))
     (tmp_path / "routing_revised.json").write_text('{"reason": "stakes were low", "time": "2026-09-29T11:00"}')
     code, out = _chk(lib, r); assert code == 0, out
