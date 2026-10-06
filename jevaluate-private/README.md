@@ -9,7 +9,7 @@ Ask your agent: `/jevaluate-private https://github.com/you/project`, or point it
 ## How it stays private
 
 - Private ratings live in their own library (`~/.jevaluate-private/` by default), never the public one.
-- Logging a private rating into a public library is refused, and so is exporting a private library or any private rating.
+- The skill refuses to log a private rating into a public library, or to export a private library or rating.
 - A local folder is read from disk. Nothing in it is fetched from or sent to GitHub.
 
 ## Needs

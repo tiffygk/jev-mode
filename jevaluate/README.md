@@ -69,11 +69,11 @@ Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a
 
 ## Rating privately
 
-To rate something you can't publish, such as a client's code, your employer's pipeline or a local folder, use [Jevaluate, privately](../jevaluate-private/): `/jevaluate-private <link or folder>`. It runs the same rubric and checks, keeps the rating in a separate private library, and refuses to export it.
+To rate something you can't publish, such as a client's code, your employer's pipeline or a local folder, use [Jevaluate, privately](../jevaluate-private/): `/jevaluate-private <link or folder>`. It runs the same rubric and checks, keeps the rating in a private library and refuses to export it.
 
 ## Published ratings
 
-Ratings of community projects are in [`ratings/`](../ratings/), under CC0. Each model's rating of a project is its own page, and the table's "Rated by" column says which model wrote it, so two raters can disagree in the open. Export leaves out any project listed in [`ratings-template/unpublished.txt`](ratings-template/unpublished.txt).
+Ratings of community projects are in [`ratings/`](../ratings/), under CC0. Each model's rating of a project is its own page, and the "Rated by" column names the model, so two raters can disagree in the open. Export leaves out any project listed in [`ratings-template/unpublished.txt`](ratings-template/unpublished.txt).
 
 ## Limits
 
