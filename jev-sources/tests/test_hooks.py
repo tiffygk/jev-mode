@@ -52,3 +52,18 @@ def test_symlinked_hook_names_the_real_install(tmp_path):
                        capture_output=True, text=True)
     root = os.path.dirname(os.path.realpath(H))
     assert f"{root}/scripts/route.py" in json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+
+
+def test_dispatch_optout_with_reason_allowed():
+    # 2026-10-06 replay: a copy edit of a CLAUDE.md that names Jev was refused.
+    brief = "Stage 2 editor for one file. It is a copy edit: add no claims about Jev.\nNO-JEV-CLAIMS: copy edit only"
+    assert run("jev-dispatch-check.py", {"tool_input": {"prompt": brief}}) is None
+
+def test_dispatch_optout_needs_reason_and_own_line():
+    for brief in ("Review this Jev design.\nNO-JEV-CLAIMS:", "Review this Jev design, NO-JEV-CLAIMS: x"):
+        out = run("jev-dispatch-check.py", {"tool_input": {"prompt": brief}})
+        assert out["hookSpecificOutput"]["permissionDecision"] == "deny", brief
+
+def test_dispatch_denial_names_optout():
+    out = run("jev-dispatch-check.py", {"tool_input": {"prompt": "Review this Jev design."}})
+    assert "NO-JEV-CLAIMS" in out["hookSpecificOutput"]["permissionDecisionReason"]
