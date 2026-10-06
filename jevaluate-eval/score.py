@@ -4,7 +4,8 @@ The planned rep count (run.json "reps", or --reps N for an older run) is the den
 with no planned count is refused. Held-out and stakes bars are ceil(2N/3) of N reps.
 Exit 0 on pass, 1 on fail, 2 on a bad gold file, a run whose gold changed since it was made, or no planned rep count.
 Usage: score.py <rundir> [--reps N]"""
-import hashlib, json, pathlib, re, sys
+import functools, hashlib, json, pathlib, re, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parent / "jevaluate" / "scripts"))
@@ -135,10 +136,40 @@ def planned_reps(run, argv_reps):
     if not reps: return None, f"{run}/run.json has no rep count (a run made before run_eval.py wrote one); rerun score.py with --reps N, the number of reps that run planned"
     return int(reps), None
 
+def tag_on_origin(tag):
+    """True when GitHub confirms this is the newest approved freeze (rubric_text.github_check)."""
+    return rubric_text.github_check(tag)[0]
+
+def of_record(run):
+    """(True, "") only when the run stamped a frozen status and the golden-set hash of the newest freeze tag, and the scoring
+    checkout is frozen too; else (False, why). Checked again at scoring time, so an edit after the run starts, a run.json
+    edited by hand, or a missing stamp all fail closed (2026-10-05)."""
+    try: info = json.loads((pathlib.Path(run) / "run.json").read_text())
+    except (OSError, ValueError): return False, "run.json is missing or unreadable"
+    st, detail = rubric_text.frozen_status()
+    if st != "frozen": return False, f"the scoring checkout isn't frozen ({detail})"
+    tag = rubric_text.newest_tag()
+    want = rubric_text.golden_hash(ref=tag)
+    if info.get("rubric_status") != "frozen": return False, f"the run's rubric was {info.get('rubric_status', 'not recorded')} ({info.get('rubric_detail', 'a run made before the lock')})"
+    if info.get("golden") != want: return False, "the run's golden files don't match the newest freeze tag"
+    # GitHub last: local checks cost nothing, and GitHub allows 60 unauthenticated calls an hour.
+    if not tag_on_origin(tag): return False, f"GitHub doesn't confirm {tag} as the newest approved freeze: {rubric_text.github_check(tag)[1]}"
+    return True, ""
+
+def rubric_note(run):
+    ok, why = of_record(run)
+    return "" if ok else f" (CANDIDATE: {why}; not a result of record)"
+
+def overall_line(passed, run):
+    """The gate line. Only a run of record can say PASS."""
+    ok, why = of_record(run)
+    if not ok: return f"Overall: CANDIDATE ({'would pass' if passed else 'fails'}; {why}). Not a result of record."
+    return f"Overall: {'PASS' if passed else 'FAIL'}"
+
 def stamp_line(run, passed):
     """First output line: what was run, on which rubric and commit, and whether it passed."""
     info = json.loads((pathlib.Path(run) / "run.json").read_text())
-    return f"Run: phase={info.get('phase')} rubric={info.get('rubric', 'unknown')} commit={info.get('head')} passed={'yes' if passed else 'no'}"  # the rubric the run was made on
+    return f"Run: phase={info.get('phase')} rubric={info.get('rubric', 'unknown')} commit={info.get('head')} passed={'yes' if passed else 'no'}" + rubric_note(run)  # the rubric the run was made on
 
 if __name__ == "__main__":
     args = sys.argv[1:]; argv_reps = None
@@ -156,4 +187,5 @@ if __name__ == "__main__":
     rows, passed, tok = score(run, gold, n)
     print(stamp_line(run, passed))
     print((run / "run.json").read_text())
-    print(table(rows, tok, n)); sys.exit(0 if passed else 1)
+    print(table(rows, tok, n)); print(overall_line(passed, run))
+    sys.exit(3 if not of_record(run)[0] else 0 if passed else 1)

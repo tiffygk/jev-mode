@@ -1,5 +1,6 @@
 """Score a quiz run against the owner's key, per scenario and per rule tag. Usage: score_quiz.py <run dir> [--reps N] (--reps only for a run whose run.json has none)"""
 import json, pathlib, sys
+import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
 HERE = pathlib.Path(__file__).parent; sys.path.insert(0, str(HERE.parent))
 import score
 
@@ -24,4 +25,5 @@ if __name__ == "__main__":
     rows, passed, tok = score.score(sys.argv[1], gold(), reps)
     print(score.table(rows, tok)); print("\n| Rule tag | Scenarios | Passed |\n|---|---|---|")
     for t, d in sorted(by_tag(rows).items()): print(f"| {t} | {d['scenarios']} | {d['passed']} |")
-    print(f"\nOverall: {'PASS' if passed else 'FAIL'}")
+    print("\n" + score.overall_line(passed, sys.argv[1]))
+    sys.exit(3 if not score.of_record(sys.argv[1])[0] else 0 if passed else 1)

@@ -1,7 +1,7 @@
 """Flag rater tool calls that read rubric.md, past ratings or a files_full/ path directly.
 Usage: scan_transcripts.py <rating.md> <transcript .jsonl> ... (a Claude subagent transcript, or a `codex exec --json` log)"""
 import json, pathlib, re, sys
-WATCH = re.compile(r"rubric\.md|jevaluate-library/projects/|\.steps\.json|approved_cost|routing_revised|jev-rules\.md|fix-catalog\.md|/ratings/|jevaluate-round2/[^/ ]+\.md|index\.md|rubric_text|grep\b.*\bjevaluate/|files_full", re.I)
+WATCH = re.compile(r"JEVALUATE_TEST_UNFROZEN|rubric\.md|jevaluate-library/projects/|\.steps\.json|approved_cost|routing_revised|jev-rules\.md|fix-catalog\.md|/ratings/|jevaluate-round2/[^/ ]+\.md|index\.md|rubric_text|grep\b.*\bjevaluate/|files_full", re.I)
 ALLOW = re.compile(r"^\s*(python3\s+)?\S*\b(step|library|coverage_manifest)\.py\b")
 SPLIT = re.compile(r";|&&|\|\||\||\n|\$\(|`|\)")
 STEP = re.compile(r"\bstep\.py\s+(?:next|full)\s+(\S+)")

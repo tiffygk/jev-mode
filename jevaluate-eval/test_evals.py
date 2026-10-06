@@ -1,3 +1,4 @@
+import pytest
 import json, pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import build_packets as bp
@@ -274,7 +275,16 @@ def test_score_needs_the_planned_rep_count(tmp_path):
     with pytest.raises(ValueError, match="--reps"): sc.score(tmp_path, GOLD)
 
 def _cli(run, *extra):
-    return subprocess.run([sys.executable, str(pathlib.Path(sc.__file__)), str(run), *extra], capture_output=True, text=True)
+    """score.py's command line, run in this process so conftest's GitHub stub applies (no API calls from tests)."""
+    import contextlib, io, runpy, types
+    out, err, argv = io.StringIO(), io.StringIO(), sys.argv
+    sys.argv = [sc.__file__, str(run), *extra]; code = 0
+    try:
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err): runpy.run_path(sc.__file__, run_name="__main__")
+    except SystemExit as e:
+        code = e.code if isinstance(e.code, int) else (0 if e.code is None else (print(e.code, file=err) or 1))
+    finally: sys.argv = argv
+    return types.SimpleNamespace(returncode=code, stdout=out.getvalue(), stderr=err.getvalue())
 
 def test_cli_refuses_an_old_run_without_a_rep_count_unless_given_reps(tmp_path):
     for r in (1, 2, 3): _write(tmp_path, f"r{r}_g0.json", [OK_A, OK_B])
@@ -282,9 +292,10 @@ def test_cli_refuses_an_old_run_without_a_rep_count_unless_given_reps(tmp_path):
     p = _cli(tmp_path); assert p.returncode == 2 and "--reps" in p.stderr and "no rep count" in p.stderr
     p = _cli(tmp_path, "--reps", "3"); assert "--reps" not in p.stderr and "Traceback" not in p.stderr
 
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
 def test_cli_takes_the_rep_count_from_run_json_and_refuses_a_mismatch(tmp_path):
     _write(tmp_path, "r1_g0.json", [OK_A, OK_B])
-    (tmp_path / "run.json").write_text(json.dumps({"phase": "baseline", "head": "abc", "gold_fingerprint": sc.fingerprint(), "reps": 3}))
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "baseline", "head": "abc", "gold_fingerprint": sc.fingerprint(), "reps": 3, "rubric_status": "frozen", "golden": sc.rubric_text.golden_hash(ref=sc.rubric_text.newest_tag())}))
     p = _cli(tmp_path); assert p.returncode == 1 and "/3 |" in p.stdout and "/1 |" not in p.stdout
     p = _cli(tmp_path, "--reps", "1"); assert p.returncode == 2 and "reps" in p.stderr
 
@@ -344,8 +355,9 @@ def test_run_eval_accepts_an_out_folder_that_does_not_exist_yet(tmp_path):
     assert run_eval.preflight_out(tmp_path / ".work" / "new") == []
 
 
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
 def test_stamp_line_reads_run_json(tmp_path):
-    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "head": "abc1234", "rubric": "2026-09-29"}))
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "head": "abc1234", "rubric": "2026-09-29", "rubric_status": "frozen", "golden": sc.rubric_text.golden_hash(ref=sc.rubric_text.newest_tag())}))
     line = sc.stamp_line(tmp_path, True)
     assert line == "Run: phase=after rubric=2026-09-29 commit=abc1234 passed=yes"
     assert sc.stamp_line(tmp_path, False).endswith("passed=no")
@@ -375,3 +387,33 @@ def test_old_runs_answering_demo_score_as_display():
     g = {"type": "display", "kind": "uses"}
     assert score.type_matches({"project_type": "demo"}, g) and score.type_matches({"project_type": "display"}, g)
     assert not score.type_matches({"project_type": "workflow"}, g)
+
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
+def test_candidate_rubric_is_labeled_not_of_record(tmp_path):
+    import json, score
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2099-01-01", "rubric_status": "unfrozen", "rubric_detail": "no tag"}))
+    assert "not a result of record" in score.rubric_note(tmp_path) and "CANDIDATE" in score.stamp_line(tmp_path, True)
+    (tmp_path / "run.json").write_text(json.dumps({"phase": "after", "rubric": "2026-09-29.1", "rubric_status": "frozen", "golden": score.rubric_text.golden_hash(ref=score.rubric_text.newest_tag())}))
+    assert score.rubric_note(tmp_path) == ""
+
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
+def test_scoring_fails_closed_without_a_verified_frozen_stamp(tmp_path, monkeypatch):
+    import json, score
+    good = score.rubric_text.golden_hash(score.rubric_text.ROOT, ref=score.rubric_text.newest_tag(score.rubric_text.ROOT))
+    (tmp_path / "run.json").write_text(json.dumps({"rubric_status": "frozen", "golden": good}))
+    assert score.of_record(tmp_path)[0]
+    for bad in ({}, {"rubric_status": "frozen"}, {"rubric_status": "frozen", "golden": "0" * 64}, {"rubric_status": "changed", "golden": good}):
+        (tmp_path / "run.json").write_text(json.dumps(bad)); assert not score.of_record(tmp_path)[0], bad
+    (tmp_path / "run.json").write_text(json.dumps({"rubric_status": "frozen", "golden": good}))
+    monkeypatch.setattr(score.rubric_text, "frozen_status", lambda root=None: ("changed", "edited"))
+    assert not score.of_record(tmp_path)[0]
+    assert score.overall_line(True, tmp_path).startswith("Overall: CANDIDATE") and "PASS" not in score.overall_line(True, tmp_path)
+
+
+@pytest.mark.skipif(sc.rubric_text.frozen_status()[0] != "frozen", reason="needs a frozen checkout (a rubric-change branch isn't one until its freeze)")
+def test_of_record_needs_the_freeze_on_github(tmp_path, monkeypatch):
+    import json, score
+    good = score.rubric_text.golden_hash(ref=score.rubric_text.newest_tag())
+    (tmp_path / "run.json").write_text(json.dumps({"rubric_status": "frozen", "golden": good}))
+    monkeypatch.setattr(score, "tag_on_origin", lambda tag: False)
+    ok, why = score.of_record(tmp_path); assert not ok and "GitHub" in why
