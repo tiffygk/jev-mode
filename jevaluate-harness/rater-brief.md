@@ -7,6 +7,7 @@ Rate PROJECT with the jevaluate skill: read JEVALUATE/SKILL.md, then read.md, an
 - Front matter: rater: RATER, effort: medium, via: VIA, rubric: RUBRIC, and a `why:` line of 20 words at most.
 - `step.py full` serves the previous rating PREV after the facts are written; use it only for the "Compared with" sentence.
 - Nothing said privately goes in the rating.
+- Files made while gathering evidence (captured responses, summaries and timings in ROUND_DIR/SLUG outside `files/`) are evidence about the project, never its own work or measurements.
 - Never read `files_full/` in your folder: it holds uncapped copies for the code checks. Read `files/` only.
 - Write every path out in full in each command, never as a shell variable: the transcript scan can't follow a variable, and a flagged read sends the rating back.
 - Create rating.md from the read.md template before your first `step.py next`.

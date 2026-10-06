@@ -1,4 +1,4 @@
-# Jevaluate rubric (2026-09-29.1)
+# Jevaluate rubric (2026-09-29.2)
 
 Route first, check facts second, score third, set the verdict last. Every ruling below has a one-sentence meaning and an invented example sorted correctly. The examples are made up: none is a real project, and a rating never cites them. The rules' sources are in `jev-rules.md`. When two ratings of one project disagree, tighten the rule they split on.
 
@@ -138,12 +138,12 @@ flowchart TD
 
 ## 2. Facts
 Answer each fact the type leaves in play, with evidence.
-- **yes**: the evidence shows it holds; cite file:line.
-- **no**: the evidence shows it fails, or nothing in the files read shows it holds; cite file:line (or the files checked) and the TypeSafe page behind the rule.
+- **yes**: the evidence shows it holds; cite file:line. A test counts only when it runs by default or has a recorded result. *Example: F22 no, the injection test is skipped unless a flag is set and no result is recorded.*
+- **no**: the evidence shows it fails, or nothing in the files read shows it holds; cite file:line (or the files checked) and the TypeSafe page behind the rule. A fact that holds for some parts and not others is a no, and the finding says which parts hold. *Example: F14 no, ticket bodies are cut at 30k tokens but attached threads have no limit.*
 - **n.a.**: the fact doesn't apply to this type, stakes or design; say why in a few words.
 - **unknown**: the file that would answer it wasn't read after a `--also` retry; say which. Unknowns lower depth, not scores: for an anchor, treat an unknown fact as holding. *Example: F14 unknown, `--also src/limits.py` fetch failed.*
 
-For a client, only F0, F4, F12, F14 and F19 apply; every other fact is n.a. The examples below share one invented project, a help-desk router that asks Jev about each support ticket.
+For a client, only F0, F4, F12, F14 and F19 apply; every other fact is n.a. A toolkit whose users write the agents that call it is judged on what it controls: its own questions and options, and what it returns. Returning act or review by Jev's probability counts for F11. A project that ships its calling agents is judged on those agents too. *Example: a library of Jev tools returns "review" below 0.8: F11 yes, and categories a caller passes in don't count against F8.* The examples below share one invented project, a help-desk router that asks Jev about each support ticket.
 
 | Fact | Means | yes, e.g. | no, e.g. | n.a. when |
 |---|---|---|---|---|
@@ -166,10 +166,10 @@ For a client, only F0, F4, F12, F14 and F19 apply; every other fact is n.a. The 
 | F14 Size limits respected | State plus all questions stays under 64k tokens, and state plus the longest question under 32k, by a guard or a reported maximum. Fix-only. | Bodies over 30k tokens are truncated before the call. | Whole email threads pasted with no guard. | "small by construction" with no guard or reported size |
 | F15 Sample size adequate | The claim states its sample, and the sample supports it (zero errors in n supports at most about 3/n). | "0 errors in 300" claiming at most 1%. | "100% accurate" on 10 tickets. | no results claimed |
 | F16 Independent labels | Labels come from people or a panel blind to Jev's answers, or the builder's labeling is disclosed. | Two support leads labeled 200 tickets without seeing Jev's answers. | The builder labeled them, undisclosed. | no results claimed |
-| F17 Held-out result | Reported numbers weren't used to pick any threshold or wording. | Threshold chosen on 200 tickets, result reported on 100 others. | Threshold swept and reported on the same 300. | no results claimed |
+| F17 Held-out result | Reported numbers weren't used to pick any threshold or wording. Fresh runs of the task it was tuned on count only when that task is the project's whole job; a general tool needs a task it wasn't tuned on. | Threshold chosen on 200 tickets, result reported on 100 others. | Threshold swept and reported on the same 300. | no results claimed |
 | F18 Fair baseline | Compared on the same data with a reasonable LLM or rules alternative. | The same 300 tickets through a chat-model prompt. | Compared with random guessing. | no results claimed |
 | F19 Typed answers read directly | The decision reads the typed field and probability. | Code reads `answers["team"].probability`. | Jev or a stand-in LLM asked for reasoning text that code greps for "billing". | never |
-| F20 Data as fields, not templates, very high | Values from code or data travel as JSON fields, never spliced into the question text. A no caps the verdict at 3. | A payout tool passes the invoice as a field and asks about `invoice.memo`. | `f"Should we pay {vendor} {amount} for {memo}?"`. | never |
+| F20 Data as fields, not templates, very high | Values from code or data, and a user's own text, travel as JSON fields, never spliced into the question text. A no caps the verdict at 3. | A payout tool passes the invoice as a field and asks about `invoice.memo`. | `f"Should we pay {vendor} {amount} for {memo}?"`. | never |
 | F20 Data as fields, not templates, high or low | The same test. A no doesn't move the verdict; it's listed as a fix. | Ticket text in the state; the question points at `ticket.body`. | `f"Is {ticket_text} about billing?"`. | never |
 | F21 No instructions in the state | The state holds content; directions belong in the question. Caps the verdict at 3. | The state holds ticket and order fields only. | A state field `"instructions": "check each claim against the order"`. | never |
 | F22 Untrusted text treated as data, very high | User or web text in the state is flagged, or tested for steering. A no caps the verdict at 3. | An expense tool that pays claims from email marks the email body `"source": "sender"` and has an injection test. | The email body goes into the state unmarked, with no test. | no user or web text in the state |

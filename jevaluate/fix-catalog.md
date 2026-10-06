@@ -21,7 +21,7 @@ Each design fix answers one failed fact. Cite the fact, give the remedy, and poi
 | F14 size limits exceeded | Filter the state to relevant fields; split long inputs; keep state plus the longest question under 32k tokens | `models`, `model-jaggedness/jev-1.13` |
 | F19 free-text answers string-matched | Ask a typed question (Noul, Choice or Score) and read its typed field and probabilities; never parse prose | `primitives` |
 | Measured once, loop not closed (`closes_loop: none`) | After evaluating, calibrate (tune thresholds or weights on labels) and/or revise (rewrite the questions or state for the misses), then re-measure | `confidence`; `cookbooks/autoresearch_feature_discovery` |
-| F20 values spliced into question strings (caps the verdict only at `very high` stakes) | Pass schemas, rows and values as JSON fields in the question or the state | `primitives/advanced` |
+| F20 values spliced into question strings (caps the verdict only at `very high` stakes) | Pass schemas, rows and values as JSON fields in the question or the state; put a user's own question in a state field marked as user input and point the question at it | `primitives/advanced` |
 | F21 content and judgments mixed | Move the source content into the state and keep only the judgment in the question | `concepts/state` |
 | F22 untrusted text not treated as data (caps the verdict only at `very high` stakes) | Flag steering text; add an injection-check Noul; test adversarial inputs before deploying | `model-jaggedness/jev-1.13`; `cookbooks/classifying_rag_passages` |
 | F23 non-English content untested | Test on your language, or add an English translation beside the original | `concepts/state` |
