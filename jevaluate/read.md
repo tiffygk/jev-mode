@@ -68,7 +68,7 @@ Three sentences: what it does with Jev; what it does well; what holds it back.
 ## Facts (with evidence)
 - F0 Calls hosted Jev -- yes. <what the call is, in at most 20 words> (`file:line`)
 - F1 <name> -- no. <the finding, in at most 20 words> (`file:line`). <TypeSafe page>
-# One line per fact: the value, a finding of at most 20 words, the file:line; a no ends with its TypeSafe page.
+# One line per fact: the value, a finding of at most 20 words, the file:line; a no ends with its TypeSafe page. A partly covered no names the input that reaches the gap; a partly covered yes names the gap.
 ## Scores
 - <Dimension> <n> of 3: <what that score means for this project, in plain words>, <the facts behind it, by name>.   # the anchor's meaning, never a quote of it
 ## Compared with
