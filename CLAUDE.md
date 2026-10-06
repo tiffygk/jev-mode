@@ -11,7 +11,7 @@ To change one, work on a branch in its own worktree. In a fork, first add the up
     git remote add upstream https://github.com/tiffygk/jev-mode
     git worktree add -b <name> ../jev-mode-<name> upstream/main
 
-For any rating rule, follow the rubric-change guide in `jevaluate-harness/`, then open a pull request. The owner merges it. A review finding about a rating rule is a proposal for a pull request.
+For any rating rule, follow the rubric-change guide in `jevaluate-harness/`, then open a pull request. The owner merges it.
 
 ## Branches and tags
 
