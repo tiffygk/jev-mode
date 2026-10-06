@@ -86,9 +86,20 @@ python3 ~/.claude/skills/jev-sources/scripts/read.py 'docs/primitives__noul#7'
 
 For a copy install the hooks are optional: [`hooks/install-hooks.md`](hooks/install-hooks.md) has the settings lines. Run the tests with `python3 -m pytest tests` after the fetch; they need the downloaded pages.
 
+## Semantic routing
+
+Keyword routing comes first and never changes. When the semantic index is on, the router appends up to two sections that match the question by meaning, using a small local embedding model. It runs offline and gives the same answer every run. The last line of the output says `semantic: on` or `semantic: off (<reason>)`.
+
+- **Install:** `python3 -m pip install --user model2vec` (tested on Python 3.9.6, model2vec 0.7.0). The next `refresh.sh` downloads the model once into `$JEV_SOURCES_DATA/models/` and embeds the index. Without model2vec, routing is keyword-only, with a notice.
+- **Model:** `minishlab/potion-base-8M`, a static embedding model with 256 dimensions. Loading it and embedding one question takes 0.26 s cold. `route.py` takes 0.33 s end to end on an Apple Silicon Mac.
+- **Index:** code, widget markup and link targets are stripped before embedding. Each section is embedded whole and line by line (lines of five words or more), and it scores as its best part.
+- **Rules:** a section matched only by meaning is listed as EXTRACT, not a mandatory read, unless the question limits a design. It is appended only if it scores at least 0.35, isn't already listed, and keeps its file within two sections. A question that shares no word with the library gets no semantic sections.
+- **Results:** on 20 questions a blind writer phrased without the docs' words, 16 find their exact section, against 14 on keywords alone, and 19 of 20 reach the right file. The same 20 questions were used to tune the design, so 16 is an in-sample number. The test bar was set at 17 before measuring and lowered to 16 afterward, rather than loosening the per-file cap to fit the misses. An earlier design that blended the two scores gave 15 at every weight tried.
+- **Turn it off:** `JEV_SEMANTIC=off` gives the same sections as keyword-only routing; only the last line differs.
+
 ## Limits
 
-It doesn't call Jev, so it needs no TypeSafe key. TypeSafe's pages aren't in the repo; you download your own copy, and a page that fails to download is named and skipped. Routing finds sections by topic and words, so a question in unusual words can miss; route it again in other words. Not affiliated with TypeSafe.
+It doesn't call Jev, so it needs no TypeSafe key. TypeSafe's pages aren't in the repo; you download your own copy, and a page that fails to download is named and skipped. Routing finds sections by topic and words, with a few added by meaning, so a question in unusual words can still miss; route it again in other words. Not affiliated with TypeSafe.
 
 ## License
 

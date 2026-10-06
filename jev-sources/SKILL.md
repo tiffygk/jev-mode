@@ -11,7 +11,7 @@ Answers about Jev rest on TypeSafe sections you opened in full this session, fou
 
 `<skill>` below is this skill's base directory, shown when the skill loads; write it out in full, since the shell runs in the user's project.
 
-1. Route: `python3 <skill>/scripts/route.py "<the question, in your words>"`. Route each separate question on its own.
+1. Route: `python3 <skill>/scripts/route.py "<the question, in your words>"`. Route each separate question on its own. The router matches words, and adds up to two sections by meaning when its semantic index is on (the output's last line says which). Meaning-matching is a safety net, not a substitute, so still route a design question twice: once in your words, and once in the docs' words (for example "second request", "depends on", "one request", "Choice options", "threshold").
 2. Read every **READ FULL** item: `python3 <skill>/scripts/read.py '<id>'`. Read the reference rules first, then the patterns, then the cookbook examples.
 3. An **EXTRACT** item (`read.py '<id>' --extract <word> <word>`) can point you somewhere. A claim resting on it is labeled **unverified**.
 4. If the router prints "no section found", say so, then run `bash <skill>/refresh.sh --fetch` and route again. Never fill the gap from memory.
@@ -34,6 +34,15 @@ Paste this line into the brief with `<skill>` written out in full, since the sub
 ```
 JEV-SOURCES: before any finding, run route.py on the question and read every READ FULL item with read.py (<skill>/scripts); quote verbatim, give path#heading, label reference rule or cookbook example; findings without this are unverified.
 ```
+
+## Claims the docs don't hold: speed, cost and accuracy
+
+The router indexes TypeSafe's docs, patterns and cookbooks, not its blog. The speed, cost and accuracy claims against frontier LLMs live in the launch post, so `route.py` finds nothing for them. That does not make them unverified. Read and quote the local capture: `<data>/blog/introducing-system-one-models-and-jev.txt`, where `<data>` is `$JEV_SOURCES_DATA` or `~/.claude/jev-sources-data` (from https://typesafe.ai/blog/introducing-system-one-models-and-jev, captured 2026-10-02; if the file is missing, save that page's text there). Label it **vendor claim (launch post)**, attribute it to TypeSafe, and quote one of:
+- line 163: "End-to-end response time is 70ms-500ms for TypeSafe. This can range from 40x-200x faster for the same levels of frontier intelligence for System One shaped queries."
+- line 36: "Jev achieves similar levels of intelligence on System One tasks compared to existing LLMs, while being two orders of magnitude faster and more efficient."
+- line 263: "193.6x faster, 444.6x cheaper ... we expect that these are on the higher end of real world gains."
+
+Price and rate limits are in the docs (`docs/models.md#Current models`, reference rule).
 
 ## Relaying a subagent's Jev finding
 
