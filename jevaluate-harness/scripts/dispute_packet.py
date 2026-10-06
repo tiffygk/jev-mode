@@ -10,7 +10,7 @@ import pathlib, random, re, sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 RUBRIC = ROOT / "jevaluate" / "rubric.md"
 CITE = re.compile(r"`?([\w./-]+\.\w+):(\d+)(?:-(\d+))?`?")
-RATER_WORDS = re.compile(r"\b(claude[\w.-]*|sonnet[\w.-]*|opus[\w.-]*|haiku[\w.-]*|gpt[\w.-]*|sol|codex|openai|anthropic)\b", re.I)
+RATER_WORDS = re.compile(r"\b(claude[\w.-]*|sonnet[\w.-]*|opus[\w.-]*|haiku[\w.-]*|fable[\w.-]*|gpt[\w.-]*|o[1-9][\w.-]*|sol|codex|openai|anthropic|gemini[\w.-]*|grok[\w.-]*|llama[\w.-]*|mistral[\w.-]*|deepseek[\w.-]*|qwen[\w.-]*)\b", re.I)
 
 
 def fact_line(rating, fact):
@@ -32,9 +32,10 @@ def excerpt(evidence, path, a, b, pad=4):
     return f"`{path}` lines {lo}-{hi}:\n\n```\n" + "\n".join(f"{i:4} {lines[i - 1]}" for i in range(lo, hi + 1)) + "\n```"
 
 
-def scrub(text, paths):
-    for p in paths: text = text.replace(str(p), "[a rating]").replace(pathlib.Path(p).name, "[a rating]")
-    return RATER_WORDS.sub("[a rater]", text)
+def scrub(text, paths, names=True):
+    """Rating paths go everywhere; model and company names only where named (the answers), so quoted code stays exact."""
+    for p in paths: text = text.replace(str(p), "[a rating]")
+    return RATER_WORDS.sub("[a rater]", text) if names else text
 
 
 def packet(rating_a, rating_b, fact, evidence, seed=0):
@@ -50,8 +51,8 @@ def packet(rating_a, rating_b, fact, evidence, seed=0):
            "Answer with the value, one sentence on why, and the line that decides it. If the code shown can't settle it, say what's missing.", "",
            "## The rule", ""] + (rubric_rows(fact) or [f"(no rubric row starts with {fact})"]) + ["", "## The code the answers cite", ""]
     out += [excerpt(evidence, p, a, b) + "\n" for p, a, b in cites] or ["(neither answer cites a file)", ""]
-    out += ["## The two answers", ""] + [f"- **Answer {k}:** {fact} -- {v}. {why}" for k, (v, why) in zip("AB", answers)]
-    return scrub("\n".join(out) + "\n", [rating_a, rating_b])
+    tail = ["## The two answers", ""] + [f"- **Answer {k}:** {fact} -- {v}. {why.replace(chr(0x2014), '--')}" for k, (v, why) in zip("AB", answers)]
+    return scrub("\n".join(out) + "\n", [rating_a, rating_b], names=False) + scrub("\n".join(tail) + "\n", [rating_a, rating_b])
 
 
 if __name__ == "__main__":

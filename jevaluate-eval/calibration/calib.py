@@ -59,6 +59,7 @@ def draw(facts, n_split, n_agreed, seed, skip=()):
             if f["project"] in taken or f["fact"] in {g["fact"] for g in got}: continue
             got.append(f); taken.add(f["project"])
             if len(got) == k: break
+        if len(got) < k: print(f"warning: drew {len(got)} {name} facts, not {k}: the pool ran short", file=sys.stderr)
         out[name] = got
     return out
 

@@ -35,3 +35,13 @@ def test_order_is_seeded(tmp_path):
     assert dp.packet(a, b, "F8", ev, seed=1) == dp.packet(a, b, "F8", ev, seed=1)
     orders = {dp.packet(a, b, "F8", ev, seed=s).index("-- yes") < dp.packet(a, b, "F8", ev, seed=s).index("-- no") for s in range(12)}
     assert orders == {True, False}
+
+
+def test_code_excerpt_is_left_exactly_as_written(tmp_path):
+    a, b, ev = setup(tmp_path)
+    (ev / "files" / "src__route.py").write_text("import anthropic\nsol = 1\nanswer = choice('Which team?', TEAMS)\n")
+    text = dp.packet(a, b, "F8", ev, seed=1)
+    assert "import anthropic" in text and "sol = 1" in text
+    for name in ("gemini", "fable", "grok"):
+        b.write_text(RATING.format(rater="x", v="no", why=f"{name.capitalize()} reads a refund as billing"))
+        assert name not in dp.packet(a, b, "F8", ev, seed=1).split("## The two answers")[1].lower()

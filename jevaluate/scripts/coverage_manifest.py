@@ -96,7 +96,7 @@ LOCAL_SKIP_DIRS = {".git", ".hg", ".svn"}
 
 def local_main(folder, outdir):
     """The same manifest from a folder on disk: same skip rules and size cap. Commit: git HEAD when the folder is a clean
-    git checkout, else local-<sha256 of the kept paths and contents> so a re-rating can tell whether anything changed."""
+    git checkout, else local-<sha256 of every path and its contents (its size, past the cap)> so a re-rating can tell whether anything changed."""
     import hashlib, os
     root = pathlib.Path(folder).expanduser().resolve()
     if not root.is_dir(): sys.exit(f"not a folder: {root}")
@@ -112,7 +112,10 @@ def local_main(folder, outdir):
         if b"\0" in raw[:4096]: raise ValueError("binary")
         return raw.decode("utf-8", "ignore")
     h = hashlib.sha256()
-    for t in tree: h.update(t["path"].encode()); h.update(str(t["size"]).encode())
+    for t in tree:
+        h.update(t["path"].encode())
+        if t["size"] <= 200_000: h.update((root / t["path"]).read_bytes())
+        else: h.update(str(t["size"]).encode())
     sha = "local-" + h.hexdigest()[:12]
     g = subprocess.run(["git", "-C", str(root), "status", "--porcelain"], capture_output=True, text=True)
     if g.returncode == 0 and not g.stdout.strip():

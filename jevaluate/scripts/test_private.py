@@ -50,3 +50,21 @@ def test_local_folder_manifest_skips_like_github(tmp_path):
     assert not any(n.startswith((".git", "logo", "big")) for n in kept), kept
     meta = json.loads((out / "meta.json").read_text())
     assert meta["repo"] == "local:proj" and meta["commit"].startswith("local-")
+
+
+def test_any_spelling_of_private_is_locked(tmp_path):
+    for i, fm in enumerate(["Visibility: Private", 'visibility: "private"', "visibility: PRIVATE", "VISIBILITY: secret"]):
+        lib = tmp_path / f"lib{i}"
+        r = make_rating(tmp_path / f"r{i}.md", "Graph", "acme", "https://github.com/acme/graph", "2026-10-06")
+        r.write_text(r.read_text().replace("rater: claude-sonnet-5-5", "rater: claude-sonnet-5-5\n" + fm))
+        p = run(lib, "add", str(r))
+        assert p.returncode != 0 and "private library" in (p.stdout + p.stderr), fm
+        d = lib / "projects" / "acme__graph"; d.mkdir(parents=True); (d / "2026-10-06.md").write_text(r.read_text())
+        p = run(lib, "export", str(tmp_path / f"out{i}"))
+        assert p.returncode != 0 and "private ratings in a public library" in p.stderr, fm
+
+
+def test_local_folder_rating_refused_by_public_library(tmp_path):
+    r = make_rating(tmp_path / "r.md", "Graph", "acme", "local:acme-graph", "2026-10-06")   # no visibility field at all
+    p = run(tmp_path / "lib", "add", str(r))
+    assert p.returncode != 0 and "local" in (p.stdout + p.stderr)

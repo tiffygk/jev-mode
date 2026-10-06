@@ -167,12 +167,14 @@ def add(src, link_docs=False, evidence=None, supersedes=None):
     d = front_text(text)
     gate = add_gate() or library_dirty()
     if gate: sys.exit("not added: " + gate)
-    is_private = d.get("visibility", "").split()[:1] == ["private"]
+    is_private = is_private_rating(d)
     if is_private and not is_private_library():
         sys.exit(f"not added: a private rating goes only into a private library, never {LIB}. "
                  "Run `library.py init-private <dir>` and set JEVALUATE_LIBRARY to that folder.")
     if is_private_library() and not is_private:
         sys.exit(f"not added: {LIB} is a private library; a rating here needs `visibility: private` in its front matter")
+    if d.get("url", "").strip().startswith("local:") and not is_private_library():
+        sys.exit("not added: a rating of a local folder is private by nature; add `visibility: private` and log it in a private library")
     log_file = pathlib.Path(str(src) + ".steps.json")
     if not log_file.exists() and evidence: log_file = pathlib.Path(evidence) / (src.name + ".steps.json")
     if log_file.exists() and served_unfrozen(json.loads(log_file.read_text()), strict=True) and not escape_on():
@@ -884,6 +886,14 @@ def export_pages(p, slug=None, name=None):
 def display_name(d, slug):
     return f"{d.get('owner', '')}/{d.get('project', slug)}" if "github.com" in d.get("url", "") else d.get("project", slug)
 
+def is_private_rating(d):
+    """Private when the front matter has a visibility field (any case, quoted or not) whose value isn't "public"."""
+    for k, v in d.items():
+        if k.strip().lower() == "visibility":
+            val = v.split("#")[0].strip().strip("\"'").strip().lower()
+            if val and val != "public": return True
+    return False
+
 def is_private_library():
     """A private library (jevaluate-private) holds ratings that are never published."""
     return (LIB / "PRIVATE").exists()
@@ -906,7 +916,7 @@ def export(outdir):
     for slug in [s for s in latest if s.split("--")[0] in skip]:
         print(f"left out: {slug} ({skip[slug.split('--')[0]]})", file=sys.stderr)
     latest = {s: p for s, p in latest.items() if s.split("--")[0] not in skip}
-    hidden = [s for s, p in latest.items() if front(p).get("visibility", "").split()[:1] == ["private"]]
+    hidden = [s for s, p in latest.items() if is_private_rating(front(p)) or front(p).get("url", "").strip().startswith("local:")]
     if hidden:
         sys.exit("export refused: private ratings in a public library: " + ", ".join(hidden) + ". Move them to a private library.")
     # One name per project: every rater's row uses the name from the project's own (default-rater) page.
