@@ -24,7 +24,7 @@ Run `git fetch upstream && git log <branch>..upstream/main -- jevaluate/ jevalua
 
 ## Before a push
 
-Contributors push to their fork and open a pull request. Keep personal names, emails and private notes out of every file. On the owner's machine, a pre-push hook (not part of the clone) refuses private terms and checks freeze tags.
+Before pushing, run the full test suite (`python3 -m pytest`) and fix any failure. Contributors push to their fork and open a pull request. Before asking for a merge, confirm every check on the pull request is green. Keep personal names, emails and private notes out of every file. On the owner's machine, a pre-push hook (not part of the clone) refuses private terms and checks freeze tags.
 
 ## Ratings
 
