@@ -1,6 +1,7 @@
 import json, os, pathlib, re, subprocess, sys
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE))
+import rubric_text as rt
 
 def step(lib, *args):
     env = dict(os.environ, JEVALUATE_LIBRARY=str(lib))
@@ -70,7 +71,7 @@ def test_verdict_serves_g_rows_and_unkeyed_rows(tmp_path):
 def _card_lib(tmp_path):
     d = tmp_path / "lib" / "projects" / "x__y"; d.mkdir(parents=True)
     p = d / "2026-09-28.md"
-    p.write_text("---\nproject: Y\nowner: x\nurl: https://github.com/x/y\nproject_type: workflow\nverdict: 3\nrubric: 2026-09-29\n---\n## Summary\nA card.\n")
+    p.write_text("---\nproject: Y\nowner: x\nurl: https://github.com/x/y\nproject_type: workflow\nverdict: 3\nrubric: " + rt.version() + "\n---\n## Summary\nA card.\n")
     return p
 
 def test_full_refused_before_compare_step(tmp_path):

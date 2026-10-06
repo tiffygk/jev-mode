@@ -49,11 +49,15 @@ EV_CALL_SRC = "import os\n\nfrom typesafe import TypeSafeClient\nclient = TypeSa
 EV_NO_CALL_SRC = "import os\n\nx = 1\n"
 DECISION_LOW = "- flag unclear commit | Noul | low | acts at src/x.py:9 | shows the flag to the author"
 
+
+import rubric_text as _rt
+CURRENT_RUBRIC = _rt.version()  # fixtures rate under whatever rubric this checkout has
+
 def make_rating(path, project, owner, url, rated, commit="abc123def456789", verdict=4, project_type="workflow",
                  scores="execution: 3, fit: 3, coverage: 3, evidence: 2", via="direct",
-                 depth="full", rubric="2026-09-29", drop=(), coverage=None, fact_lines=None,
+                 depth="full", rubric=None, drop=(), coverage=None, fact_lines=None,
                  core_fixes=None, summary="Test fixture rating for library tests.", decisions=None, auto_evidence=True):
-    fm = {"project": project, "url": url, "owner": owner, "rated": rated, "rubric": rubric,
+    fm = {"project": project, "url": url, "owner": owner, "rated": rated, "rubric": rubric or CURRENT_RUBRIC,
           "commit": commit, "depth": depth, "lineage": "new",
           "stages": "[data-prep, question-state, execution, decision]", "closes_loop": "none",
           "verdict": verdict, "scores": "{" + scores + "}", "via": via, "project_type": project_type,

@@ -1,3 +1,4 @@
+import re
 import pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import rubric_text as rt
@@ -16,7 +17,7 @@ def test_section_stops_at_next_heading():
 
 def test_real_rubric_parses():
     v = rt.allowed_values()
-    assert v["verdict_1_code"] == ["1a", "1b", "1c", "1r", "1t", "none"] and rt.version() == "2026-09-29.1"
+    assert v["verdict_1_code"] == ["1a", "1b", "1c", "1r", "1t", "none"] and re.fullmatch(r"\d{4}-\d\d-\d\d(\.\d+|[a-z])?", rt.version())
 
 def test_trailing_note_is_not_a_value():
     assert rt.allowed_values("- `kind` values: uses, mentions (filled in by code from the type)\n") == {"kind": ["uses", "mentions"]}
