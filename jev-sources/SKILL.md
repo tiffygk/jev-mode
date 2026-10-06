@@ -21,7 +21,7 @@ Answers about Jev rest on TypeSafe sections you opened in full this session, fou
 Each claim carries:
 - a verbatim quote,
 - the `SOURCE` path#heading from the read.py header,
-- the KIND: **reference rule** (docs pages: what the API allows) or **cookbook example** (one way someone built it).
+- the KIND: **reference rule** (docs pages: what the API allows) or **cookbook example** (a working build TypeSafe published).
 
 A cookbook's code layout, diagram or call count is an example, never an API limit. "The cookbook does one request per candidate" is a fact about that cookbook. Whether you must do it too is answered by a reference rule, or by the cookbook's own scope note, which read.py prints under "Scope notes elsewhere in this file". Read that note before quoting the cookbook.
 

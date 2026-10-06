@@ -62,7 +62,7 @@
       "name": "jev-sources",
       "source": "./jev-sources",
       "strict": false,
-      "description": "Finds the TypeSafe docs and cookbook sections that answer a Jev question, and makes Claude read them before any claim.",
+      "description": "Finds the TypeSafe docs, patterns and cookbook sections that answer a Jev question, by keyword and by meaning, and tells Claude to read them before any claim.",
       "author": {
         "name": "tiffygk",
         "url": "https://github.com/tiffygk"
