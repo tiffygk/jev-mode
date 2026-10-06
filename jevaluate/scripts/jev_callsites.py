@@ -190,6 +190,49 @@ def lines_citable(lines):
     return [i for i, c in sorted(code.items()) if is_call_code(c) and (HOSTED.search(c) or any(m.group(1) not in NOT_CALLS for m in CALL_EXPR.finditer(c)))]
 
 
+def sdk_use_lines(lines):
+    """Line numbers that use hosted Jev directly: a client construction, the endpoint or a model ID, or a call to a name bound from the SDK.
+    These are the lines to suggest when a refused F0 cite needs a better one."""
+    code = code_lines(lines)
+    names = sdk_names(code.values())
+    used = re.compile(r"(?<![\w$.])(?:" + "|".join(map(re.escape, names)) + r")\s*\(") if names else None
+    return [i for i, c in sorted(code.items()) if is_call_code(c) and (is_marker(c) or (used and used.search(c)))]
+
+
+def suggested_lines(files_dir):
+    """{repo path: [line numbers]} of sdk_use_lines in the non-test files of an evidence files/ folder."""
+    out = {}
+    for f in sorted(pathlib.Path(files_dir).iterdir()):
+        rel = pathlib.PurePath(unflatten(f.name))
+        if not f.is_file() or not counts_as_hosted_path(rel) or rel.name == "package.json": continue
+        hits = sdk_use_lines(dict(enumerate(f.read_text(errors="ignore").splitlines(), 1)))
+        if hits: out[str(rel)] = hits
+    return out
+
+
+IMPORT_FROM = re.compile(r"""^\s*import\s+(.+?)\s+from\s+["']([^"']+)["']|^\s*from\s+([\w.]+)\s+import\s+(.+)""")
+
+
+def why_not_hosted(files_dir, rel, n):
+    """One sentence on why line n of rel can't show a hosted call, when its file shows no TypeSafe SDK, endpoint or model ID;
+    names the package a called function was imported from. '' when the file does show hosted Jev."""
+    f = next((x for x in pathlib.Path(files_dir).iterdir() if x.is_file() and unflatten(x.name) == str(rel)), None)
+    if f is None: return ""
+    lines = dict(enumerate(f.read_text(errors="ignore").splitlines(), 1))
+    if lines_citable(lines): return ""
+    called = {m.group(1) for m in CALL_EXPR.finditer(code_lines(lines).get(n, "")) if m.group(1) not in NOT_CALLS}
+    pkgs = []
+    for line in lines.values():
+        m = IMPORT_FROM.match(line)
+        if not m: continue
+        names, pkg = (m.group(1), m.group(2)) if m.group(2) else (m.group(4), m.group(3))
+        bound = {re.split(r"\s+as\s+", p.strip())[-1].strip() for p in re.split(r"[,{}()]", names) if p.strip()}
+        pkgs += [(name, pkg) for name in sorted(called & bound)]
+    why = f"{rel} shows no TypeSafe SDK import, api.typesafe.ai endpoint or typesafe/jev model ID"
+    if pkgs: why += "; " + ", ".join(f"`{a}` comes from `{p}`" for a, p in pkgs) + ", so the evidence doesn't show it reaching hosted Jev"
+    return why
+
+
 def citable_in(items):
     """{repo path: [line numbers]} an F0 yes may cite, in the non-test files of `items`, an iterable of (repo path, {line number: text})."""
     out = {}

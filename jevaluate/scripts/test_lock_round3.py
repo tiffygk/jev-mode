@@ -17,6 +17,7 @@ def fake_github(monkeypatch, tags, main_has=True):
             return {"status": "ahead" if main_has else "diverged", "behind_by": 0 if main_has else 2}
         raise AssertionError(path)
     rt.github_check.cache_clear(); monkeypatch.setattr(rt, "_github_get", get)
+    if pathlib.Path(rt.GITHUB_CACHE).exists(): pathlib.Path(rt.GITHUB_CACHE).unlink()  # each fake GitHub answers afresh
 
 
 def local_sha(root, tag): return git(root, "rev-parse", f"{tag}^{{commit}}").stdout.strip()

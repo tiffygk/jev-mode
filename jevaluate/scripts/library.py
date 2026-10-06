@@ -438,10 +438,13 @@ def check_f0(finding, value, ev, err):
         if any("captures" in pathlib.PurePath(p).parts for _, _, p in found): return
         citable = jev_callsites.citable_lines(ev / "files")
         if not cites_a_call(code, citable):
-            shown = ", ".join(f"{p}:{h[0]}" for p, h in list(citable.items())[:4])
+            best = jev_callsites.suggested_lines(ev / "files") or citable
+            shown = ", ".join(f"{p}:{h[0]}" for p, h in list(best.items())[:4])
+            why = "; ".join(w for w in (jev_callsites.why_not_hosted(ev / "files", p, n) for _, n, p in found) if w)
             err.append(f"F0 cites {', '.join(f'{f}:{n}' for f, n, _ in found)}, but that line is not a hosted Jev call in non-test code: a comment, an import, a dependency line, a throw or error class, "
                        "a class or constructor declaration, and a regex or bare string do not count. Redo the F0 line and cite the line that creates the client (client = TypeSafe(...)), "
-                       "posts to api.typesafe.ai, names the typesafe/jev or typesafe-ai/jev model ID, or calls it (client.noul(...)); the import is not the call" + (f"; citable lines found: {shown}" if citable else ""))
+                       "posts to api.typesafe.ai, names the typesafe/jev or typesafe-ai/jev model ID, or calls it (client.noul(...)); the import is not the call"
+                       + (f". Why: {why}" if why else "") + (f"; citable lines found: {shown}" if citable else ""))
     elif value == "no" and paths is None: not_checked()
     elif value == "no" and calls:
         unnamed = [p for p in calls if not no_reasoned(finding, p)]

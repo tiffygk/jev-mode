@@ -96,9 +96,38 @@ def named_files_problems(skill_dir):
     return problems
 
 
+LONG_SENTENCE = 35  # words; a rater reads these mid-rating (2026-10-06: a 49-word rule sentence came back as a run-on)
+
+
+def _sentences(text):
+    text = re.sub(r"`[^`]*`|https?://\S+", "x", text)
+    for line in text.splitlines():
+        if line.startswith(("|", "```")): continue
+        for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*")):
+            if s.strip(): yield s.strip()
+
+
+def long_new_sentences(now, frozen, limit=LONG_SENTENCE):
+    """Sentences over `limit` words in `now` that aren't in `frozen`: only wording added since the freeze is flagged."""
+    old = set(_sentences(frozen))
+    return [s for s in _sentences(now) if len(s.split()) > limit and s not in old]
+
+
+def long_sentence_problems(skill_dir=SKILL):
+    tag = rubric_text.newest_tag()
+    if not tag: return []
+    out = []
+    for name in ("rubric.md", "read.md"):
+        r = rubric_text._git(rubric_text.ROOT, "show", f"{tag}:jevaluate/{name}")
+        frozen = r.stdout.decode(errors="replace") if r.returncode == 0 else ""
+        for s in long_new_sentences((skill_dir / name).read_text(), frozen):
+            out.append(f"{name}: a new sentence of {len(s.split())} words (limit {LONG_SENTENCE}); split it: {s[:80]}...")
+    return out
+
+
 if __name__ == "__main__":
     files = {p.name: p.read_text() for p in INSTRUCTIONS}
     names = case_names(json.loads((HERE / "gold.json").read_text()), json.loads((HERE / "sources.json").read_text()))
     probs = lint(files, files["rubric.md"], files["read.md"], files["task.md"], names)
-    probs += named_files_problems(SKILL) + named_files_problems(SKILL.parent / "jevaluate-harness") + named_files_problems(SKILL.parent / "jevaluate-eval") + enforcement_problems()
+    probs += named_files_problems(SKILL) + named_files_problems(SKILL.parent / "jevaluate-harness") + named_files_problems(SKILL.parent / "jevaluate-eval") + enforcement_problems() + long_sentence_problems()
     print("\n".join(probs) or "lint clean"); sys.exit(1 if probs else 0)

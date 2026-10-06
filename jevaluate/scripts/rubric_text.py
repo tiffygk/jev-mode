@@ -48,12 +48,32 @@ def _vkey(tag):
     v = tag[len("rubric-"):-len("-frozen")]
     return [(0, int(x), "") if x.isdigit() else (1, 0, x) for x in re.split(r"[-.]", v)]
 
+GITHUB_CACHE = pathlib.Path.home() / ".cache" / "jevaluate" / "github-freeze.json"
+GITHUB_CACHE_SECONDS = 600  # GitHub allows 60 unauthenticated calls an hour; raters run check many times (2026-10-06 ran out twice)
+
+def _cached_ok(tag, here):
+    try: e = json.loads(GITHUB_CACHE.read_text()).get(tag) or {}
+    except (OSError, ValueError, AttributeError): return False
+    return e.get("sha") == here and 0 <= __import__("time").time() - float(e.get("at", 0)) < GITHUB_CACHE_SECONDS
+
+def _cache_ok(tag, here):
+    try:
+        try: d = json.loads(GITHUB_CACHE.read_text())
+        except (OSError, ValueError): d = {}
+        d = d if isinstance(d, dict) else {}
+        d[tag] = {"sha": here, "at": __import__("time").time()}
+        GITHUB_CACHE.parent.mkdir(parents=True, exist_ok=True); GITHUB_CACHE.write_text(json.dumps(d))
+    except OSError: pass
+
 @functools.lru_cache(maxsize=None)
 def github_check(tag, root=None):
     """(True, "") when GitHub's newest rubric-*-frozen tag is this one, on the same commit as here, and that commit is in
     GitHub main's history; else (False, why). GitHub's rulesets stop anyone moving or deleting a freeze tag there and allow
     main to change only by a pull request, so this is the check a local edit, a fake remote or a forged tag can't pass."""
     root = root or ROOT
+    here = _git(root, "rev-parse", f"{tag}^{{commit}}").stdout.decode().strip()
+    # A confirmation is reused for GITHUB_CACHE_SECONDS, keyed by tag and commit; a failure is never stored.
+    if here and _cached_ok(tag, here): return True, ""
     try:
         refs = _github_get("git/matching-refs/tags/rubric-")
         tags = {r["ref"].rsplit("/", 1)[-1]: r["object"] for r in refs if r["ref"].endswith("-frozen")}
@@ -62,10 +82,10 @@ def github_check(tag, root=None):
         if newest != tag: return False, f"GitHub's newest freeze is {newest}, not {tag} (bash ~/.claude/hooks/jev-mode-sync.sh brings it here)"
         obj = tags[tag]
         sha = obj["sha"] if obj.get("type") == "commit" else _github_get(f"git/tags/{obj['sha']}")["object"]["sha"]
-        here = _git(root, "rev-parse", f"{tag}^{{commit}}").stdout.decode().strip()
         if sha != here: return False, f"{tag} points at a different commit here than on GitHub"
         cmp = _github_get(f"compare/{tag}...main")
         if cmp.get("status") not in ("ahead", "identical") or cmp.get("behind_by", 1) != 0: return False, f"{tag} isn't in GitHub main's history"
+        _cache_ok(tag, here)
         return True, ""
     except (OSError, ValueError, KeyError, TypeError) as e:
         if getattr(e, "code", None) in (403, 429):
