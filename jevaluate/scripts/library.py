@@ -923,13 +923,14 @@ def column_key(family):
     return "claude" if family == "sonnet" or family.startswith("claude-") else family
 
 def column_title(key):
-    return {"claude": "Claude Rating", "codex": "Codex Rating"}.get(key, key.split("-")[0].capitalize() + " Rating")
+    # non-breaking, so GitHub keeps the column at least this wide and the badges below it full size
+    return {"claude": "Claude&nbsp;Rating", "codex": "Codex&nbsp;Rating"}.get(key, key.split("-")[0].capitalize() + "&nbsp;Rating")
 
 def badge_file(model, verdict, state):
     return re.sub(r"[^a-z0-9]+", "-", f"{model} {verdict} verdict {state}".lower()).strip("-") + ".svg"
 
 def badge_svg(model, verdict, state):
-    low = f"{verdict} verdict {state}"; w = int(max(len(model), len(low)) * 6.4) + 14; c = BADGE_COLOR[state]
+    low = f"{verdict} verdict {state}"; w = int(max(len(model), len(low)) * 5.6) + 14; c = BADGE_COLOR[state]
     alt = f"{model}: {low}"
     t = lambda y, s: f'<text x="{w / 2}" y="{y}" fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">{s}</text>'
     return (f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{alt}" width="{w}" height="38" viewBox="0 0 {w} 38">'

@@ -637,7 +637,7 @@ def test_export_index_has_type_why_and_stale_mark(tmp_path, lib):
                 summary="First sentence is the fallback. Second one is not.")
     out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
     readme = (out / "README.md").read_text()
-    assert "| Project | Type | Verdict | Why | Claude Rating | Codex Rating |" in readme
+    assert "| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |" in readme
     assert "One compound option set holds it back." in readme
     assert "First sentence is the fallback." in readme and "Second one is not" not in readme
     assert "2026-09-20 †" in readme and "earlier rubric" in readme.lower()
@@ -1528,7 +1528,7 @@ def _table(readme):
 def test_export_one_row_per_project_with_rater_columns(tmp_path, lib):
     seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)           # Sonnet 3, GPT-6 Sol 4
     out, readme = _readme(tmp_path, lib)
-    assert "| Project | Type | Verdict | Why | Claude Rating | Codex Rating |" in readme
+    assert "| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |" in readme
     row = _row(readme)
     assert row.startswith("| [o/Proj](o__proj--gpt-6-sol.md) |")       # the project links to the rating shown (the higher)
     assert "**4 Use it**<br><sub>Rater disagreement: in review</sub>" in row
@@ -1563,7 +1563,7 @@ def test_export_na_rater_counts_as_disagreement_and_shows_scored(tmp_path, lib):
 def test_export_two_claude_models_share_one_column(tmp_path, lib):
     seed_export(tmp_path, lib); _codex_rating(tmp_path, lib, rated="2026-10-04", rater="claude-opus-5-5")
     _, readme = _readme(tmp_path, lib)
-    assert "| Project | Type | Verdict | Why | Claude Rating | Codex Rating |" in readme
+    assert "| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |" in readme
     row = _row(readme)
     assert "claude-opus-5-5" in row and "Sonnet 5.5" not in row and row.rstrip().endswith("| not rated |")
 
@@ -1583,6 +1583,8 @@ def test_badge_svg_two_lines_text_and_label():
     wide = m.badge_svg("GPT-7 Sol Mini Preview", "3", "not used")
     assert int(re.search(r'width="(\d+)"', wide).group(1)) >= 6 * len("GPT-7 Sol Mini Preview")
     assert m.badge_file("GPT-6 Sol", "4", "in review") == "gpt-6-sol-4-verdict-in-review.svg"
+    # sized to its text (103 px in Verdana 11px), so GitHub's narrow table columns don't shrink it
+    assert 110 <= int(re.search(r'width="(\d+)"', m.badge_svg("GPT-6 Sol", "4", "in review")).group(1)) <= 124
 
 def test_review_records_choice_and_export_uses_it(tmp_path, lib):
     seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)            # Sonnet 3, GPT-6 Sol 4
