@@ -83,6 +83,12 @@ def test_scope_line_formats(repo):
     assert check(body="Summary\n\n**Scope:** `jev-sources/`, README.md\n") == []
 
 
+def test_dot_folders_in_scope(repo):
+    add(repo, ".github/workflows/x.yml", "name: x\n")
+    add(repo, "jev-sources/route.py", "x = 4\n")
+    assert check(body="Scope: .github/, ./jev-sources/") == []
+
+
 def test_the_check_passes_on_itself():
     here = pathlib.Path(pc.__file__).resolve().parent
     for name in ("pr_contents_check.py", "test_pr_contents_check.py"):

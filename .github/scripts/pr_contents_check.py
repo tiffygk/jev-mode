@@ -45,7 +45,7 @@ def scope_items(body):
     if not m:
         return None
     items = [i.strip().strip("`'\"") for i in re.split(r"[,\s]+", m.group(1))]
-    return [i.lstrip("./") for i in items if i]
+    return [i[2:] if i.startswith("./") else i for i in items if i]
 
 
 def in_scope(path, items):
