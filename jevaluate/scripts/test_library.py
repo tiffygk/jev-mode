@@ -1584,6 +1584,41 @@ def test_badge_svg_two_lines_text_and_label():
     assert int(re.search(r'width="(\d+)"', wide).group(1)) >= 6 * len("GPT-7 Sol Mini Preview")
     assert m.badge_file("GPT-6 Sol", "4", "in review") == "gpt-6-sol-4-verdict-in-review.svg"
 
+def test_review_records_choice_and_export_uses_it(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)            # Sonnet 3, GPT-6 Sol 4
+    p = run(lib, "review", "o__proj", "--use", "claude"); assert p.returncode == 0, p.stdout + p.stderr
+    rv = json.loads((lib / "reviews.json").read_text())["o__proj"]
+    assert rv["use"] == "claude" and set(rv["files"]) == {"claude", "codex"}
+    _, readme = _readme(tmp_path, lib); row = _row(readme)
+    assert row.startswith("| [o/Proj](o__proj.md) |") and "**3 Use with a fix**" in row and "in review" not in row
+    assert "3 verdict used" in row and "4 verdict not used" in row and f"reviewed {rv['date']}" in row
+    assert "Uses Jev for triage" in row                                  # the Why is the chosen rater's
+
+def test_review_stops_applying_after_a_new_rating(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    assert run(lib, "review", "o__proj", "--use", "claude").returncode == 0
+    _codex_rating(tmp_path, lib, rated="2026-10-05")
+    _, readme = _readme(tmp_path, lib)
+    assert "Rater disagreement: in review" in _row(readme)
+
+def test_review_refuses_when_raters_agree(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib, verdict=3)
+    p = run(lib, "review", "o__proj", "--use", "claude")
+    assert p.returncode != 0 and "nothing to review" in p.stdout + p.stderr
+
+def test_review_refuses_an_unknown_column(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    p = run(lib, "review", "o__proj", "--use", "opus")
+    assert p.returncode != 0 and "--use must be one of: claude, codex" in p.stdout + p.stderr
+
+def test_review_refuses_outside_the_golden_checkout(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    (lib / ".golden-checkout").write_text("/somewhere/else/jev-mode\n")
+    env = {k: v for k, v in os.environ.items() if k != "JEVALUATE_TEST_UNFROZEN"}; env["JEVALUATE_LIBRARY"] = str(lib)
+    p = subprocess.run([sys.executable, str(SCRIPT), "review", "o__proj", "--use", "claude"], capture_output=True, text=True, env=env)
+    assert p.returncode != 0 and "golden checkout" in p.stdout + p.stderr   # the golden check, not the test-escape refusal
+    assert not (lib / "reviews.json").exists()
+
 def test_rater_family_unknown_is_sonnet():
     import importlib.util
     spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
