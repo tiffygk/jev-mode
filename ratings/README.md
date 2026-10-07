@@ -28,7 +28,7 @@ The goal is a Jev community that uplevels itself, sharing resources built on the
 
 ## Ratings
 
-| Project | Type | Verdict | Why | Claude Rating | Codex Rating |
+| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |
 |---|---|---|---|---|---|
 | [altryne/Jevify](altryne__jevify.md) | agent tool | **4 Use it**<br><sub>Rater disagreement: in review</sub> | Atomic batched Score scanner with pinned model and size guard; nothing measured on accuracy and no injection or non-English test. | [![Sonnet 5.5: 4 verdict in review](badges/sonnet-5-5-4-verdict-in-review.svg)](altryne__jevify.md)<br>2026-09-30 | [![GPT-6 Sol: 3 verdict in review](badges/gpt-6-sol-3-verdict-in-review.svg)](altryne__jevify--gpt-6-sol.md)<br>2026-10-06 |
 | [Fox-Islam/jevlint](Fox-Islam__jevlint--gpt-6-sol.md) | library | **4 Use it** | Strong query linting and iterative measurement, with an unpinned model and incomplete comparative evidence. | [![Sonnet 5.5: 4 verdict used](badges/sonnet-5-5-4-verdict-used.svg)](Fox-Islam__jevlint.md)<br>2026-09-30 | [![GPT-6 Sol: 4 verdict used](badges/gpt-6-sol-4-verdict-used.svg)](Fox-Islam__jevlint--gpt-6-sol.md)<br>2026-10-06 |
