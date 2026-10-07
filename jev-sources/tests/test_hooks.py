@@ -105,3 +105,19 @@ def test_topic_text_is_fast_on_a_long_unclosed_quote():
     sys.path.insert(0, H)
     from jev_terms import topic_text
     t = time.time(); topic_text('"' + "a-" * 100000); assert time.time() - t < 1
+
+def test_dispatch_still_denies_jev_written_with_a_slash():
+    # "Jev/TypeSafe" and "Jev/System One" name Jev, not a folder; dropping every slashed word let these through.
+    for b in ["Rate how well this repo uses Jev/TypeSafe.", "Review the Jev/System One integration in app.py"]:
+        out = run("jev-dispatch-check.py", {"tool_input": {"prompt": b}})
+        assert out and out["hookSpecificOutput"]["permissionDecision"] == "deny", b
+
+def test_dispatch_allows_jev_word_only_in_relative_paths():
+    for b in ["Fix the typo in ~/Jev Study/notes.md", "Run the tests under jev-sources/hooks and report.",
+              "Count the files in jevaluate/ and ratings/2026-10-06.md"]:
+        assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None, b
+
+def test_dispatch_allows_jev_in_the_middle_of_a_path_with_spaces():
+    # Replay of real briefs: a path with spaces splits into pieces, and the middle piece "Notes/Jev" looks like a name pair.
+    b = "Read ~/Documents/Study Notes/Jev Project/plan.md and count its headings."
+    assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None

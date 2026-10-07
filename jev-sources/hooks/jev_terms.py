@@ -98,5 +98,20 @@ def topic_text(text):
     # a quoted span counts as an identifier when it is one token holding - _ or / ("plan-name", 'a/b'); the bounded,
     # non-overlapping pattern keeps this linear (the first version backtracked: 38 s on a 200k-char unclosed quote)
     t = re.sub(r"([\"'])([^\"'\s]{1,200})\1", lambda m: " " if re.search(r"[-_/]", m.group(2)) else m.group(0), t)
-    t = " ".join(w for w in t.split() if "/" not in w)  # any token holding a slash is a path piece
-    return t
+    ws = t.split()
+    drop = [is_path(w) for w in ws]
+    for i in range(1, len(ws)):   # a path with spaces splits into pieces: a slashed piece right after a path piece is one too
+        if drop[i - 1] and "/" in ws[i]:
+            drop[i] = True
+    return " ".join(w for w, d in zip(ws, drop) if not d)
+
+
+def is_path(w):
+    """A slashed token is a path piece unless it reads like a name pair: "Jev/TypeSafe" and "Jev/System" name Jev
+    (2026-10-06: dropping every slashed word let "Rate how well this repo uses Jev/TypeSafe" past the check)."""
+    if "/" not in w:
+        return False
+    w = w.strip(".,;:()[]\"'")
+    if w[:1] in "~/." or w.count("/") > 1 or re.search(r"\.\w{1,5}$", w):
+        return True
+    return any(not x or x.islower() or re.search(r"[-_\d]", x) for x in w.split("/"))
