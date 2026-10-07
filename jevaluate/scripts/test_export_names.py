@@ -20,8 +20,8 @@ def test_every_rater_row_uses_the_projects_published_name(tmp_path):
     lib = tmp_path / "lib"; slug = two_raters(lib, "altryne", "jevify", "Jevify", "jevify")
     out = tmp_path / "out"; p = run(lib, "export", str(out))
     assert p.returncode == 0, p.stdout + p.stderr
-    rows = [l for l in (out / "README.md").read_text().splitlines() if f"]({slug}" in l]
-    assert len(rows) == 2 and all(l.startswith("| [altryne/Jevify](") for l in rows), rows
+    rows = [l for l in (out / "README.md").read_text().splitlines() if l.startswith("| [altryne/Jevify](")]
+    assert len(rows) == 1 and "Sonnet 5.5:" in rows[0] and "GPT-6 Sol:" in rows[0], rows
     assert "**altryne/Jevify**" in (out / f"{slug}--gpt-6-sol.md").read_text()
 
 
