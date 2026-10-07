@@ -116,3 +116,8 @@ def test_dispatch_allows_jev_word_only_in_relative_paths():
     for b in ["Fix the typo in ~/Jev Study/notes.md", "Run the tests under jev-sources/hooks and report.",
               "Count the files in jevaluate/ and ratings/2026-10-06.md"]:
         assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None, b
+
+def test_dispatch_allows_jev_in_the_middle_of_a_path_with_spaces():
+    # Replay of real briefs: a path with spaces splits into pieces, and the middle piece "Notes/Jev" looks like a name pair.
+    b = "Read ~/Documents/Study Notes/Jev Project/plan.md and count its headings."
+    assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None

@@ -98,8 +98,12 @@ def topic_text(text):
     # a quoted span counts as an identifier when it is one token holding - _ or / ("plan-name", 'a/b'); the bounded,
     # non-overlapping pattern keeps this linear (the first version backtracked: 38 s on a 200k-char unclosed quote)
     t = re.sub(r"([\"'])([^\"'\s]{1,200})\1", lambda m: " " if re.search(r"[-_/]", m.group(2)) else m.group(0), t)
-    t = " ".join(w for w in t.split() if not is_path(w))
-    return t
+    ws = t.split()
+    drop = [is_path(w) for w in ws]
+    for i in range(1, len(ws)):   # a path with spaces splits into pieces: a slashed piece right after a path piece is one too
+        if drop[i - 1] and "/" in ws[i]:
+            drop[i] = True
+    return " ".join(w for w, d in zip(ws, drop) if not d)
 
 
 def is_path(w):
