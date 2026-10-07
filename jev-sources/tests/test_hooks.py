@@ -67,3 +67,41 @@ def test_dispatch_optout_needs_reason_and_own_line():
 def test_dispatch_denial_names_optout():
     out = run("jev-dispatch-check.py", {"tool_input": {"prompt": "Review this Jev design."}})
     assert "NO-JEV-CLAIMS" in out["hookSpecificOutput"]["permissionDecisionReason"]
+# 2026-10-06 retro: the prompt reminder fired on 129 of 223 subagent hand-backs; the dispatch check refused briefs over path and plan names.
+def test_prompt_reminder_skips_subagent_handback():
+    p = '<agent-message from="ae71843ded3b0f02d">\n[Subagent hand-back] ... the Jev project ...'
+    assert run("jev-prompt-reminder.py", {"prompt": p}) is None
+
+def test_prompt_reminder_skips_task_notification():
+    p = '<task-notification>\n<task-id>x</task-id> jevaluate-example-plan finished'
+    assert run("jev-prompt-reminder.py", {"prompt": p}) is None
+
+def test_prompt_reminder_still_fires_on_user_jev_message():
+    out = run("jev-prompt-reminder.py", {"prompt": "Should this Jev integration batch the questions?"})
+    assert out and "jev-sources" in out["hookSpecificOutput"]["additionalContext"]
+
+def test_dispatch_allows_jev_word_only_in_a_path():
+    b = "Count plans. Plan docs live under `~/notes/Jev Project/plans` and ~/work/Jev-mode/x.md."
+    assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None
+
+def test_dispatch_allows_jev_word_only_in_a_quoted_plan_name():
+    b = 'Check the inflation on the plan "jevaluate-example-plan" by about 505k.'
+    assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None
+
+def test_dispatch_still_denies_jev_in_the_task():
+    b = "Review whether this Jev integration sends each Noul in its own request."
+    out = run("jev-dispatch-check.py", {"tool_input": {"prompt": b}})
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+def test_prompt_reminder_skips_handback_with_session_prefix():
+    # Replay of a real 2026-10-06 transcript: hand-backs can arrive prefixed by this line.
+    p = 'Another Claude session sent a message:\n<agent-message from="a011c59200f9062b3">\n[Subagent hand-back] the Jev rubric...'
+    assert run("jev-prompt-reminder.py", {"prompt": p}) is None
+
+def test_topic_text_is_fast_on_a_long_unclosed_quote():
+    # Audit 2026-10-06: the quoted-identifier pattern backtracked quadratically (200k chars took 38 s), and this
+    # check runs before every agent dispatch.
+    import time
+    sys.path.insert(0, H)
+    from jev_terms import topic_text
+    t = time.time(); topic_text('"' + "a-" * 100000); assert time.time() - t < 1

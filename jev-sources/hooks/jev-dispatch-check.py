@@ -4,7 +4,7 @@ A brief that mentions Jev but makes no claim about it (a copy edit, a question a
 `NO-JEV-CLAIMS: <reason>`; each opt-out is logged so misuse shows up in the log (2026-10-06: three such briefs were refused)."""
 import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from jev_terms import JEV, MARKER, BRIEF, log
+from jev_terms import JEV, MARKER, BRIEF, topic_text, log
 
 OPTOUT = re.compile(r"^NO-JEV-CLAIMS:[ \t]*(\S.*)$", re.M)
 
@@ -14,7 +14,7 @@ def main():
     except Exception:
         return 0
     prompt = (p.get("tool_input") or {}).get("prompt") or ""
-    if not JEV.search(prompt) or MARKER in prompt:
+    if not JEV.search(topic_text(prompt)) or MARKER in prompt:
         return 0
     m = OPTOUT.search(prompt)
     if m:

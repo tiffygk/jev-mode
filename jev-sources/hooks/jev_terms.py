@@ -85,3 +85,18 @@ def log(name, line):
 # Talk about this skill's own tooling (route.py, the hooks, topics.json), not about how Jev works.
 TOOLING = re.compile(r"route\.py|read\.py|refresh\.sh|build_index|topics\.json|sections\.jsonl|SKILL\.md|jev-sources|"
                      r"\b(stop|dispatch|reminder|claim)[- ]hook|\bhooks?\b.{0,40}\b(fired|held|false alarm)", re.I)
+
+
+# 2026-10-06: messages that are subagent reports or task notifications, not the user's words.
+HANDBACK = re.compile(r"^\s*(Another Claude session sent a message:\s*)?(<agent-message\b|<task-notification>|\[SYSTEM NOTIFICATION)", re.I)
+
+
+def topic_text(text):
+    """The brief's own words: drops code spans, file paths and quoted identifiers (plan names, slugs),
+    where a Jev word names a folder or a plan rather than the task (2026-10-06: 3 refusals in one session)."""
+    t = strip_code(text)
+    # a quoted span counts as an identifier when it is one token holding - _ or / ("plan-name", 'a/b'); the bounded,
+    # non-overlapping pattern keeps this linear (the first version backtracked: 38 s on a 200k-char unclosed quote)
+    t = re.sub(r"([\"'])([^\"'\s]{1,200})\1", lambda m: " " if re.search(r"[-_/]", m.group(2)) else m.group(0), t)
+    t = " ".join(w for w in t.split() if "/" not in w)  # any token holding a slash is a path piece
+    return t
