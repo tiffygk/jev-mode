@@ -1,6 +1,6 @@
 [← All ratings](README.md)
 
-> **altryne/jevify** at [`11f36f8`](https://github.com/altryne/jevify/tree/11f36f8d548cf5020a20e5eb548f21c3d7181a17) · agent tool
+> **altryne/Jevify** at [`11f36f8`](https://github.com/altryne/jevify/tree/11f36f8d548cf5020a20e5eb548f21c3d7181a17) · agent tool
 > ### Verdict 3: Use with a fix
 > Execution ●●● · Fit ●●● · Coverage ●●● · Evidence ●○○
 >

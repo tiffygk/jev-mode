@@ -1,6 +1,6 @@
 [← All ratings](README.md)
 
-> **askjevs.site** [https://askjevs.site/](https://askjevs.site/), site-snapshot-2026-10-05 · display
+> **Ask Jevs** [https://askjevs.site/](https://askjevs.site/), site-snapshot-2026-10-05 · display
 > ### Verdict 3: Use with a fix
 > Execution ●●○ · Fit ●●● · Coverage ●●● · Evidence n.a.
 >

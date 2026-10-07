@@ -1,6 +1,6 @@
 [← All ratings](README.md)
 
-> **kylemclaren/jevpdf** at [`7f23037`](https://github.com/kylemclaren/jevpdf/tree/7f230370961c4a8e2f8b19c1729085b852124448) · display
+> **kylemclaren/JevPDF** at [`7f23037`](https://github.com/kylemclaren/jevpdf/tree/7f230370961c4a8e2f8b19c1729085b852124448) · display
 > ### Verdict 3: Use with a fix
 > Execution ●●○ · Fit ●●● · Coverage ●●● · Evidence ○○○
 >
