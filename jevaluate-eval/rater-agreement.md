@@ -18,7 +18,7 @@ Script: `rater_agreement/rater_agreement.py` (its `--help` lists the commands). 
    - Draw agreed facts as well as split ones: they're the only way to catch both raters wrong together.
    - The owner's own open questions (a routing split, say) can join the key; pass their projects as `--skip` so the draw doesn't repeat them.
    - Seal the raters' answers in a private file before the owner sees the key.
-5. **Build the owner's page.** Follow `tuning-quiz-questions` for wording. Each item is one fact on one project, with:
+5. **Build the owner's page.** Each item is one fact on one project, with:
    - what the program does, in plain words: the behavior, never code, since the owner may not read code;
    - the rubric rule, quoted exactly;
    - the question, with "can't tell" allowed.
@@ -33,8 +33,7 @@ Each row is a risk to this comparison's fairness: whether it holds, and how that
 
 | Risk | Holds? | How it was checked |
 |---|---|---|
-| A rater copies the other rater's answers | No | Raters run in separate harnesses (Codex clean mode, no access to the library's other pages); the brief names only the rater's own folder. |
-| The previous rating anchors a rater's facts | No | `step.py` serves sections in a fixed order (`ORDER`: routing, facts, scores, compare, verdict). The previous rating appears at "compare", after the facts and scores are written. The verdict follows from those by rule, and `check` refuses one that doesn't fit; the transcript scan flags edits made after "compare". |
+| The previous rating anchors a rater's answers | Partly | Each rater writes its facts and scores before it sees the project's previous rating, but picks the verdict after, so the verdict can lean toward the old one. Planned work on this skill aims to remove this bias by keeping the rater model blind to previous ratings until after its overall project verdict is recorded and locked. |
 | Tuning-sample agreement reported as evidence | Yes, it happened once (2026-10-06) | Now `agreement` reports the sample apart and second. |
 | Whoever settles a dispute has read both ratings | Yes, it happened once (2026-10-06) | Disputes now go to a fresh reviewer as a blind packet (`jevaluate-harness/scripts/dispute_packet.py`, round step 6). |
 | A fact parser misses facts, narrowing the draw | Yes, it happened once (2026-10-06) | An ad hoc pattern skipped facts written with a different dash or in bold: it found 182 shared facts where the library's parser finds 267. `rater_agreement.py` now uses the library's own `fact_rows`. A key drawn before this fix is valid item by item, but its pool was narrower. |
