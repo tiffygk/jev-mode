@@ -14,6 +14,7 @@ Usage:
                                               check facts, fields, coverage vs the evidence manifest, docs links and the
                                               verdict cap (add runs this first)
   python3 library.py stale                    list ratings made under an older rubric than rubric.md
+  python3 library.py review <slug> --use <claude|codex>   record which rating the list shows when the raters disagree
   python3 library.py export <outdir>          latest rating per project as a short public page, plus README, LICENSE
                                               (refuses if a line matches <library>/private-terms.txt)
   python3 library.py migrate-fields           fill missing rater/effort/project_type/via on existing ratings (idempotent)
@@ -970,6 +971,28 @@ def pick(entries, review):
     hi = max(keys, key=lambda k: (_num(entries[k]), entries[k]["rated"]))
     return {"shown": hi, "state": {k: "in review" for k in keys}, "in_review": True, "reviewed": ""}
 
+def review(slug, use):
+    """Record which rating the list shows for a project whose raters disagree. Runs only from the golden checkout,
+    like add, and each review is a library commit. A review stops applying once either rating is replaced."""
+    gate = add_gate() or library_dirty()
+    if gate: sys.exit("not recorded: " + gate)
+    latest, names = published()
+    es = project_entries(latest, names).get(slug)
+    if not es: sys.exit(f"{slug}: no published rating to review")
+    if len({e["v"] for e in es.values()}) == 1:
+        sys.exit(f"{slug}: the raters agree ({' and '.join(e['v'] or 'n.a.' for e in es.values())}); nothing to review")
+    if use not in es: sys.exit(f"--use must be one of: {', '.join(sorted(es))}")
+    rv = reviews()
+    rv[slug] = {"use": use, "date": datetime.date.today().isoformat(), "files": {k: e["file"] for k, e in es.items()}}
+    (LIB / "reviews.json").write_text(json.dumps(rv, indent=1, sort_keys=True) + "\n")
+    if (LIB / ".git").exists():  # as in add: every library change is a commit
+        g = lambda *a: subprocess.run(["git", "-C", str(LIB), *a], capture_output=True, text=True)
+        g("add", "--", "reviews.json")
+        r = g("-c", "user.name=jevaluate", "-c", "user.email=jevaluate@localhost", "commit", "-qm", f"review: {slug} uses the {use} rating")
+        if r.returncode: sys.exit("not recorded in git: " + r.stderr.strip()[:200])   # an uncommitted reviews.json would block every reply
+        print("library commit: ok")
+    print(f"{slug}: the list now uses the {use} rating")
+
 def export(outdir):
     if is_private_library():
         sys.exit(f"export refused: {LIB} is a private library (it holds a PRIVATE marker); private ratings are never published")
@@ -1121,11 +1144,12 @@ def list_add(name, entries):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["add", "index", "similar", "check", "blind", "migrate", "list-add", "stale", "export", "migrate-fields", "fill-docs", "init-private"])
+    ap.add_argument("cmd", choices=["add", "index", "similar", "check", "blind", "migrate", "list-add", "stale", "export", "migrate-fields", "fill-docs", "init-private", "review"])
     ap.add_argument("file", nargs="?")
     ap.add_argument("list_file", nargs="?")
     ap.add_argument("--lineage"); ap.add_argument("--stage"); ap.add_argument("--limit", type=int, default=3); ap.add_argument("--exclude"); ap.add_argument("--out")
     ap.add_argument("--link-docs", action="store_true"); ap.add_argument("--evidence"); ap.add_argument("--supersedes")
+    ap.add_argument("--use")
     a = ap.parse_intermixed_args()
     if a.cmd == "init-private":
         if not a.file: sys.exit("usage: library.py init-private <dir>")
@@ -1145,6 +1169,7 @@ if __name__ == "__main__":
     elif a.cmd == "index": print(f"index: {index()} ratings")
     elif a.cmd == "migrate": migrate()
     elif a.cmd == "stale": stale()
+    elif a.cmd == "review": review(a.file, a.use) if a.file and a.use else sys.exit("review needs <project slug> --use <claude|codex>")
     elif a.cmd == "export":
         if not a.file: sys.exit("export needs <outdir>")
         export(a.file)
