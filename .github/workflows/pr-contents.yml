@@ -1,0 +1,19 @@
+name: pr-contents
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+jobs:
+  pr-contents:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+      - run: pip install pytest
+      - name: the check's own tests
+        run: python -m pytest -q .github/scripts
+      - name: nothing outside the PR's scope, and no plans or private notes
+        run: python .github/scripts/pr_contents_check.py
