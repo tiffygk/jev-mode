@@ -1021,7 +1021,7 @@ def export(outdir):
             cells.append(f"[![{x['model']}: {x['v'] or 'n.a.'} verdict {st}](badges/{f})]({x['slug']}.md)<br>{x['rated']}{' †' if x['stale'] else ''}"
                          + (f"<br>reviewed {r['reviewed']}" if st == "used" and r["reviewed"] else ""))
         note = "<br><sub>Rater disagreement: in review</sub>" if r["in_review"] else ""
-        rank = 1 if not e["v"] else -int(e["v"])
+        rank = 1 if not e["v"] else -int(e["v"]) if e["v"].isdigit() else 0
         rows.append((rank, e["who"].lower(), f"| [{e['who']}]({e['slug']}.md) | {e['type']} | **{e['label']}**{note} | {cell(e['why'])} | " + " | ".join(cells) + " |"))
     tpl = SKILL / "ratings-template"
     head = "| Project | Type | Verdict | Why | " + " | ".join(column_title(k) for k in cols) + " |\n|" + "---|" * (4 + len(cols)) + "\n"
@@ -1052,11 +1052,13 @@ def export(outdir):
         sys.exit("export refused; nothing written:\n- " + "\n- ".join(hits))
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / "full").mkdir(exist_ok=True)
+    nodash = lambda x: re.sub(r"\s*\u2014\s*", ": ", x)   # rater prose may carry em-dashes; published pages carry none
     for s, (_, detail, full) in pages.items():
-        (outdir / f"{s}.md").write_text(detail); (outdir / "full" / f"{s}.md").write_text(full)
+        (outdir / f"{s}.md").write_text(nodash(detail)); (outdir / "full" / f"{s}.md").write_text(nodash(full))
     (outdir / "badges").mkdir(exist_ok=True)
+    for old in (outdir / "badges").glob("*.svg"): old.unlink()   # a badge whose state changed is no longer linked
     for f, svg in badges.items(): (outdir / "badges" / f).write_text(svg)
-    (outdir / "README.md").write_text(readme)
+    (outdir / "README.md").write_text(nodash(readme))
     shutil.copy(tpl / "LICENSE", outdir / "LICENSE")
     print(f"exported {len(pages)} pages to {outdir}")
 

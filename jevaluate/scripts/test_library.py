@@ -1619,6 +1619,40 @@ def test_review_refuses_outside_the_golden_checkout(tmp_path, lib):
     assert p.returncode != 0 and "golden checkout" in p.stdout + p.stderr   # the golden check, not the test-escape refusal
     assert not (lib / "reviews.json").exists()
 
+def test_review_stops_applying_after_the_picked_rating_is_replaced(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)            # Sonnet 3, GPT-6 Sol 4
+    assert run(lib, "review", "o__proj", "--use", "claude").returncode == 0
+    r = make_rating(tmp_path / "s-2026-10-05.md", "Proj", "o", "https://github.com/o/proj", "2026-10-05", verdict=3)
+    assert run(lib, "add", str(r)).returncode == 0                       # the picked (Claude) rating is re-rated
+    _, readme = _readme(tmp_path, lib)
+    assert "Rater disagreement: in review" in _row(readme)
+
+def test_export_with_a_cant_rate_rating(tmp_path, lib):
+    seed_export(tmp_path, lib)
+    d = lib / "projects" / "o__c"; d.mkdir(parents=True)
+    make_rating(d / "2026-10-03.md", "C", "o", "https://github.com/o/c", "2026-10-03", verdict="cant-rate")
+    _, readme = _readme(tmp_path, lib)
+    assert "cant-rate" in _row(readme, "o__c")
+
+def test_export_writes_no_em_dash(tmp_path, lib):
+    seed_export(tmp_path, lib)
+    d = lib / "projects" / "o__dash"; d.mkdir(parents=True)
+    make_rating(d / "2026-10-03.md", "Dash", "o", "https://github.com/o/dash", "2026-10-03",
+                summary="**3 — Use with a fix.** Calls Jev once — and checks confidence.")
+    out, _ = _readme(tmp_path, lib)
+    pages = [p for p in out.rglob("*.md")]
+    assert pages and not [p.name for p in pages if "—" in p.read_text()]
+    assert "**3: Use with a fix.**" in (out / "full" / "o__dash.md").read_text()
+
+def test_export_clears_badges_no_longer_used(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    out, _ = _readme(tmp_path, lib)
+    assert (out / "badges" / "sonnet-5-5-3-verdict-in-review.svg").exists()
+    assert run(lib, "review", "o__proj", "--use", "claude").returncode == 0
+    p = run(lib, "export", str(out)); assert p.returncode == 0, p.stdout + p.stderr
+    used = set(re.findall(r"badges/([\w.-]+\.svg)", (out / "README.md").read_text()))
+    assert {f.name for f in (out / "badges").iterdir()} == used
+
 def test_rater_family_unknown_is_sonnet():
     import importlib.util
     spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
