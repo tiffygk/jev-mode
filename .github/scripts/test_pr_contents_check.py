@@ -93,3 +93,33 @@ def test_the_check_passes_on_itself():
     here = pathlib.Path(pc.__file__).resolve().parent
     for name in ("pr_contents_check.py", "test_pr_contents_check.py"):
         assert not pc.MARKERS.search((here / name).read_text()), name
+
+
+def test_file_added_then_deleted_still_fails(repo):
+    add(repo, "docs/superpowers/plans/p.md", "a\n")
+    git(repo, "rm", "-q", "docs/superpowers/plans/p.md")
+    git(repo, "commit", "-q", "-m", "remove")
+    add(repo, "jev-sources/route.py", "x = 5\n")
+    found = check()
+    assert any("plan or working note" in w and "removed later" in w for w in found)
+
+
+def test_existing_kind_of_image_passes(repo):
+    add(repo, "jev-sources/images/diagram.png", b"\x89PNG\r\n\x1a\n\0\0")
+    assert check() == []
+
+
+def test_commit_message_with_plan_text_fails(repo):
+    (repo / "jev-sources/route.py").write_text("x = 6\n")
+    git(repo, "commit", "-q", "-am", "wip\n\n**Status (" + "2026-10-07):** handoff")
+    assert any("message reads like" in w for w in check())
+
+
+def test_unfilled_template_counts_as_no_scope(repo):
+    add(repo, "jev-sources/route.py", "x = 7\n")
+    assert any("no Scope line" in w for w in check(body="Scope: \n\n## What changes\n"))
+
+
+def test_any_home_folder_path_fails(repo):
+    add(repo, "jev-sources/c.py", "P = '/" + "Users/x/.claude/settings.json'\n")
+    assert any("private note" in w for w in check())

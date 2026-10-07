@@ -1,7 +1,12 @@
 name: pr-contents
+# pull_request_target runs main's copy of this workflow and of the check, so a PR can't switch the check off by
+# editing it. Nothing from the PR is run: its commits are only fetched and read with git. The check's own tests run
+# in tests.yml.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, edited]
+permissions:
+  contents: read
 jobs:
   pr-contents:
     runs-on: ubuntu-22.04
@@ -9,11 +14,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.8"
-      - run: pip install pytest
-      - name: the check's own tests
-        run: python -m pytest -q .github/scripts
-      - name: nothing outside the PR's scope, and no plans or private notes
+      - name: fetch the PR's commits (read only)
+        run: git fetch --no-tags https://github.com/${{ github.repository }}.git "+refs/pull/${{ github.event.pull_request.number }}/head:refs/remotes/pr/head"
+      - name: nothing outside the PR's scope, and no plans or private notes, in any commit
         run: python .github/scripts/pr_contents_check.py
