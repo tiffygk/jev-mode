@@ -102,6 +102,18 @@
     "jev-lens/SKILL.md"
    ],
    "why": "the Jev Lens README and skill describe its steps"
+  },
+  {
+   "name": "the pr-contents check",
+   "sources": [
+    ".github/scripts/pr_contents_check.py",
+    ".github/workflows/pr-contents.yml",
+    ".github/pull_request_template.md"
+   ],
+   "docs": [
+    "CONTRIBUTING.md"
+   ],
+   "why": "CONTRIBUTING.md says what a pull request may carry and how the Scope line works"
   }
  ],
  "count_lint": {

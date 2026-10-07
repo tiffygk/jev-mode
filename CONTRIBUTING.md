@@ -1,6 +1,6 @@
 # Contributing
 
-Pull requests are welcome. Every change reaches `main` through a PR, and CI runs the tests and the docs check below.
+Pull requests are welcome. Every change reaches `main` through a PR, and CI runs the tests and the two checks below.
 
 ## Keep the docs from going stale
 
@@ -21,3 +21,7 @@ Docs checked: jevaluate/README.md unchanged because the change is internal to th
 ```
 
 When you add a script or a skill, add its rule to `docs-map.json` in the same PR.
+
+## The pr-contents check
+
+Every PR description has a `Scope:` line naming the folders and files the PR changes, such as `Scope: jev-sources/, README.md`; the PR template adds it. [`pr_contents_check.py`](.github/scripts/pr_contents_check.py) runs on every pull request and fails when any commit adds or changes a file outside that line, a plan, handoff or working note, text holding a home-folder path, or a binary that isn't an image. Plans and working notes stay outside the repo. To widen the scope on purpose, edit the line, and the check runs again.
