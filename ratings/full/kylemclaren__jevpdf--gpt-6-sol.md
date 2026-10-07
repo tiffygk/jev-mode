@@ -54,7 +54,7 @@ JevPDF asks hosted Jev whether each extracted PDF line answers a reader's query,
 
 ## Why this verdict
 
-**3 — Use with a fix.** F3 caps the verdict because shared page text lacks item IDs and the questions do not point into it. Execution remains 2, so the project does not meet the 4 anchor, while its narrow Nouls and bounded batches avoid a fatal flaw. The unmeasured speed and cost claims leave Evidence at 0.
+**3: Use with a fix.** F3 caps the verdict because shared page text lacks item IDs and the questions do not point into it. Execution remains 2, so the project does not meet the 4 anchor, while its narrow Nouls and bounded batches avoid a fatal flaw. The unmeasured speed and cost claims leave Evidence at 0.
 
 <details>
 <summary><b>Files read (24)</b></summary>
