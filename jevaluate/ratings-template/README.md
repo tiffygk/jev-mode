@@ -6,9 +6,13 @@ Jev, which TypeSafe launched on September 15, 2026, makes decisions instead of w
 
 These ratings follow TypeSafe's guidelines, not my taste. Every problem cites the code at a pinned commit and links the TypeSafe page it departs from, along with the fix that page recommends. A few rules come from my own testing; those are marked.
 
+When the two raters' verdicts differ, the list shows the higher verdict, marked "Rater disagreement: in review", until I review both ratings, on a regular cadence. After a review, the list shows the verdict I picked: that rater's badge says "used" and the other's "not used".
+
+The Evidence score shows how well a project has measured its results. A project that claims no results needs no evidence and can still earn a 4 (Use it). Evidence changes a verdict in only two cases: results claimed with nothing measured cap it at 3 (Use with a fix), and a 5 (Learn from it) needs strong evidence. Check the score before you use a project, or test the project yourself first.
+
 ## Two raters
 
-Some projects have two ratings, from different AI models that never saw each other's work. The "Rated by" column says which model wrote each one. Where they disagree, both stay up: a disagreement shows where the rubric needs a clearer rule.
+A project can have two ratings, one from a Claude model and one from a Codex model, each in its own column. Each badge opens that model's rating. Each model rates the code on its own and writes its facts before it sees any earlier rating. Where they disagree, both stay up.
 
 ## If your project is here
 
@@ -16,8 +20,8 @@ The fixes are yours. Everything in this folder is released under CC0: use it, ch
 
 Open an issue if you disagree with a rating, if you've shipped improvements and want a re-rating, or if you'd like help fixing your project.
 
-## Still learning
+## Still improving
 
-The rating skill is early, and it learns from this report: each new rating is checked against the ones here, and every disagreement sharpens the rubric. As I keep improving it, some ratings will be redone. If one reads as too harsh or too generous, I'm sorry. Tell me in an issue, and it will help the next version.
+The Jevaluate skill is still early and doesn't handle edge cases well. The rubric, the rule set and the eval harness are still being tuned, so the AI raters will get more reliable. Until then, I regularly check new ratings, audit samples of them and rule on every verdict disagreement. As I keep improving it, some ratings will be redone. If one reads as too harsh or too generous, I'm sorry. Tell me in an issue, and it will help the next version.
 
 The goal is a Jev community that uplevels itself, sharing resources built on the best practices TypeSafe has already laid out.
