@@ -59,19 +59,54 @@ def in_scope(path, items):
     return False
 
 
-def lines(*a):
-    return [x for x in git(*a).decode("utf-8", "replace").split("\0") if x]
+MAX_BLOBS = 20000
+
+
+def raw_entries(*a):
+    """(mode, blob sha, path) for each added, modified or type-changed file in a `git ... --raw -z` listing."""
+    toks = git(*a).split(b"\0")
+    out, i = [], 0
+    while i + 1 < len(toks):
+        meta, path = toks[i], toks[i + 1]
+        i += 2
+        if not meta.startswith(b":"):
+            continue
+        parts = meta[1:].split()
+        out.append((parts[1].decode(), parts[3].decode(), path.decode("utf-8", "surrogateescape")))
+    return out
+
+
+def blobs(shas):
+    """{sha: bytes} read through one `git cat-file --batch` process."""
+    shas = list(dict.fromkeys(shas))
+    r = subprocess.run(["git", "cat-file", "--batch"], input="".join(s + "\n" for s in shas).encode(),
+                       capture_output=True, check=True).stdout
+    out, pos = {}, 0
+    for sha in shas:
+        nl = r.index(b"\n", pos)
+        head = r[pos:nl].split()
+        size = int(head[2])
+        out[sha] = r[nl + 1:nl + 1 + size]
+        pos = nl + 1 + size + 1
+    return out
+
+
+def text_of(data):
+    """The text to search: as UTF-8, and again with NUL bytes dropped, so UTF-16 text can't hide a marker."""
+    return data.decode("utf-8", "replace") + "\n" + data.replace(b"\0", b"").decode("utf-8", "replace")
 
 
 def problems(base, head, body):
     out = []
-    files = lines("diff", "--name-only", "--diff-filter=AMR", "-z", f"{base}...{head}")
-    top_before = {p.split("/", 1)[0] for p in lines("ls-tree", "-r", "--name-only", "-z", base)}
+    diff = ["--raw", "--no-abbrev", "-z", "--no-renames", "--diff-filter=AMT"]
+    final = raw_entries("diff", *diff, f"{base}...{head}")
+    files = {f for _, _, f in final}
+    top_before = {p.split("/", 1)[0] for p in git("ls-tree", "-r", "--name-only", "-z", base).decode("utf-8", "surrogateescape").split("\0") if p}
     commits = [c for c in git("rev-list", f"{base}..{head}").decode().split() if c]
-    # Every version of every file any commit added or changed, plus the final one.
-    versions = [(head, f) for f in files]
+    # Every version of every file any commit added or changed (merge commits too: -m), plus the final one.
+    versions = [(head, m, b, f) for m, b, f in final]
     for c in commits:
-        versions += [(c, f) for f in lines("diff-tree", "-r", "--no-commit-id", "--name-only", "--diff-filter=AMR", "-z", c)]
+        versions += [(c, m, b, f) for m, b, f in raw_entries("diff-tree", "-r", "-m", "--no-commit-id", *diff, c)]
     items = scope_items(body)
     if items is None:
         out.append(("", "the PR description has no Scope line, such as `Scope: jev-sources/, README.md`"))
@@ -80,11 +115,16 @@ def problems(base, head, body):
     if m:
         out.append(("", f"title or description reads like a plan or private note (has {m.group(0)!r})"))
     for c in commits:
-        m = MARKERS.search(git("log", "-1", "--format=%B", c).decode("utf-8", "replace"))
+        m = MARKERS.search(text_of(git("log", "-1", "--format=%B", c)))
         if m:
             out.append(("", f"commit {c[:7]}'s message reads like a plan or private note (has {m.group(0)!r})"))
+    content = [b for _, mode, b, _ in versions if mode != "160000"]
+    if len(set(content)) > MAX_BLOBS:
+        out.append(("", f"has {len(set(content))} file versions, more than the {MAX_BLOBS} this check reads; split the PR"))
+        return files, out
+    data_of = blobs(content)
     seen_path, seen_blob = set(), set()
-    for c, f in versions:
+    for c, mode, blob, f in versions:
         where = "" if f in files else f" (in commit {c[:7]}, removed later; merged history keeps it)"
         if f not in seen_path:
             seen_path.add(f)
@@ -94,12 +134,14 @@ def problems(base, head, body):
                 out.append((f, "starts a new top-level folder or file; name it in the Scope line if it is meant" + where))
             elif items and not in_scope(f, items):
                 out.append((f, "is outside the Scope line" + where))
-        blob = git("rev-parse", f"{c}:{f}").strip()
+        if mode == "160000":
+            out.append((f, "adds a git submodule, which this check can't read" + where))
+            continue
         if blob in seen_blob:
             continue
         seen_blob.add(blob)
-        data = git("cat-file", "blob", blob.decode())
-        m = MARKERS.search(data.decode("utf-8", "replace"))
+        data = data_of[blob]
+        m = MARKERS.search(text_of(data))
         if m:
             out.append((f, f"reads like a plan or private note (has {m.group(0)!r})" + where))
         if not f.startswith("ratings/"):
@@ -108,6 +150,11 @@ def problems(base, head, body):
             elif b"\0" in data[:8000] and not f.lower().endswith(IMAGES):
                 out.append((f, "is a binary file" + where))
     return files, out
+
+
+def annotation(text):
+    """GitHub's escaping for workflow-command text, so a file name can't start a command of its own."""
+    return text.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
 def main(argv=None):
@@ -124,7 +171,8 @@ def main(argv=None):
     files, found = problems(base or "origin/main", head or "HEAD", body or "")
     print(f"{len(files)} file(s) added or changed.")
     for f, why in found:
-        print(f"::error{' file=' + f if f else ''}::{f or 'PR description'} {why}")
+        f = annotation(f.encode("utf-8", "surrogateescape").decode("utf-8", "replace"))
+        print(f"::error{' file=' + f if f else ''}::{annotation(f or 'PR description')} {annotation(why)}")
     if found:
         print(f"\n{len(found)} problem(s). Remove what wasn't meant to be in this PR, or widen the Scope line on purpose.")
         return 1

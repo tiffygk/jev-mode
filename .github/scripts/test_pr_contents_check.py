@@ -123,3 +123,44 @@ def test_unfilled_template_counts_as_no_scope(repo):
 def test_any_home_folder_path_fails(repo):
     add(repo, "jev-sources/c.py", "P = '/" + "Users/x/.claude/settings.json'\n")
     assert any("private note" in w for w in check())
+
+
+# 2026-10-07 security audit
+
+def test_file_added_only_in_a_merge_commit_fails(repo):
+    git(repo, "checkout", "-q", "-b", "side", "main")
+    add(repo, "jev-sources/side.py", "s = 1\n")
+    git(repo, "checkout", "-q", "pr")
+    git(repo, "merge", "-q", "--no-ff", "--no-commit", "side")
+    (repo / "jev-sources/evil.md").write_text("**Status (" + "2026-10-07):** x\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "merge")
+    git(repo, "rm", "-q", "jev-sources/evil.md")
+    git(repo, "commit", "-q", "-m", "remove")
+    assert any("evil.md" in f for f, _ in pc.problems("main", "HEAD", "Scope: jev-sources/")[1])
+
+
+def test_file_turned_into_a_symlink_is_checked(repo):
+    (repo / "jev-sources/route.py").unlink()
+    os.symlink("/" + "Users/x/Documents/secret", repo / "jev-sources/route.py")
+    git(repo, "add", "-A")
+    git(repo, "commit", "-q", "-m", "link")
+    assert any("private note" in w for w in check())
+
+
+def test_utf16_text_cannot_hide_a_marker(repo):
+    add(repo, "jev-sources/u16.dat", ("Obsidian" + " Vaults").encode("utf-16"))
+    assert any("private note" in w for w in check())
+
+
+def test_file_names_cannot_start_a_workflow_command(repo, capsys):
+    add(repo, "jev-sources/plans/x\n::stop-commands::abc", "a\n")
+    pc.main(["--base", "main", "--head", "HEAD", "--body", "Scope: jev-sources/"])
+    assert not any(l.startswith("::stop-commands") for l in capsys.readouterr().out.splitlines())
+
+
+def test_too_many_files_fails_closed(repo, monkeypatch):
+    monkeypatch.setattr(pc, "MAX_BLOBS", 2)
+    for i in range(3):
+        add(repo, f"jev-sources/f{i}.py", f"x = {i}\n")
+    assert any("split the PR" in w for w in check())
