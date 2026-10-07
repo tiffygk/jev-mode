@@ -1,0 +1,33 @@
+{
+ "why": "Old names stay out of the repo once renamed. A name may appear only in the files listed for it, each with a reason; docs_check.py enforces this in CI and before push.",
+ "names": [
+  {
+   "pattern": "\\bcalib\\b|test_calibration|calibration\\.md|calibration/",
+   "flags": "i",
+   "why": "the rater comparison was renamed: jevaluate-eval/rater-agreement.md, rater_agreement/rater_agreement.py; the write-up is EVAL-RESULTS.md; the rubric findings log is jevaluate/rubric-tuning-log.md",
+   "allowed": {
+    "scripts/test_docs_check.py": "tests of this check"
+   }
+  },
+  {
+   "pattern": "calibrat",
+   "flags": "i",
+   "why": "in jev-mode, calibration means tuning on labeled results (rubric.md, closes_loop: calibrates), not rater agreement; say rater agreement or rubric tuning",
+   "allowed": {
+    "jevaluate/rubric.md": "golden: the rubric's own meaning (calibrates: labeled results change the numbers)",
+    "jevaluate/SKILL.md": "golden: Jev answers with calibrated probabilities",
+    "jevaluate/read.md": "golden: the closes_loop value 'calibrates'",
+    "shared/jev-rules.md": "golden: names TypeSafe's sentences on calibration",
+    "jevaluate/fix-catalog.md": "the calibrate fix: tune thresholds on labels",
+    "jevaluate/scripts/coverage_manifest.py": "finds threshold and calibration code in rated projects",
+    "jevaluate/ratings-template/README.md": "Jev's calibrated probabilities",
+    "ratings/*.md": "published ratings describe and quote rated projects",
+    "ratings/full/*.md": "published ratings describe and quote rated projects",
+    "jev-lens/*.md": "Jev Lens tunes its decoder to the user (calibrate.md)",
+    "jev-sources/*.json": "routing words for TypeSafe's confidence and calibration docs",
+    "study/index.html": "the study course quotes TypeSafe's docs on calibration",
+    "scripts/test_docs_check.py": "tests of this check"
+   }
+  }
+ ]
+}

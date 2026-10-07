@@ -67,9 +67,13 @@ cp -r jev-mode/jevaluate jev-mode/shared ~/.claude/skills/
 
 Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex), for comparable ratings. A rating costs 100-160k tokens for a small repo. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
 
+## Rating privately
+
+To rate something you can't publish, such as a client's code, your employer's pipeline or a local folder, use [Jevaluate, privately](../jevaluate-private/): `/jevaluate-private <link or folder>`. It runs the same rubric and checks, keeps the rating in a private library and refuses to export it.
+
 ## Published ratings
 
-Ratings of community projects are in [`ratings/`](../ratings/), under CC0.
+Ratings of community projects are in [`ratings/`](../ratings/), under CC0. Each model's rating of a project is its own page, and the "Rated by" column names the model, so two raters can disagree in the open. Export leaves out any project listed in [`ratings-template/unpublished.txt`](ratings-template/unpublished.txt).
 
 ## Limits
 

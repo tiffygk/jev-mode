@@ -1,0 +1,3 @@
+# Projects the export leaves out of the public ratings: one page slug per line, then # and the reason.
+# Every rater's page for the project is left out. Removing a line publishes it on the next export.
+dbreunig__building-with-jev-skill # a guide; the guide rubric is not written yet

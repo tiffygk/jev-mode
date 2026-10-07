@@ -73,7 +73,7 @@ def enforcement_problems(text=None, rubric=None):
 
 NAMED = re.compile(r"(?<![\w./-])((?:scripts|evals)/[\w./-]+\.\w+|[\w-]+\.(?:md|py|json))(?![\w/-])")
 PREFIXED = re.compile(r"(?<![\w./-])((?:jevaluate|jevaluate-harness|jevaluate-eval)/[\w./-]+\.\w+)(?![\w/-])")
-ALLOW_NAMED = {"rating.md", "prompt.md", "manifest.md", "meta.json", "extract.md", "CALIBRATION.md"}
+ALLOW_NAMED = {"rating.md", "prompt.md", "manifest.md", "meta.json", "extract.md", "agreement.md", "rubric-tuning-log.md"}
 UNBUILT = re.compile(r"coming soon|not yet built|\bTODO mode\b", re.I)
 
 
@@ -86,7 +86,8 @@ def named_files_problems(skill_dir):
         if UNBUILT.search(text): problems.append(f"{md.name}: names an unbuilt mode ({UNBUILT.search(text).group(0)!r})")
         for name in sorted(set(PREFIXED.findall(text))):
             if name.rsplit("/", 1)[-1] in ALLOW_NAMED: continue
-            if not (skill_dir.parent / name).exists(): problems.append(f"{md.name}: names {name}, which does not exist")
+            if not ((skill_dir.parent / name).exists() or (skill_dir / name).exists()):  # a skill folder, or the repo root
+                problems.append(f"{md.name}: names {name}, which does not exist")
         for name in sorted(set(NAMED.findall(text))):
             if name in ALLOW_NAMED or name.rsplit("/", 1)[-1] in ALLOW_NAMED: continue
             if "/" in name:

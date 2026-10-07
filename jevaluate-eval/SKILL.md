@@ -9,11 +9,11 @@ Tests whether graders apply the jevaluate rubric correctly, and proposes wording
 
 The scripts are in `jevaluate-eval/` (the quiz in `jevaluate-eval/quiz/`); every command is in `commands.md`. The runners refuse while `jevaluate/` or `jevaluate-harness/` has uncommitted changes, or `main` is ahead on them: commit or merge first.
 
-## Three instruments, in order
+## Four instruments, in order
 Before each, tell the owner in one line which runs next and what it tests.
 
 1. **Materials check: does what a grader reads say what the rules mean?**
-   - `lint_materials.py` must print "lint clean": allowed values, eval-case names, em-dashes, named files, and a `jevaluate/enforcement.md` row for every rule.
+   - `lint_materials.py` must print "lint clean": allowed values, eval-case names, em-dashes, named files, a `jevaluate/enforcement.md` row for every rule, and no sentence over 35 words added since the newest freeze.
    - A fresh reviewer, briefed as a grader, reads them for contradictions.
    - `build_grader_view.py <out.html>` builds the step-by-step view: the rater's start files, what `step.py` serves at each phase, every stakes row, and the eval grader's prompt. The owner reviews it. Schedule that review after any planned task that moves instructions into code, never before.
 2. **Quiz: does a grader understand the rules on invented projects?**
@@ -25,6 +25,8 @@ Before each, tell the owner in one line which runs next and what it tests.
    - Red control first: `run_quiz.py --system vocab` gives only the vocabulary and should miss most answers; at 80% or more, the scenarios give their answers away. Report which rule tags the control passes: those scenarios check that the rules don't confuse a grader, not that it learned them. Then `run_quiz.py --system routing --reps 3` and `score_quiz.py`.
 3. **Judgment eval: does a grader route real projects correctly?** `run_eval.py --phase baseline|after --out .work/<run>`, then `score.py <run>`. Every gold answer must be provable from its packet; held-out labels come from blind labelers, and the owner answers before seeing them.
    - New cases: packets follow `pick_files.py`. Each blind label goes through `check_labels.py run`, which applies the same call-line rule as `library.py check` and reruns a refused label once, keeping both. The owner answers on the same form as the quiz, built with `build_answer_form.py --cards`: the same fields, the type definitions beside each row, answers kept in the browser and saved to the clipboard. Each row is an evidence card from `build_cards.py` (call lines, README claims, acting lines, one plain sentence each), never a verdict; the card script refuses type, code and stakes words. Acting lines follow the answer to whoever it reaches: quote the line that acts and a line that shows who sees or receives the result (a README usage example counts), so the owner can read stakes and type without the code.
+
+4. **Rater agreement: do two raters agree, and is either right?** For a second rater, such as another model, on real projects. Follow `rater-agreement.md`: name the tuning sample first, lead with held-out agreement and kappa (`rater_agreement/rater_agreement.py agreement`), then score both raters against an answer key the owner labels blind (`facts`, `draw`, `score`). Agreement claims consistency only.
 
 ## Rules
 - Fix wording only against tuning misses, never naming a held-out scenario or an eval case. Each fix goes to the owner as a before-and-after before the rerun.

@@ -1,6 +1,7 @@
-"""Coverage manifest: every text file in a GitHub repo that could change a Jevaluate verdict.
+"""Coverage manifest: every text file in a GitHub repo, or a local folder, that could change a Jevaluate verdict.
 
 Usage: python3 coverage_manifest.py owner/repo OUTDIR [--commit SHA]
+       python3 coverage_manifest.py --local FOLDER OUTDIR     (a private rating; nothing leaves the machine)
 Writes OUTDIR/manifest.md, OUTDIR/meta.json and OUTDIR/files/<path with / -> __>.
 Saved names never start with "." (a hidden dotfile is one nobody reads).
 """
@@ -90,6 +91,40 @@ def build_manifest(repo, out, meta, sha, tree, fetch):
     return {"kept": len(keep), "chars": tot}
 
 
+LOCAL_SKIP_DIRS = {".git", ".hg", ".svn"}
+
+
+def local_main(folder, outdir):
+    """The same manifest from a folder on disk: same skip rules and size cap. Commit: git HEAD when the folder is a clean
+    git checkout, else local-<sha256 of every path and its contents (its size, past the cap)> so a re-rating can tell whether anything changed."""
+    import hashlib, os
+    root = pathlib.Path(folder).expanduser().resolve()
+    if not root.is_dir(): sys.exit(f"not a folder: {root}")
+    tree = []
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d not in LOCAL_SKIP_DIRS)
+        for f in sorted(files):
+            full = pathlib.Path(dirpath) / f
+            if full.is_symlink() or not full.is_file(): continue
+            tree.append({"path": full.relative_to(root).as_posix(), "size": full.stat().st_size, "type": "blob"})
+    def fetch(path):
+        raw = (root / path).read_bytes()
+        if b"\0" in raw[:4096]: raise ValueError("binary")
+        return raw.decode("utf-8", "ignore")
+    h = hashlib.sha256()
+    for t in tree:
+        h.update(t["path"].encode())
+        if t["size"] <= 200_000: h.update((root / t["path"]).read_bytes())
+        else: h.update(str(t["size"]).encode())
+    sha = "local-" + h.hexdigest()[:12]
+    g = subprocess.run(["git", "-C", str(root), "status", "--porcelain"], capture_output=True, text=True)
+    if g.returncode == 0 and not g.stdout.strip():
+        head = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True)
+        if head.returncode == 0: sha = head.stdout.strip()
+    r = build_manifest(f"local:{root.name}", outdir, {}, sha, tree, fetch)
+    print(pathlib.Path(outdir) / "manifest.md", r["kept"], "files", r["chars"], "chars")
+
+
 def _gh(p): return json.loads(subprocess.run(["gh", "api", p], capture_output=True, text=True, check=True).stdout)
 
 
@@ -104,6 +139,9 @@ def main(repo, outdir, commit=None):
 
 if __name__ == "__main__":
     a = sys.argv[1:]; commit = None
+    if a[:1] == ["--local"]:
+        if len(a) != 3: sys.exit(__doc__)
+        local_main(a[1], a[2]); sys.exit(0)
     if "--commit" in a:
         i = a.index("--commit"); commit = a[i + 1] if i + 1 < len(a) else None; a = a[:i] + a[i + 2:]
     if len(a) != 2 or (commit is None and "--commit" in sys.argv): sys.exit(__doc__)

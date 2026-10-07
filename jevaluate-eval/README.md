@@ -46,6 +46,7 @@ Maintainers of a Jevaluate fork who change its rubric.
 6. Label new projects twice: a blind model, and the owner from evidence cards.
 7. Run the judgment eval; every answer must be provable from the grader's evidence.
 8. Report per rule, with one wording fix per missed rule.
+9. When a second rater rates the same projects, compare the two outside the tuning sample, then score both against an answer key the owner labels without seeing either rater's answer ([rater-agreement.md](rater-agreement.md)).
 
 <a href="https://tiffygk.github.io/jev-mode/system/#d3-h"><picture><source media="(prefers-color-scheme: dark)" srcset="images/eval-pipeline-dark.png"><img alt="Eval pipeline" src="images/eval-pipeline-light.png"></picture></a>
 
