@@ -907,32 +907,102 @@ def unpublished():
                 slug, _, why = l.partition("#"); out[slug.strip()] = why.strip() or "listed in unpublished.txt"
     return out
 
+BADGE_COLOR = {"used": "#1a7f37", "in review": "#bc4c00", "not used": "#6e7781"}
+
+def published(report=False):
+    """(latest, names) for the public list: newest full rating per page slug, minus unpublished projects, and each
+    project's one published name. export and review both use it, so the list and the review command never drift."""
+    skip = unpublished(); allp = latest_per_project(full_only=True)
+    if report:
+        for s in [s for s in allp if s.split("--")[0] in skip]: print(f"left out: {s} ({skip[s.split('--')[0]]})", file=sys.stderr)
+    latest = {s: p for s, p in allp.items() if s.split("--")[0] not in skip}
+    return latest, {s: display_name(front(p), s) for s, p in latest.items() if "--" not in s}
+
+def column_key(family):
+    return "claude" if family == "sonnet" or family.startswith("claude-") else family
+
+def column_title(key):
+    return {"claude": "Claude Rating", "codex": "Codex Rating"}.get(key, key.split("-")[0].capitalize() + " Rating")
+
+def badge_file(model, verdict, state):
+    return re.sub(r"[^a-z0-9]+", "-", f"{model} {verdict} verdict {state}".lower()).strip("-") + ".svg"
+
+def badge_svg(model, verdict, state):
+    low = f"{verdict} verdict {state}"; w = int(max(len(model), len(low)) * 6.4) + 14; c = BADGE_COLOR[state]
+    alt = f"{model}: {low}"
+    t = lambda y, s: f'<text x="{w / 2}" y="{y}" fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">{s}</text>'
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{alt}" width="{w}" height="38" viewBox="0 0 {w} 38">'
+            f'<title>{alt}</title><rect width="{w}" height="38" rx="3" fill="{c}"/><rect width="{w}" height="19" rx="3" fill="#3d444d"/>'
+            f'<rect y="16" width="{w}" height="3" fill="#3d444d"/>{t(13.5, model)}{t(32.5, low)}</svg>\n')
+
+def reviews():
+    f = LIB / "reviews.json"
+    return json.loads(f.read_text()) if f.exists() else {}
+
+def project_entries(latest, names):
+    out = {}
+    for slug, p in sorted(latest.items()):
+        t = p.read_text(errors="ignore"); d = front_text(t); base = slug.split("--")[0]
+        rater = (d.get("rater") or "unknown").split()[0]
+        v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
+        r = d.get("rubric", "").split(); r = r[0] if r else ""
+        ptype = (d.get("project_type", "").split() or [""])[0]
+        un = not_rated(d)
+        e = {"slug": slug, "file": p.relative_to(LIB).as_posix(), "v": "" if un else v,
+             "label": f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(t, v)}",
+             "why": why_line(t, d), "rated": d.get("rated", ""), "model": rater_label(rater),
+             "stale": rubric_date(r) < rubric_date(RUBRIC), "type": "" if ptype == "unrecorded" else ptype.replace("-", " "),
+             "who": names.get(base) or display_name(d, slug)}
+        key = column_key(rater_family(rater)); cur = out.setdefault(base, {}).get(key)
+        if cur is None or (e["rated"], e["file"]) > (cur["rated"], cur["file"]): out[base][key] = e
+    return out
+
+def _num(e): return int(e["v"]) if e["v"].isdigit() else -1
+
+def pick(entries, review):
+    keys = sorted(entries)
+    if len(keys) == 1 or len({entries[k]["v"] for k in keys}) == 1:
+        newest = max(keys, key=lambda k: (entries[k]["rated"], entries[k]["file"]))
+        return {"shown": newest, "state": {k: "used" for k in keys}, "in_review": False, "reviewed": ""}
+    if review and review.get("files") == {k: entries[k]["file"] for k in keys} and review.get("use") in entries:
+        u = review["use"]
+        return {"shown": u, "state": {k: "used" if k == u else "not used" for k in keys}, "in_review": False, "reviewed": review["date"]}
+    hi = max(keys, key=lambda k: (_num(entries[k]), entries[k]["rated"]))
+    return {"shown": hi, "state": {k: "in review" for k in keys}, "in_review": True, "reviewed": ""}
+
 def export(outdir):
     if is_private_library():
         sys.exit(f"export refused: {LIB} is a private library (it holds a PRIVATE marker); private ratings are never published")
     outdir = pathlib.Path(outdir); pages = {}; rows = []; any_stale = False
     # Only full reads and approved scopes are published; quick (extract) ratings stay in the library.
-    latest = latest_per_project(full_only=True); skip = unpublished()
-    for slug in [s for s in latest if s.split("--")[0] in skip]:
-        print(f"left out: {slug} ({skip[slug.split('--')[0]]})", file=sys.stderr)
-    latest = {s: p for s, p in latest.items() if s.split("--")[0] not in skip}
+    latest, names = published(report=True)
     hidden = [s for s, p in latest.items() if is_private_rating(front(p)) or front(p).get("url", "").strip().startswith("local:")]
     if hidden:
         sys.exit("export refused: private ratings in a public library: " + ", ".join(hidden) + ". Move them to a private library.")
-    # One name per project: every rater's row uses the name from the project's own (default-rater) page.
-    names = {s: display_name(front(p), s) for s, p in latest.items() if "--" not in s}
+    # One name per project: every rater's row uses the name from the project's own (default-rater) page (published()).
     for slug, p in sorted(latest.items()):
         nm = names.get(slug.split("--")[0])
         detail, full, d, r, why = export_pages(p, slug, nm); pages[slug] = (p, detail, full)
         v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
         stale = rubric_date(r) < rubric_date(RUBRIC); any_stale |= stale
-        who = nm or display_name(d, slug)
-        ptype = (d.get("project_type", "").split() or [""])[0]
-        ptype = "" if ptype == "unrecorded" else ptype.replace("-", " ")
-        un = not_rated(d); shown = f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(p.read_text(errors='ignore'), v)}"
-        rows.append((1 if un else -int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{shown}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} | {rater_label((d.get('rater') or 'unknown').split()[0])} |"))
+    # One row per project: a badge per rater column; where verdicts differ, the higher one shows as in review until reviewed.
+    projects = project_entries(latest, names); revs = reviews(); badges = {}
+    cols = ["claude", "codex"] + sorted({k for es in projects.values() for k in es} - {"claude", "codex"})
+    for base, es in projects.items():
+        r = pick(es, revs.get(base)); e = es[r["shown"]]
+        cells = []
+        for k in cols:
+            if k not in es: cells.append("not rated"); continue
+            x = es[k]; st = r["state"][k]; f = badge_file(x["model"], x["v"] or "n.a.", st)
+            badges[f] = badge_svg(x["model"], x["v"] or "n.a.", st)
+            cells.append(f"[![{x['model']}: {x['v'] or 'n.a.'} verdict {st}](badges/{f})]({x['slug']}.md)<br>{x['rated']}{' †' if x['stale'] else ''}"
+                         + (f"<br>reviewed {r['reviewed']}" if st == "used" and r["reviewed"] else ""))
+        note = "<br><sub>Rater disagreement: in review</sub>" if r["in_review"] else ""
+        rank = 1 if not e["v"] else -int(e["v"])
+        rows.append((rank, e["who"].lower(), f"| [{e['who']}]({e['slug']}.md) | {e['type']} | **{e['label']}**{note} | {cell(e['why'])} | " + " | ".join(cells) + " |"))
     tpl = SKILL / "ratings-template"
-    readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n| Project | Type | Verdict | Why | Rated | Rated by |\n|---|---|---|---|---|---|\n" + "\n".join(r for _, r in sorted(rows)) + "\n"
+    head = "| Project | Type | Verdict | Why | " + " | ".join(column_title(k) for k in cols) + " |\n|" + "---|" * (4 + len(cols)) + "\n"
+    readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n" + head + "\n".join(x for *_, x in sorted(rows)) + "\n"
     if any_stale: readme += "\n† Rated under an earlier rubric; a re-rating is queued.\n"
     pt = LIB / "private-terms.txt"; pats = []
     if pt.exists():
@@ -961,6 +1031,8 @@ def export(outdir):
     (outdir / "full").mkdir(exist_ok=True)
     for s, (_, detail, full) in pages.items():
         (outdir / f"{s}.md").write_text(detail); (outdir / "full" / f"{s}.md").write_text(full)
+    (outdir / "badges").mkdir(exist_ok=True)
+    for f, svg in badges.items(): (outdir / "badges" / f).write_text(svg)
     (outdir / "README.md").write_text(readme)
     shutil.copy(tpl / "LICENSE", outdir / "LICENSE")
     print(f"exported {len(pages)} pages to {outdir}")
