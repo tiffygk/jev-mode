@@ -54,7 +54,7 @@ Written instructions alone didn't hold. Earlier rounds:
 - The rubric's own examples named seven eval cases. The lint now refuses eval-case names.
 - A blind labeler counted a snippet in a design doc as a call to Jev. Labels now pass the same call check as ratings.
 
-Code stamps each quiz and judgment-eval run with its commit, and refuses to score an eval whose key changed after the run.
+Code stamps each quiz and judgment-eval run with its commit, and refuses to score a judgment eval whose key changed after the run.
 
 ## Who judges what
 
@@ -84,7 +84,7 @@ From the repo, try `python3 jevaluate-eval/lint_materials.py`; every command is 
 
 ## Limits
 
-It runs on Claude or Codex and doesn't call Jev, so it needs no TypeSafe key. It doesn't score guides or Jev replacements. The owner's answers are the key, so an owner who misreads a rule tunes graders to that reading. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
+It runs on Claude or Codex and doesn't call Jev, so it needs no TypeSafe key. Guides and Jev replacements get a code (1t, 1r), not a 1-5 verdict; the eval checks that graders route them there. The owner's answers are the key, so an owner who misreads a rule tunes graders to that reading. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
 
 ## License
 
