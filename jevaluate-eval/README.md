@@ -54,7 +54,7 @@ Written instructions alone didn't hold. Earlier rounds:
 - The rubric's own examples named seven eval cases. The lint now refuses eval-case names.
 - A blind labeler counted a snippet in a design doc as a call to Jev. Labels now pass the same call check as ratings.
 
-Code stamps each quiz and judgment-eval run with its commit, and refuses to score an eval whose key changed since.
+Code stamps each quiz and judgment-eval run with its commit, and refuses to score an eval whose key changed after the run.
 
 ## Who judges what
 
