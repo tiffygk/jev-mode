@@ -1,6 +1,6 @@
 # jev-mode
 
-Skills for building with Jev, TypeSafe's System One model. Each skill has its own folder: `jevaluate/`, `jevaluate-harness/`, `jevaluate-eval/`, `jev-lens/`, `jev-sources/`. `ratings/` holds published ratings, `shared/` holds rules more than one skill reads, `study/` is the Cookbook Study site, `system/` its start page and `docs/` the build plans.
+Skills for building with Jev, TypeSafe's System One model. Each skill has its own folder: `jevaluate/`, `jevaluate-harness/`, `jevaluate-eval/`, `jev-lens/`, `jev-sources/`. `ratings/` holds published ratings, `shared/` holds rules more than one skill reads, `study/` is the Cookbook Study site and `system/` its start page.
 
 ## Locked files
 
@@ -18,13 +18,17 @@ For any rating rule, follow the rubric-change guide in `jevaluate-harness/`, the
 - Never commit on `main`. Open a pull request from a branch; `main` changes only by merged PR.
 - The owner sets freeze tags (`rubric-<version>-frozen`, such as `rubric-2026-09-29.2-frozen`) on merged commits. Never create, move or delete one.
 
+## Plans and notes
+
+Plans, specs, handoffs and working notes never go in this repo, not even in an ignored folder. Keep them outside the checkout. This overrides any skill that saves plans to `docs/` by default.
+
 ## Before an eval run or a merge
 
 Run `git fetch upstream && git log <branch>..upstream/main -- jevaluate/ jevaluate-harness/`. If another branch changed the rubric or the harness, rebase first. Otherwise the eval's answer key and the rubric can disagree.
 
 ## Before a push
 
-Before pushing, run the full test suite (`python3 -m pytest`) and fix any failure. Contributors push to their fork and open a pull request. Before asking for a merge, confirm every check on the pull request is green. Keep personal names, emails and private notes out of every file. On the owner's machine, a pre-push hook (not part of the clone) refuses private terms and checks freeze tags.
+Before pushing, run the full test suite (`python3 -m pytest`) and fix any failure. Contributors push to their fork and open a pull request. Its description has a `Scope:` line naming the folders and files it changes; the `pr-contents` check fails on any file outside it, and on any file that reads like a plan or a private note. Run the check's tests with `python3 -m pytest .github/scripts`. Before asking for a merge, confirm every check on the pull request is green. Keep personal names, emails and private notes out of every file. On the owner's machine, a pre-push hook (not part of the clone) refuses private terms and checks freeze tags.
 
 ## Ratings
 
@@ -34,4 +38,4 @@ Before pushing, run the full test suite (`python3 -m pytest`) and fix any failur
 
 ## Writing in this repo
 
-State each rule plainly, with no person's name attached. No em-dashes. Each skill gets a one-page README of 750 words at most. Working notes stay out of this repo.
+State each rule plainly, with no person's name attached. No em-dashes. Each skill gets a one-page README of 750 words at most.

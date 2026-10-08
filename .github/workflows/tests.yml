@@ -18,7 +18,7 @@ jobs:
         run: |
           v=$(python -c "import sys; sys.path.insert(0, 'jevaluate/scripts'); import rubric_text; print(rubric_text.version())")
           if ! git rev-parse -q --verify "refs/tags/rubric-$v-frozen" > /dev/null; then export JEVALUATE_TEST_UNFROZEN=1; echo "rubric $v has no freeze tag yet: testing as a rubric-change branch"; fi
-          python -m pytest -q jevaluate/scripts jevaluate-eval jevaluate-harness scripts
+          python -m pytest -q jevaluate/scripts jevaluate-eval jevaluate-harness scripts .github/scripts
       - name: docs check (docs-map.json; see CONTRIBUTING.md)
         if: github.event_name == 'pull_request'
         env:

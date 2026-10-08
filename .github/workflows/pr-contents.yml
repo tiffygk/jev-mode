@@ -1,0 +1,30 @@
+name: pr-contents
+# pull_request_target runs main's copy of this workflow and of the check, so a PR can't switch the check off by
+# editing it. Nothing from the PR is run: its commits are only fetched and read with git. The check's own tests run
+# in tests.yml.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, edited]
+permissions:
+  contents: read
+# A newer edit of the description cancels the run for the older one, so a stale result can't land last.
+concurrency:
+  group: pr-contents-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  pr-contents:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      # Actions pinned to commits (v4, v5), since this workflow runs with the base repository's context.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.8"
+      - name: fetch the PR's commits (read only)
+        run: git fetch --no-tags https://github.com/${{ github.repository }}.git "+refs/pull/${{ github.event.pull_request.number }}/head:refs/remotes/pr/head"
+      - name: nothing outside the PR's scope, and no plans or private notes, in any commit
+        run: python .github/scripts/pr_contents_check.py
