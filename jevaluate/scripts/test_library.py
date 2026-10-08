@@ -1565,7 +1565,7 @@ def test_export_two_claude_models_share_one_column(tmp_path, lib):
     _, readme = _readme(tmp_path, lib)
     assert "| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |" in readme
     row = _row(readme)
-    assert "claude-opus-5-5" in row and "Sonnet 5.5" not in row and row.rstrip().endswith("| not rated |")
+    assert "[![Opus 5.5: 4 verdict used]" in row and "Sonnet 5.5" not in row and row.rstrip().endswith("| not rated |")
 
 def test_export_verdict_one_codes_that_differ_are_not_a_disagreement(tmp_path, lib):
     d = lib / "projects" / "o__fm"; d.mkdir(parents=True)
@@ -1654,6 +1654,11 @@ def test_export_clears_badges_no_longer_used(tmp_path, lib):
     p = run(lib, "export", str(out)); assert p.returncode == 0, p.stdout + p.stderr
     used = set(re.findall(r"badges/([\w.-]+\.svg)", (out / "README.md").read_text()))
     assert {f.name for f in (out / "badges").iterdir()} == used
+
+def test_rater_label_names_any_claude_model():
+    m = _libmod()
+    assert [m.rater_label(r) for r in ("claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5", "gpt-6-sol", "unknown")] == \
+        ["Sonnet 5.5", "Opus 5.5", "Haiku 4.5", "GPT-6 Sol", "Sonnet"]
 
 def test_rater_family_unknown_is_sonnet():
     import importlib.util

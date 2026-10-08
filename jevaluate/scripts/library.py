@@ -715,8 +715,8 @@ def rater_family(rater):
 def rater_label(rater):
     r = str(rater).strip().lower()
     if r.startswith("gpt-"): return "GPT-" + "-".join(w.capitalize() for w in r[4:].split("-")).replace("-", " ", 1)
-    m = re.match(r"claude-sonnet-(\d+)-(\d+)", r)
-    return f"Sonnet {m.group(1)}.{m.group(2)}" if m else ("Sonnet" if r in ("", "unknown") else str(rater))
+    m = re.match(r"claude-([a-z]+)-(\d+)-(\d+)", r)   # any Claude model: family and version, such as Opus 5.5
+    return f"{m.group(1).capitalize()} {m.group(2)}.{m.group(3)}" if m else ("Sonnet" if r in ("", "unknown") else str(rater))
 
 def page_slug(p):
     """A rating's page name: the project folder for Sonnet ratings (unchanged), plus --<rater> for Codex ones."""
