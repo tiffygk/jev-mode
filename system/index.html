@@ -503,7 +503,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   <div class="bar"><span>3 / EVALUATION</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
   <div class="pad">
     <h2 id="d3-h">The eval that gates every rubric version</h2>
-    <p class="lead">A rubric change runs the first three instruments in order, each passing before the next. The fourth checks a second rater. Pass bars are set before the run, and reports go per rule, never as an average.</p>
+    <p class="lead">A rubric change runs the first three instruments in order, each passing before the next. The fourth checks a second rater. Pass bars are set before the run. Each rule is scored on its own, never just an average of all scores.</p>
 
     <ol class="stages">
       <li class="stage">
@@ -530,7 +530,8 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
             <div class="axis"><span></span><div class="sc"><span style="left:0">0</span><span style="left:50%">50%</span><span style="left:100%">100%</span></div><span></span></div>
             <p class="thl"><i></i>80% give-away line: the negative control must score under it</p>
           </div>
-          <p class="note"><b>Negative control:</b> A grader given only the allowed values must score under 80%, or the scenarios give their answers away. Its three misses are the three rules the vocabulary can't supply. <b>Pass bar:</b> Every tuning case right in 3 of 3 runs, held-out in 2 of 3. Every rule tag passed, held-out 3 of 3, and no wording fix was needed. Held-out q09 fed rubric wording, so the results name it as not clean.</p>
+          <p class="note"><b>Negative control:</b> A grader given only the allowed values must score under 80%, or the scenarios give their answers away. Its three misses are the three rules the vocabulary can't supply.</p>
+          <p class="note"><b>Pass bar:</b> Every tuning case right in 3 of 3 runs, held-out in 2 of 3. Every rule tag passed, held-out 3 of 3, and no wording fix was needed.</p>
         </div>
       </li>
 
@@ -544,17 +545,17 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
             <li><div class="cell"><span class="tag blind">blind labelers</span><b>Label provenance</b><span>New cases: labels sealed until the owner answers from evidence cards. <span class="scr">check_labels.py</span> refuses a label that cites a doc as a call; <span class="scr">build_cards.py</span> refuses any verdict word on a card.</span></div></li>
           </ol>
           <p class="note"><b>Graders under test:</b> Claude Sonnet and GPT-6 Sol in Codex, on identical inputs.</p>
-          <p class="note"><b>The call detector is tested too.</b> Screening about 110 real repos found 4 misses (an AI SDK provider, an Effect provider, Apps Script and Swift files) and 1 false positive (a helper named <code>typesafe_...</code>). Each is now a regression test.</p>
+          <p class="note"><b>The call detector is tested too:</b> every miss or false call found on real repos is now a regression test.</p>
         </div>
       </li>
 
       <li class="stage">
-        <header><span class="n">4</span><h3>Rater agreement</h3><p>Do two raters agree, and is either right?</p></header>
+        <header><span class="n">4</span><h3>Rater agreement</h3><p>Do two raters agree, and which is accurate?</p></header>
         <div class="body"><ol class="chain">
           <li><div class="cell"><b>Tuning sample named first</b><span>Projects whose disagreements fed wording are reported apart, and second.</span></div></li>
           <li><div class="cell"><span class="scr">rater_agreement.py</span><span>Raw agreement and Cohen's kappa per field, held-out projects first.</span></div></li>
           <li><div class="cell pk"><span class="tag blind">blind owner</span><b>Answer key</b><span>A seeded draw of agreed and split facts. The owner answers before seeing either rater.</span></div></li>
-          <li><div class="cell"><b>Consistency only</b><span>Agreement shows the raters read alike. Only the key shows which is right.</span></div></li>
+          <li><div class="cell"><b>Reliability and accuracy</b><span>Agreement and kappa measure inter-rater reliability. Accuracy needs the key: two raters can agree and both be wrong. Wording is tuned for both, never for agreement over accuracy.</span></div></li>
         </ol></div>
       </li>
 
