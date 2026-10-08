@@ -55,5 +55,6 @@ def build(sources, outdir):
     return status
 
 if __name__ == "__main__":
-    out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / ".work" / "packets"
+    runs = pathlib.Path(os.environ["JEVALUATE_RUNS"]).expanduser() if os.environ.get("JEVALUATE_RUNS") else HERE / ".work"
+    out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else runs / "packets"
     for slug, st in build(json.loads((HERE / "sources.json").read_text()), out).items(): print(f"{slug}: {st}")

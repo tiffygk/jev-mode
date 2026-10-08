@@ -1,4 +1,10 @@
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _runs_folder_unset(monkeypatch):
+    """Tests see the contributor default (.work/) unless they set JEVALUATE_RUNS themselves."""
+    monkeypatch.delenv("JEVALUATE_RUNS", raising=False)
 import json, pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import build_packets as bp
@@ -349,6 +355,20 @@ def test_run_eval_refuses_a_non_empty_out_folder(tmp_path):
     (out / "r1_g0.json").write_text("{}")
     probs = run_eval.preflight_out(out)
     assert len(probs) == 1 and "not empty" in probs[0] and "r1_g0.json" in probs[0] and "new --out" in probs[0]
+
+def test_runs_folder_setting_moves_run_output_outside_the_repo(tmp_path, monkeypatch):
+    import run_eval
+    runs = tmp_path / "vault-runs"
+    monkeypatch.setenv("JEVALUATE_RUNS", str(runs))
+    assert run_eval.runs_dir() == runs
+    assert run_eval.preflight_out(runs / "baseline-1") == []
+    probs = run_eval.preflight_out(tmp_path / "jevaluate-eval" / ".work" / "run-1")
+    assert len(probs) == 1 and "JEVALUATE_RUNS" in probs[0]
+
+def test_without_the_setting_runs_stay_under_work(monkeypatch):
+    import run_eval
+    monkeypatch.delenv("JEVALUATE_RUNS", raising=False)
+    assert run_eval.runs_dir().name == ".work"
 
 def test_run_eval_accepts_an_out_folder_that_does_not_exist_yet(tmp_path):
     import run_eval
