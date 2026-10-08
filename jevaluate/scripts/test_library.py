@@ -1669,7 +1669,7 @@ def test_rater_family_unknown_is_sonnet():
 def test_rater_family_other_models_kept_apart():
     import importlib.util
     spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-    assert m.rater_family("claude-opus-5-5") == "claude-opus-5-5" and m.rater_label("claude-opus-5-5") == "claude-opus-5-5"
+    assert m.rater_family("claude-opus-5-5") == "claude-opus-5-5" and m.rater_label("claude-opus-5-5") == "Opus 5.5"   # own page, tidy badge name
 
 def test_point_version_is_not_stale():
     import importlib.util
