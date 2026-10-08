@@ -183,3 +183,15 @@ def test_check_own_workflow_and_other_workflows_pass(repo):
     add(repo, ".github/workflows/pr-contents.yml", "name: pr-contents\njobs:\n  pr-contents:\n    runs-on: x\n")
     add(repo, ".github/workflows/tests.yml", "name: tests\njobs:\n  test:\n    permissions:\n      contents: read\n")
     assert check(body="Scope: .github/") == []
+
+
+
+def test_audit_reports_fail(repo):
+    add(repo, "jev-sources/audit-pr29.md", "clean\n")
+    add(repo, "jev-sources/audits/x.md", "clean\n")
+    assert sum("plan or working note" in w for w in check()) == 2
+
+
+def test_audit_code_passes(repo):
+    add(repo, "jev-sources/scripts/audit_package.py", "x = 1\n")
+    assert check() == []

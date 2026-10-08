@@ -4,8 +4,8 @@ meant to be part of the PR (a plan, a handoff, a working note, a path from someo
 
 Every commit in the PR is checked, not only the final result: with merge commits, a file added in one commit and
 deleted in a later one still lands in the public history. Fails when a file added or changed in any commit:
-  - sits under a top-level docs/ folder, or a folder named plans, handoffs or .superpowers;
-  - is a document named like a plan, handoff, scratch, todo, draft or brainstorm;
+  - sits under a top-level docs/ folder, or a folder named plans, handoffs, audits or .superpowers;
+  - is a document named like a plan, handoff, scratch, todo, draft, brainstorm, audit, findings or run log;
   - reads like a plan or a private note (a dated Status block, a handoff opener, task checkboxes, a home-folder path);
   - is over 1 MB outside ratings/, or binary and not an image;
   - starts a top-level folder or file the base branch doesn't have, unless the Scope line names it;
@@ -23,8 +23,8 @@ reads the PR from GITHUB_EVENT_PATH. By hand:
 """
 import argparse, json, os, re, subprocess, sys
 
-PLAN_DIR = re.compile(r"^docs(/|$)|(^|/)(plans?|handoffs?|\.superpowers)(/|$)", re.I)
-PLAN_NAME = re.compile(r"(^|[-_. ])(plans?|handoffs?|scratch|todo|drafts?|brainstorm\w*|working-notes|session-notes)([-_. ]|$)", re.I)
+PLAN_DIR = re.compile(r"^docs(/|$)|(^|/)(plans?|handoffs?|audits|\.superpowers)(/|$)", re.I)
+PLAN_NAME = re.compile(r"(^|[-_. ])(plans?|handoffs?|scratch|todo|drafts?|brainstorm\w*|working-notes|session-notes|audits?|findings|run-log)([-_. ]|$)", re.I)
 PLAN_EXT = (".md", ".txt", ".html", ".pdf", ".docx")
 MARKERS = re.compile(r"\*\*Status \(\d{4}-\d\d-\d\d\)|Read this before[ ]starting|- \[[ x]\] \*\*Step\b|"
                      r"Obsidian[ ]Vaults|\.claude/pla[n]s|/tmp/clau[d]e-|<scratch[p]ad>|/Use[r]s/[^/\s]+/", re.I)
