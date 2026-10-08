@@ -7,7 +7,7 @@ Not every skill calls Jev: some are guides and LLM evaluators for building with 
 | Name | What it does | Calls Jev | Status |
 |---|---|---|---|
 | [Jevaluate](jevaluate/) | Reads a Jev project's code and rates how well it uses Jev, with provenance for every finding | No: an LLM rates, and code checks the rating | Available |
-| [Jevaluate, privately](jevaluate-private/) | Rates a project you can't publish, such as a client's code or a local folder, with the same rubric, and keeps the rating private | No | Available |
+| [Jevaluate, privately](jevaluate-private/) | Rates a project you can't publish, such as a client's code or a local folder, with the same rubric, and keeps the rating private. Run `/jevaluate-private <link or folder>` | No | Available |
 | [Jev Lens](jev-lens/) | Turns images into a neutral JSON state that Jev can read, one shared schema across the set | Only for an optional check of the finished state | Available |
 | [Jevaluate Harness](jevaluate-harness/) | Runs rating rounds, re-rates and rubric tuning for Jevaluate | No | Available |
 | [Jevaluate Eval](jevaluate-eval/) | Tests whether Jevaluate's rubric leads graders to the right answers, before a rubric change reaches any rating | No | Available |
