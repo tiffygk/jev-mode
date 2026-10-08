@@ -27,7 +27,7 @@ The goal is a Jev community that uplevels itself, sharing resources built on the
 | [kitze/skillbox](kitze__skillbox.md) | agent tool | **4 Use it** | Batched atomic Score questions with thresholds in code and a safe search fallback; no accuracy measured and model floats. | 2026-09-30 |
 | [kylemclaren/JevPDF](kylemclaren__jevpdf.md) | workflow | **4 Use it** | One atomic noul per line, batched and gated by a named threshold; no accuracy measured, model unpinned. | 2026-09-30 |
 | [qkal/Canny](qkal__Canny.md) | workflow | **4 Use it** | Atomic Noul questions, gated at 0.9 and 0.1, only relax or note; model unpinned, agent text unflagged. | 2026-09-30 |
-| [valentynkit/jev-belay](valentynkit__jev-belay.md) | workflow | **4 Use it** | Four batched questions gated by thresholds in code; the 0.70 cutoff was tuned on the same labeled stops it reports. | 2026-09-30 |
+| [valentynkit/jev-belay](valentynkit__jev-belay.md) | workflow | **4 Use it** | Four batched atomic questions gated by code thresholds; cutoff tuned and reported on the same 100 labeled stops. | 2026-10-06 |
 | [RileyCarney/JevTools](RileyCarney__JevTools.md) | display | **3 Use with a fix** | Sound batched design, but overlapping topic options cap it at 3; only an inconsistent latency figure is claimed. | 2026-10-01 |
 | [devagrawal09/jev-review](devagrawal09__jev-review.md) | workflow | **3 Use with a fix** | Staged, gated, well-typed calls; earlier Jev conclusions feed later states (F10) and nothing is measured. | 2026-09-30 |
 | [jkudish/jev-mcp](jkudish__jev-mcp.md) | agent tool | **3 Use with a fix** | Sound typed design with caller-set thresholds, held at 3 by directive `purpose` fields in state; speed and cost unmeasured. | 2026-09-30 |
