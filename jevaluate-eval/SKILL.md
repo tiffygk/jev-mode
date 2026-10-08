@@ -1,6 +1,6 @@
 ---
 name: jevaluate-eval
-description: Use when testing whether the jevaluate rubric and instructions lead graders to the right answers: after a rubric or instruction change, before freezing a rubric, before publishing ratings, or when a grader's calls look wrong.
+description: "Use when testing whether the jevaluate rubric and instructions lead graders to the right answers: after a rubric or instruction change, before freezing a rubric, before publishing ratings, or when a grader's calls look wrong."
 ---
 
 # Jevaluate Eval
