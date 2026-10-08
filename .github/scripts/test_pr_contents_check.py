@@ -164,3 +164,34 @@ def test_too_many_files_fails_closed(repo, monkeypatch):
     for i in range(3):
         add(repo, f"jev-sources/f{i}.py", f"x = {i}\n")
     assert any("split the PR" in w for w in check())
+
+
+
+# A job named pr-contents in another workflow could report a pass under the required check's name.
+
+def test_other_workflow_borrowing_the_check_name_fails(repo):
+    add(repo, ".github/workflows/fake.yml", "jobs:\n  pr-contents:\n    runs-on: ubuntu-22.04\n")
+    assert any("uses the name pr-contents" in w for w in check(body="Scope: .github/"))
+
+
+def test_name_split_by_an_expression_still_fails(repo):
+    add(repo, ".github/workflows/fake.yml", "jobs:\n  x:\n    name: pr-${{ 'contents' }}\n")
+    assert any("uses the name pr-contents" in w for w in check(body="Scope: .github/"))
+
+
+def test_check_own_workflow_and_other_workflows_pass(repo):
+    add(repo, ".github/workflows/pr-contents.yml", "name: pr-contents\njobs:\n  pr-contents:\n    runs-on: x\n")
+    add(repo, ".github/workflows/tests.yml", "name: tests\njobs:\n  test:\n    permissions:\n      contents: read\n")
+    assert check(body="Scope: .github/") == []
+
+
+
+def test_audit_reports_fail(repo):
+    add(repo, "jev-sources/audit-pr29.md", "clean\n")
+    add(repo, "jev-sources/audits/x.md", "clean\n")
+    assert sum("plan or working note" in w for w in check()) == 2
+
+
+def test_audit_code_passes(repo):
+    add(repo, "jev-sources/scripts/audit_package.py", "x = 1\n")
+    assert check() == []
