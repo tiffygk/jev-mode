@@ -82,13 +82,15 @@ h2 { font-weight: 600; font-size: 1.5rem; line-height: 1.15; margin: 0 }
 .lg.t { background: var(--paper); border: 2px solid var(--line) }
 
 /* diagram 1: pieces and flows */
-.cast { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px }
+.cast { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
 .piece { border: 2px solid var(--line); display: flex; flex-direction: column; min-width: 0 }
 .piece .nm { font-family: var(--pixel); font-size: 22px; line-height: 1; padding: 6px 10px 5px; border-bottom: 2px solid var(--line); color: var(--on-fill) }
 .piece.rate .nm { background: var(--pink) }
 .piece.eval .nm { background: var(--sage) }
 .piece.harn .nm { background: var(--ink); color: var(--bg) }
-.piece.over { border-style: dashed }
+.piece.over { border-style: dashed; grid-column: span 2 }
+.piece.priv { border-style: dashed }
+.piece.priv .nm { border-bottom-style: dashed }
 .piece.over .nm { background: var(--paper); color: var(--ink); border-bottom-style: dashed }
 .piece .bd { padding: 10px 12px 12px; display: grid; gap: 6px; font-size: .88rem; align-content: start }
 .piece .role { font-weight: 700; font-size: .95rem }
@@ -146,6 +148,7 @@ svg .end { text-anchor: end }
 .stage { border: 2px solid var(--line); display: grid; grid-template-columns: 220px minmax(0, 1fr) }
 .stage > header { background: var(--paper); border-right: 2px solid var(--line); padding: 10px 12px 12px; display: grid; gap: 4px; align-content: start }
 .stage .n { font-family: var(--pixel); font-size: 34px; line-height: .8; color: var(--magenta-ink) }
+.stage .n.all { font-size: 20px; line-height: 1; color: var(--dim) }
 .stage h3 { margin: 0; font-size: 1.05rem; line-height: 1.2 }
 .stage header p { font-size: .84rem; color: var(--dim) }
 .stage .body { padding: 12px; display: grid; gap: 10px; min-width: 0 }
@@ -220,7 +223,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   .chain > li { flex: none; flex-direction: column; align-items: stretch }
   .chain > li:not(:last-child)::after { content: "\2193"; text-align: center; padding: 2px 0 }
 }
-@media (max-width: 480px) { .cast { grid-template-columns: 1fr } }
+@media (max-width: 480px) { .cast { grid-template-columns: 1fr } .piece.over { grid-column: auto } }
 </style>
 </head>
 <body>
@@ -233,7 +236,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
     <h1 id="top">Jevaluate System</h1>
     <p class="lede">Jevaluate rates whether open-source projects use TypeSafe's Jev model well. The ratings are public, so every LLM rater has to read the rubric the same way. Code checks every rule a script can check. The rater reports only what it observes, and code derives the rest. An eval with blinded labels tests the rubric before any version is frozen.</p>
     <div class="chips">
-      <span class="chip hot">377 automated tests</span>
+      <span class="chip hot">798 automated tests</span>
       <span class="chip">19 golden projects keyed</span>
       <span class="chip">quiz: 33 of 33</span>
       <span class="chip">negative control: 73%</span>
@@ -259,22 +262,26 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
 <section class="win" aria-labelledby="d1-h">
   <div class="bar"><span>1 / HOW THE PIECES FIT</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
   <div class="pad">
-    <h2 id="d1-h">Three skills and one private file</h2>
-    <p class="lead">The harness runs three workflows. A rubric change passes the eval before a git tag freezes it. A rating round sends raters through jevaluate. Publishing exports reviewed ratings in one pull request.</p>
+    <h2 id="d1-h">Four skills and one private file</h2>
+    <p class="lead">The harness runs three workflows. A rubric change passes the eval before a git tag freezes it. A rating round sends each project to one rater per model and takes their verdict-changing disagreements to the owner. Publishing exports reviewed ratings in one pull request.</p>
 
     <div class="cast">
       <div class="piece rate"><div class="nm">jevaluate</div><div class="bd">
         <p class="role">Rates one project</p>
         <p class="q">Does this project use Jev well?</p>
-        <p>The rater follows <code>SKILL.md</code> and <code>read.md</code>. About 45k tokens plus the files it reads.</p></div></div>
+        <p>The rater follows <code>SKILL.md</code> and <code>read.md</code>. A rating costs about 100-300k tokens, by repo size.</p></div></div>
+      <div class="piece rate priv"><div class="nm">jevaluate-private</div><div class="bd">
+        <p class="role">Rates one project, never published</p>
+        <p class="q">Does my private code use Jev well?</p>
+        <p>Same rubric and checks. The rating stays in a private library that export refuses.</p></div></div>
       <div class="piece eval"><div class="nm">jevaluate-eval</div><div class="bd">
         <p class="role">Tests the rubric</p>
         <p class="q">Do graders apply the rubric correctly?</p>
-        <p>Materials check, quiz, judgment eval. Proposes wording fixes. Never edits the rubric or a rating.</p></div></div>
+        <p>Materials check, quiz, judgment eval, and rater agreement for a second rater. Proposes wording fixes. Never edits the rubric or a rating.</p></div></div>
       <div class="piece harn"><div class="nm">jevaluate-harness</div><div class="bd">
         <p class="role">Runs the process</p>
         <p class="q">How do I run a round, change the rubric or publish?</p>
-        <p><span class="scr">harness_status.py</span> reruns the scripted gates and names the next step.</p></div></div>
+        <p><span class="scr">harness_status.py</span> reruns the materials lint and the release check and names the next step.</p></div></div>
       <div class="piece over"><div class="nm">overlay (private)</div><div class="bd">
         <p class="role">The owner's own rules</p>
         <p class="q">Which extra gates apply here?</p>
@@ -300,12 +307,15 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
           <li><span class="st">picked</span></li>
           <li><span class="st">sized</span></li>
           <li><span class="st">costs approved</span></li>
-          <li><div class="grp rate"><small>jevaluate, one rater per project</small><ol>
-            <li><span class="st">rater reads the code</span></li><li><span class="scr">step.py</span></li><li><span class="scr">library.py check</span></li><li><span class="scr">library.py add</span></li></ol></div></li>
+          <li><div class="grp rate"><small>jevaluate, one rater per model</small><ol>
+            <li><span class="st">rater reads the code</span></li><li><span class="scr">step.py</span></li><li><span class="scr">library.py check</span></li></ol></div></li>
           <li><span class="scr">scan_transcripts.py</span></li>
+          <li><span class="scr">library.py add</span></li>
           <li><span class="st">adjudicated</span></li>
+          <li><span class="scr">dispute_packet.py</span></li>
+          <li><span class="st">owner rules</span></li>
+          <li><span class="scr">library.py review</span></li>
           <li><span class="st">final gate</span></li>
-          <li><span class="st">release check</span></li>
         </ol>
       </div>
       <div class="lane">
@@ -313,6 +323,8 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
         <ol class="flow">
           <li><span class="st">reviewed ratings</span></li>
           <li><span class="scr">library.py export</span></li>
+          <li><span class="st">page review</span></li>
+          <li><span class="scr">check_release.py</span></li>
           <li><span class="st">one pull request</span></li>
         </ol>
       </div>
@@ -339,7 +351,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
       <span><i class="lg s"></i>script</span>
     </div>
     <p class="hint">Scroll sideways to see the whole chart.</p>
-    <div class="scroll" role="img" aria-label="Routing flowchart. Does the non-test code call hosted Jev? If yes, the type follows from what the code does with the answers: workflow, demo, agent-tool, library or client, or 1c if nothing uses the Jev calls' answers. If no: guide (1t), jev-replacement (1a if it claims to be Jev, else 1r) or jev-mention-only (1a if it claims to call Jev, else 1b). Uses types then record stakes per decision and go through facts, scores, comparison cards and verdict, one phase at a time. Scripts: jev_callsites.py and library.py check for the call; step.py and library.py check on stakes; step.py, library.py check, library.py add and scan_transcripts.py on every phase.">
+    <div class="scroll" role="img" aria-label="Routing flowchart. Does the non-test code call hosted Jev? If yes, the type follows from what the code does with the answers: workflow, display, agent-tool, library or client, or 1c if nothing uses the Jev calls' answers. If no: guide (1t), jev-replacement (1a if it claims to be Jev, else 1r) or jev-mention-only (1a if it claims to call Jev, else 1b). Uses types then record stakes per decision and go through facts, scores, comparison cards and verdict, one phase at a time. Scripts: jev_callsites.py and library.py check for the call; step.py and library.py check on stakes; step.py, library.py check, library.py add and scan_transcripts.py on every phase.">
 <svg viewBox="0 0 1000 880" aria-hidden="true">
   <defs><marker id="ah" viewBox="0 0 10 10" refX="10" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker></defs>
 
@@ -383,7 +395,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   <rect class="typ" x="40" y="282" width="140" height="58"/>
   <text class="mn" x="49" y="302">workflow</text><text class="sm" x="49" y="320">acts on them</text>
   <rect class="typ" x="190" y="282" width="140" height="58"/>
-  <text class="mn" x="199" y="302">demo</text><text class="sm" x="199" y="320">only shows them</text><text class="sm" x="199" y="334">to a person</text>
+  <text class="mn" x="199" y="302">display</text><text class="sm" x="199" y="320">only shows them</text><text class="sm" x="199" y="334">to a person</text>
   <rect class="typ" x="340" y="282" width="140" height="58"/>
   <text class="mn" x="349" y="302">agent-tool</text><text class="sm" x="349" y="320">hands them to</text><text class="sm" x="349" y="334">an AI agent</text>
 
@@ -459,7 +471,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   <text class="qt mid" x="377" y="679">Scores and stages</text>
   <line class="ln" x1="478" y1="674" x2="522" y2="674" marker-end="url(#ah)"/>
   <rect class="box" x="522" y="650" width="202" height="48"/>
-  <text class="qt mid" x="623" y="679">Comparison cards</text>
+  <text class="qt mid" x="623" y="671">Comparison cards</text><text class="sm dim mid" x="623" y="689">and the previous rating</text>
   <line class="ln" x1="724" y1="674" x2="768" y2="674" marker-end="url(#ah)"/>
   <rect class="box" x="768" y="650" width="202" height="48"/>
   <text class="qt mid" x="869" y="671">Verdict</text><text class="sm dim mid" x="869" y="689">1 to 5</text>
@@ -472,14 +484,14 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   <rect class="box" x="515" y="732" width="455" height="62"/><rect class="sbar" x="515" y="732" width="455" height="20"/>
   <text class="sn" x="523" y="746">library.py check</text>
   <text class="sm" x="523" y="769">refuses a missing step log, phases out of order or a broken format;</text>
-  <text class="sm" x="523" y="785">applies caps and fatal flaws to the verdict</text>
+  <text class="sm" x="523" y="785">refuses a verdict above its cap, fatal flaws included</text>
   <rect class="box" x="30" y="806" width="455" height="62"/><rect class="sbar" x="30" y="806" width="455" height="20"/>
   <text class="sn" x="38" y="820">library.py add</text>
   <text class="sm" x="38" y="843">logs the rating and writes the derived fields:</text>
   <text class="sm" x="38" y="859">kind, top stakes and every n.a.</text>
   <rect class="box" x="515" y="806" width="455" height="62"/><rect class="sbar" x="515" y="806" width="455" height="20"/>
   <text class="sn" x="523" y="820">scan_transcripts.py</text>
-  <text class="sm" x="523" y="843">reads each rater's tool calls after the round; flags reading</text>
+  <text class="sm" x="523" y="843">reads each rater's tool calls before logging; flags reading</text>
   <text class="sm" x="523" y="859">the rubric ahead or writing the controller's approval files</text>
 </svg>
     </div>
@@ -490,7 +502,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   <div class="bar"><span>3 / EVALUATION</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
   <div class="pad">
     <h2 id="d3-h">The eval that gates every rubric version</h2>
-    <p class="lead">Three instruments run in order, and each must pass before the next runs. The pass bar is set before the run. The report is per rule, never an average.</p>
+    <p class="lead">A rubric change runs the first three instruments in order, each passing before the next. The fourth checks a second rater. Pass bars are set before the run, and reports go per rule, never as an average.</p>
 
     <ol class="stages">
       <li class="stage">
@@ -506,12 +518,12 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
         <header><span class="n">2</span><h3>Comprehension quiz</h3><p>Does a grader understand the rules on invented projects?</p></header>
         <div class="body">
           <ol class="chain">
-            <li><div class="cell"><span class="tag blind">blind writer</span><b>18 invented projects</b><span>From a model that never saw the rubric. Some mislead on the surface. Any overlap with rubric wording is rewritten.</span></div></li>
-            <li><div class="cell pk"><b>Owner's key, 11 keyed</b><span>Answered first, observable fields only. A script derives the rest and refuses contradictory answers.</span></div></li>
-            <li><div class="cell"><b>8 tuning, 3 held out</b><span>Held-out set drawn at random (seed 29) only after the key and its wording were final.</span></div></li>
+            <li><div class="cell"><span class="tag blind">blind writer</span><b>Invented projects</b><span>From a model that never saw the rubric, plus five lookalikes written for a rubric change. Some mislead on the surface. Any overlap with rubric wording is rewritten.</span></div></li>
+            <li><div class="cell pk"><b>Owner's key, 16 projects</b><span>Answered first, observable fields only. A script derives the rest and refuses contradictory answers.</span></div></li>
+            <li><div class="cell"><b>8 tuning, 8 held out</b><span>Three drawn at random (seed 29) after the key was final, plus the five lookalikes. Two of those no longer count as held out on stakes: their key changed after a run.</span></div></li>
           </ol>
           <div class="bars" role="group" aria-label="Quiz results on one 0 to 100 percent scale">
-            <h4>RESULTS, ONE SCALE</h4>
+            <h4>FULL RUN, 2026-09-30, ONE SCALE</h4>
             <div class="brow"><span class="lbl">Negative control: vocabulary only</span><div class="track"><div class="fill ctl" style="width:72.7%"></div><div class="tick" style="left:80%"></div></div><span class="val">8 of 11 scenarios, 73%</span></div>
             <div class="brow"><span class="lbl">Real instructions, 3 runs each</span><div class="track"><div class="fill" style="width:100%"></div><div class="tick" style="left:80%"></div></div><span class="val">33 of 33 answers</span></div>
             <div class="axis"><span></span><div class="sc"><span style="left:0">0</span><span style="left:50%">50%</span><span style="left:100%">100%</span></div><span></span></div>
@@ -530,21 +542,32 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
             <li><div class="cell"><b>Provable labels</b><span>Every gold answer must be backed by the packet the grader sees. 13 checked: 12 provable, 1 weak, 0 changed.</span></div></li>
             <li><div class="cell"><span class="tag blind">blind labelers</span><b>Label provenance</b><span>New cases: labels sealed until the owner answers from evidence cards. <span class="scr">check_labels.py</span> refuses a label that cites a doc as a call; <span class="scr">build_cards.py</span> refuses any verdict word on a card.</span></div></li>
           </ol>
+          <p class="note"><b>Graders under test:</b> Claude Sonnet and GPT-6 Sol in Codex, on identical inputs.</p>
           <p class="note"><b>The call detector is tested too.</b> Screening about 110 real repos found 4 misses (an AI SDK provider, an Effect provider, Apps Script and Swift files) and 1 false positive (a helper named <code>typesafe_...</code>). Each is now a regression test.</p>
         </div>
       </li>
 
       <li class="stage">
-        <header><span class="n">4</span><h3>Reproducibility</h3><p>Can a score be traced to the exact rubric and key?</p></header>
+        <header><span class="n">4</span><h3>Rater agreement</h3><p>Do two raters agree, and is either right?</p></header>
+        <div class="body"><ol class="chain">
+          <li><div class="cell"><b>Tuning sample named first</b><span>Projects whose disagreements fed wording are reported apart, and second.</span></div></li>
+          <li><div class="cell"><span class="scr">rater_agreement.py</span><span>Raw agreement and Cohen's kappa per field, held-out projects first.</span></div></li>
+          <li><div class="cell pk"><span class="tag blind">blind owner</span><b>Answer key</b><span>A seeded draw of agreed and split facts. The owner answers before seeing either rater.</span></div></li>
+          <li><div class="cell"><b>Consistency only</b><span>Agreement shows the raters read alike. Only the key shows which is right.</span></div></li>
+        </ol></div>
+      </li>
+
+      <li class="stage">
+        <header><span class="n all">FOR STAGES 2-3</span><h3>Reproducibility</h3><p>Can a score be traced to the exact rubric and key?</p></header>
         <div class="body"><ol class="chain">
           <li><div class="cell"><span class="scr">run_eval.py</span><span>Pre-flight refuses uncommitted rubric changes or a branch behind main.</span></div></li>
-          <li><div class="cell drv"><b>Stamp</b><span>Every run records the commit and a fingerprint of the answer key.</span></div></li>
+          <li><div class="cell drv"><b>Stamp</b><span>Every quiz and eval run records the commit. Eval runs also fingerprint the answer key.</span></div></li>
           <li><div class="cell"><span class="scr">score.py</span><span>Refuses to score if the key changed after the run.</span></div></li>
         </ol></div>
       </li>
 
       <li class="stage">
-        <header><span class="n">5</span><h3>Report</h3><p>What does the rubric get wrong?</p></header>
+        <header><span class="n all">FOR STAGES 2-3</span><h3>Report</h3><p>What does the rubric get wrong?</p></header>
         <div class="body"><ol class="chain">
           <li><div class="cell"><b>Per rule</b><span>Each rule tag scored alone. An average hides the rule that fails.</span></div></li>
           <li><div class="cell"><b>One fix per missed rule</b><span>Wording fixes come only from tuning misses and never name a held-out case.</span></div></li>
@@ -565,9 +588,11 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
       <tbody>
         <tr><th scope="row">Scenario writer</th><td data-k="Blind to">The rubric and the answer keys</td><td data-k="Why">Scenarios that echo rubric wording test string matching, not understanding.</td><td data-k="Term"><span class="tag">leakage</span></td></tr>
         <tr><th scope="row">The owner, setting the key</th><td data-k="Blind to">Every model answer and the controller's reading, until the key is set</td><td data-k="Why">Golden labels can't anchor on a model.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
+        <tr><th scope="row">The owner, ruling on a disagreement</th><td data-k="Blind to">Which rater gave which answer: two answers, A and B, in seeded order, with the rule and the code</td><td data-k="Why">A ruling can't lean toward one model.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
         <tr><th scope="row">Blind labelers</th><td data-k="Blind to">The rubric's accept lists and each other's labels. Labels stay sealed until the owner answers.</td><td data-k="Why">An independent second opinion that can't touch the key.</td><td data-k="Term"><span class="tag">label provenance</span></td></tr>
         <tr><th scope="row">Graders under test</th><td data-k="Blind to">The answer key, eval-case names (a lint keeps them out of rubric examples), the held-out set during tuning</td><td data-k="Why">A grader that has seen the answers is scored on memory.</td><td data-k="Term"><span class="tag">contamination</span><span class="tag">overfitting</span></td></tr>
-        <tr><th scope="row">Raters in a round</th><td data-k="Blind to">The rubric past the current phase, and the project's previous rating until the facts are written</td><td data-k="Why">Stops skimming ahead and copying an old verdict.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
+        <tr><th scope="row">Raters in a round</th><td data-k="Blind to">The rubric past the current phase, and the project's previous rating until its facts and scores are written</td><td data-k="Why">Stops skimming ahead and keeps facts and scores from leaning toward an old rating. The verdict comes after, so it can still lean.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
+        <tr><th scope="row">Reviewer of a big verdict move</th><td data-k="Blind to">The scores and verdicts: it gets only the facts</td><td data-k="Why">It judges the move from the evidence, not from either number.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
         <tr><th scope="row">Final gate reviewer</th><td data-k="Blind to">Any summary of the work</td><td data-k="Why">Judges the artifact, not the story told about it.</td><td data-k="Term"><span class="tag">anchoring</span></td></tr>
         <tr class="open first-open"><th scope="row">Eval controller</th><td data-k="Blind to">Nothing: it knows the key</td><td data-k="Why">It runs the eval. It may fix wording only from tuning misses, draws the held-out set after wording is final, and names any held-out item that fed wording (q09).</td><td data-k="Status"><span class="tag no">not blind</span></td></tr>
         <tr class="open"><th scope="row">The owner</th><td data-k="Blind to">Nothing: knows the rubric and rules on it</td><td data-k="Why">The domain expert the graders are tuned to match. The quiz measures agreement with that reading.</td><td data-k="Status"><span class="tag no">not blind</span></td></tr>
@@ -576,7 +601,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   </div>
 </section>
 
-<footer class="foot">jev-mode / jevaluate, rubric 2026-09-29. Numbers as of 2026-09-30.</footer>
+<footer class="foot">jev-mode / jevaluate, rubric 2026-09-29.2. Test count as of 2026-10-08; quiz and eval figures from the full run of 2026-09-30.</footer>
 </main>
 </body>
 </html>
