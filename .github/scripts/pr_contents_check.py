@@ -9,7 +9,9 @@ deleted in a later one still lands in the public history. Fails when a file adde
   - reads like a plan or a private note (a dated Status block, a handoff opener, task checkboxes, a home-folder path);
   - is over 1 MB outside ratings/, or binary and not an image;
   - starts a top-level folder or file the base branch doesn't have, unless the Scope line names it;
-  - is outside the Scope line of the PR description.
+  - is outside the Scope line of the PR description;
+  - is a workflow other than pr-contents.yml that uses the name pr-contents: a job by that name could report a
+    pass under the required check's name.
 Also fails when a commit message, the PR title or the description reads like a plan or private note.
 
 Scope line: one line in the PR description, such as `Scope: jev-sources/, README.md`. Each item is a folder
@@ -29,6 +31,18 @@ MARKERS = re.compile(r"\*\*Status \(\d{4}-\d\d-\d\d\)|Read this before[ ]startin
 # Brackets such as [r] keep each marker from matching this file itself, and keep the literal paths out of the
 # source, where the pre-push personal-path scan would stop them.
 MAX_BYTES = 1000000
+OWN_WORKFLOW = ".github/workflows/pr-contents.yml"
+
+
+def borrows_check_name(path, data):
+    """True when a workflow other than the check's own spells out pr-contents, even split by an expression
+    such as pr-${{ 'contents' }}: a job by that name could report a pass under the required check's name."""
+    if not path.startswith(".github/workflows/") or path == OWN_WORKFLOW:
+        return False
+    flat = re.sub(r"[^a-z0-9]", "", data.decode("utf-8", "replace").lower())
+    return "prcontents" in flat
+
+
 IMAGES = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico")
 SCOPE = re.compile(r"^[ \t]*\**Scope\**:[ \t]*(.*)$", re.I | re.M)
 
@@ -144,6 +158,8 @@ def problems(base, head, body):
         m = MARKERS.search(text_of(data))
         if m:
             out.append((f, f"reads like a plan or private note (has {m.group(0)!r})" + where))
+        if borrows_check_name(f, data):
+            out.append((f, "uses the name pr-contents, which only the check's own workflow may use" + where))
         if not f.startswith("ratings/"):
             if len(data) > MAX_BYTES:
                 out.append((f, f"is {len(data) // 1000} KB, over the 1 MB limit" + where))
