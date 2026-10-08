@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.8"
-      - run: pip install pytest
+      - run: pip install pytest pyyaml
       - name: tests (a rubric-change branch tests unfrozen until its freeze tag exists; rubric-change.md step 9)
         run: |
           v=$(python -c "import sys; sys.path.insert(0, 'jevaluate/scripts'); import rubric_text; print(rubric_text.version())")

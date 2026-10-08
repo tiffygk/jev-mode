@@ -4,7 +4,7 @@ already holds files. The runs folder is $JEVALUATE_RUNS when set (a folder outsi
 checkout), else jevaluate-eval/.work/ (git-ignored)."""
 import argparse, json, os, pathlib, subprocess, sys
 import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
-from build_packets import build
+from build_packets import build, runs_folder
 import score, runners
 
 HERE = pathlib.Path(__file__).parent; SKILL = HERE.parent / "jevaluate"
@@ -31,17 +31,18 @@ def preflight_repo(repo):
     return probs
 
 def runs_dir():
-    """Where run output goes: $JEVALUATE_RUNS when set, else jevaluate-eval/.work/."""
-    env = os.environ.get("JEVALUATE_RUNS")
-    return pathlib.Path(env).expanduser() if env else HERE / ".work"
+    """Where run output goes (build_packets.runs_folder); exits 2 with one sentence on a bad JEVALUATE_RUNS."""
+    folder, problem = runs_folder()
+    if problem: print(problem, file=sys.stderr); sys.exit(2)
+    return folder
 
 def preflight_out(out):
-    p = pathlib.Path(out)
-    env = os.environ.get("JEVALUATE_RUNS")
-    if env:
-        runs = pathlib.Path(env).expanduser().resolve()
-        if runs != p.resolve() and runs not in p.resolve().parents:
-            return [f"--out {out} must be under $JEVALUATE_RUNS ({runs}): run output is kept outside the repo, so it outlives the checkout"]
+    folder, problem = runs_folder()
+    if problem: return [problem]
+    p = pathlib.Path(out).resolve()
+    if "JEVALUATE_RUNS" in os.environ:
+        if folder not in p.parents:
+            return [f"--out {out} must be a folder inside $JEVALUATE_RUNS ({folder}): run output is kept outside the repo, so it outlives the checkout"]
     elif ".work" not in p.parts: return [f"--out {out} must be under .work/ (git-ignored), or the git-status check refuses the next run"]
     used = sorted(x.name for x in p.iterdir()) if p.is_dir() else []
     if used: return [f"--out {out} is not empty ({', '.join(used[:4])}{' ...' if len(used) > 4 else ''}): its old rep files would mix into this run's score; pass a new --out folder"]
