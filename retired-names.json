@@ -4,7 +4,7 @@
   {
    "pattern": "\\bcalib\\b|test_calibration|calibration\\.md|calibration/",
    "flags": "i",
-   "why": "the rater comparison was renamed: jevaluate-eval/rater-agreement.md, rater_agreement/rater_agreement.py; the write-up is EVAL-RESULTS.md; the rubric findings log is jevaluate/rubric-tuning-log.md",
+   "why": "the rater comparison was renamed: jevaluate-eval/rater-agreement.md, rater_agreement/rater_agreement.py; the write-up is EVAL-RESULTS.md",
    "allowed": {
     "scripts/test_docs_check.py": "tests of this check"
    }

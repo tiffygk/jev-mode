@@ -1,4 +1,4 @@
-"""Blind tiebreaker packet: the rule, the cited code and two unlabeled answers; nothing that says which rater wrote which."""
+"""Blind packet: the rule, the cited code and two unlabeled answers; nothing that says which rater wrote which."""
 import pathlib, re, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent / "scripts"))
 import dispute_packet as dp
