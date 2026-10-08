@@ -1,6 +1,6 @@
 # Jevaluate Eval
 
-Tests whether graders apply the Jevaluate rubric correctly, before a rubric change reaches any rating. Graders work as LLM annotators with a codebook, the rubric, plus a few judgment calls.
+Tests whether graders apply the Jevaluate rubric correctly, before a rubric change reaches any rating. Graders work as LLM annotators with a codebook, the rubric, and as LLM judges on a few qualitative calls.
 
 This skill and [Jevaluate Harness](../jevaluate-harness/) are being improved so published ratings can be rerun more accurately and at scale.
 
@@ -28,10 +28,10 @@ Maintainers of a Jevaluate fork who change its rubric.
 
 ## Results
 
-| Result | What it means | What sets it |
+| Result per rule | What it means | What sets it |
 |---|---|---|
 | **Pass** | Graders match the owner | Routing right in 3 of 3 runs for tuning cases and 2 of 3 for held-out; stakes 2 of 3 |
-| **Fail,&nbsp;per&nbsp;rule** | Graders misread one rule | A case with that rule falls short; one fix is proposed |
+| **Fail** | Graders misread one rule | A case with that rule falls short; one fix is proposed |
 
 ## How it works
 
@@ -40,8 +40,6 @@ Maintainers of a Jevaluate fork who change its rubric.
 3. Judgment eval: build each real project's evidence by a fixed rule. A blind model and the owner each label new projects. Every answer must be provable from the grader's evidence.
 4. Rater agreement: compare a second rater with the first outside the tuning sample, then score both against a key the owner labels blind ([rater-agreement.md](rater-agreement.md)).
 
-The quiz and the judgment eval report each rule on its own, with one wording fix per missed rule.
-
 <a href="https://tiffygk.github.io/jev-mode/system/#d3-h"><picture><source media="(prefers-color-scheme: dark)" srcset="images/eval-pipeline-dark.png"><img alt="Eval pipeline" src="images/eval-pipeline-light.png"></picture></a>
 
 ## Why code runs the steps
@@ -49,17 +47,18 @@ The quiz and the judgment eval report each rule on its own, with one wording fix
 In earlier rounds:
 
 - Graders got the whole 43,000-character rubric, and its examples named seven eval cases. They now get only the routing section, and the lint refuses eval-case names.
-- The key fell out of step after a type rename, and a labeler counted a design-doc snippet as a call. The runner now refuses a mismatched key, and labels pass the ratings' call check.
+- After a type rename, the key and rubric disagreed, and a labeler counted a design-doc snippet as a call. Code now refuses both.
 
 ## Who judges what
 
-- Claude Sonnet, headless, and GPT-6 Sol in Codex are the graders under test. Each reads some answers off the code, citing a file and line, and makes judgment calls on type and stakes.
+- Claude Sonnet, headless, and GPT-6 Sol in Codex are the graders under test. Each cites a file and line for answers read off the code, and judges type and stakes.
 - No LLM judges their answers: code scores each against the owner's key.
+- Code holds the eval to its process: it refuses a run on uncommitted rubric changes, a score after the key changed, and contradictory key answers.
 - The Claude session running the eval drafts one fix per miss; the owner approves it.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="images/answer-form-dark.png"><img alt="The owner's answer form" src="images/answer-form-light.png"></picture>
 
-*The owner sets the answer key here, before any model runs. Code derives the rest and refuses contradictions.*
+*The owner sets the answer key here, before any model runs.*
 
 ## Where the rules come from
 
