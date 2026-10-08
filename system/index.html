@@ -82,23 +82,19 @@ h2 { font-weight: 600; font-size: 1.5rem; line-height: 1.15; margin: 0 }
 .lg.t { background: var(--paper); border: 2px solid var(--line) }
 
 /* diagram 1: pieces and flows */
-.cast { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px }
+.cast { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px }
 .piece { border: 2px solid var(--line); display: flex; flex-direction: column; min-width: 0 }
 .piece .nm { font-family: var(--pixel); font-size: 22px; line-height: 1; padding: 6px 10px 5px; border-bottom: 2px solid var(--line); color: var(--on-fill) }
 .piece.rate .nm { background: var(--pink) }
 .piece.eval .nm { background: var(--sage) }
 .piece.harn .nm { background: var(--ink); color: var(--bg) }
-.piece.over { border-style: dashed; grid-column: span 2 }
-.piece.priv { border-style: dashed }
-.piece.priv .nm { border-bottom-style: dashed }
+.piece.over { border-style: dashed }
 .piece.over .nm { background: var(--paper); color: var(--ink); border-bottom-style: dashed }
 .piece .bd { padding: 10px 12px 12px; display: grid; gap: 6px; font-size: .88rem; align-content: start }
 .piece .role { font-weight: 700; font-size: .95rem }
 .piece .q { font-style: italic }
 .piece .bd p:last-child { color: var(--dim) }
 
-.overlay { border: 2px dashed var(--line); padding: 8px 12px; font-size: .88rem; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap }
-.overlay b { font-family: var(--pixel); font-weight: 400; font-size: 20px; line-height: 1 }
 .lanes { display: grid; gap: 12px }
 .lane { border: 2px solid var(--line); display: grid; grid-template-columns: 190px minmax(0, 1fr) }
 .lane > header { background: var(--paper); border-right: 2px solid var(--line); padding: 10px 12px; display: grid; gap: 2px; align-content: start }
@@ -223,7 +219,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   .chain > li { flex: none; flex-direction: column; align-items: stretch }
   .chain > li:not(:last-child)::after { content: "\2193"; text-align: center; padding: 2px 0 }
 }
-@media (max-width: 480px) { .cast { grid-template-columns: 1fr } .piece.over { grid-column: auto } }
+@media (max-width: 480px) { .cast { grid-template-columns: 1fr } }
 </style>
 </head>
 <body>
@@ -262,18 +258,14 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
 <section class="win" aria-labelledby="d1-h">
   <div class="bar"><span>1 / HOW THE PIECES FIT</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
   <div class="pad">
-    <h2 id="d1-h">Four skills and one private file</h2>
+    <h2 id="d1-h">Components and workflows</h2>
     <p class="lead">The harness runs three workflows. A rubric change passes the eval before a git tag freezes it. A rating round sends each project to one rater per model and takes their verdict-changing disagreements to the owner. Publishing exports reviewed ratings in one pull request.</p>
 
     <div class="cast">
       <div class="piece rate"><div class="nm">jevaluate</div><div class="bd">
         <p class="role">Rates one project</p>
         <p class="q">Does this project use Jev well?</p>
-        <p>The rater follows <code>SKILL.md</code> and <code>read.md</code>. A rating costs about 100-300k tokens, by repo size.</p></div></div>
-      <div class="piece rate priv"><div class="nm">jevaluate-private</div><div class="bd">
-        <p class="role">Rates one project, never published</p>
-        <p class="q">Does my private code use Jev well?</p>
-        <p>Same rubric and checks, run with <code>/jevaluate-private</code>. The rating stays in a private library that export refuses.</p></div></div>
+        <p>The rater follows <code>SKILL.md</code> and <code>read.md</code>. A rating costs about 100-300k tokens, by repo size. Run as <code>/jevaluate-private</code>, the same rating stays in a private library that export refuses, so it is never published.</p></div></div>
       <div class="piece eval"><div class="nm">jevaluate-eval</div><div class="bd">
         <p class="role">Tests the rubric</p>
         <p class="q">Do graders apply the rubric correctly?</p>
@@ -285,10 +277,8 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
       <div class="piece over"><div class="nm">overlay (private)</div><div class="bd">
         <p class="role">The owner's own rules</p>
         <p class="q">Which extra gates apply here?</p>
-        <p>Private gates and presentation rules. The public skills stay generic.</p></div></div>
+        <p>A private note of extra gates and presentation rules. <code>$JEVALUATE_OVERLAY</code> points to it; the harness and the eval read it first, and its rules override their defaults. The public skills stay generic.</p></div></div>
     </div>
-
-    <div class="overlay"><b>$JEVALUATE_OVERLAY</b><span>Read first by the harness and the eval. Its rules override their defaults.</span></div>
 
     <div class="lanes">
       <div class="lane">
@@ -341,7 +331,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
 <section class="win" aria-labelledby="d2-h">
   <div class="bar"><span>2 / ROUTING</span><span class="dots" aria-hidden="true"><i></i><i></i></span></div>
   <div class="pad">
-    <h2 id="d2-h">Routing, and where code steps in</h2>
+    <h2 id="d2-h">Routing and code enforcement</h2>
     <p class="lead">Routing decides which facts apply and how a failure counts, so code checks it hardest. Each script window on the chart refuses a wrong answer or fills in a value the rater never enters. The rubric doesn't rate guides or jev-replacements yet: they get verdict 1, not yet rated, and their facts, scores and stakes are n.a.</p>
     <div class="legend">
       <span><i class="lg q"><svg viewBox="0 0 26 18" aria-hidden="true"><polygon points="6,1 20,1 25,9 20,17 6,17 1,9"/></svg></i>question the rater answers</span>
@@ -469,7 +459,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   <text class="qt mid" x="131" y="671">Facts</text><text class="sm dim mid" x="131" y="689">F1 to F23</text>
   <line class="ln" x1="232" y1="674" x2="276" y2="674" marker-end="url(#ah)"/>
   <rect class="box" x="276" y="650" width="202" height="48"/>
-  <text class="qt mid" x="377" y="679">Scores and stages</text>
+  <text class="qt mid" x="377" y="671">Scores and stages</text><text id="scr-sub" class="sm dim mid" x="377" y="689">4 scores, 0 to 3; stages it builds</text>
   <line class="ln" x1="478" y1="674" x2="522" y2="674" marker-end="url(#ah)"/>
   <rect class="box" x="522" y="650" width="202" height="48"/>
   <text class="qt mid" x="623" y="671">Comparison cards</text><text class="sm dim mid" x="623" y="689">and the previous rating</text>
@@ -593,7 +583,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
         <tr><th scope="row">The owner, ruling on a disagreement</th><td data-k="Blind to">Which rater gave which answer: two answers, A and B, in seeded order, with the rule and the code</td><td data-k="Why">A ruling can't lean toward one model.</td><td data-k="Guards against"><span class="tag">anchoring</span></td></tr>
         <tr><th scope="row">Blind labelers</th><td data-k="Blind to">The rubric's accept lists and each other's labels. Labels stay sealed until the owner answers.</td><td data-k="Why">An independent second opinion that can't touch the key.</td><td data-k="Guards against"><span class="tag">leakage</span><span class="tag">anchoring</span></td></tr>
         <tr><th scope="row">Graders under test</th><td data-k="Blind to">The answer key, eval-case names (a lint keeps them out of rubric examples), the held-out set during tuning</td><td data-k="Why">A grader that has seen the answers is scored on memory.</td><td data-k="Guards against"><span class="tag">contamination</span><span class="tag">overfitting</span></td></tr>
-        <tr><th scope="row">Raters in a round</th><td data-k="Blind to">The rubric past the current phase, and the project's previous rating until its facts and scores are written</td><td data-k="Why">Stops skimming ahead and keeps facts and scores from leaning toward an old rating. The verdict comes after, so it can still lean.</td><td data-k="Guards against"><span class="tag">skimming ahead</span><span class="tag">anchoring, partly</span></td></tr>
+        <tr><th scope="row">Raters in a round</th><td data-k="Blind to">The rubric past the current phase, and the project's previous rating until its facts and scores are written</td><td data-k="Why">Stops skimming ahead and keeps facts and scores from leaning toward an old rating. The verdict comes after, so it can still lean.</td><td data-k="Guards against"><span class="tag">skimming ahead</span></td></tr>
         <tr><th scope="row">Reviewer of a big verdict move</th><td data-k="Blind to">The scores and verdicts: it gets only the facts</td><td data-k="Why">It judges the move from the evidence, not from either number.</td><td data-k="Guards against"><span class="tag">anchoring</span></td></tr>
         <tr><th scope="row">Final gate reviewer</th><td data-k="Blind to">Any summary of the work</td><td data-k="Why">Judges the artifact, not the story told about it.</td><td data-k="Guards against"><span class="tag">anchoring</span></td></tr>
         <tr class="open first-open"><th scope="row">Eval controller</th><td data-k="Blind to">Nothing: it knows the key</td><td data-k="Why">It runs the eval. It may fix wording only from tuning misses, draws the held-out set after wording is final, and names any held-out item that fed wording (q09).</td><td data-k="Status"><span class="tag no">not blind</span></td></tr>
