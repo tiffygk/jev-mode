@@ -14,14 +14,14 @@ Jevaluate users who:
 
 It doesn't work without Jevaluate: every step runs Jevaluate's scripts, rubric or eval.
 
-For a different LLM rating skill, this one won't run, but its pattern carries over: fixed test cases, one logger, a blind second opinion.
+For a different LLM rating skill, this one won't run, but its pattern carries over: fixed test cases, one logger, and reviewers that see only the facts.
 
 ## How it works
 
 The skill is a short guide that opens one of three files, each a numbered list with the check that must pass:
 
 1. `rubric-change.md` changes the rubric: a meaning and an example for every value, one row per stakes level where the rule changes with stakes, and a code check for every rule. Then Jevaluate Eval tests it.
-2. `rating-round.md` runs a round: screen a list against two known controls, size each repo, brief raters, scan each rater's transcript, log ratings one at a time, send big verdict moves to a reviewer that sees only the facts. A dispute over what the code does is settled with a blind packet: the rule, the code and two unlabeled answers.
+2. `rating-round.md` runs a round: screen a list against two known controls, size each repo, brief raters, scan each rater's transcript, log ratings one at a time, send big verdict moves to a reviewer that sees only the facts, and take each verdict-changing disagreement between two raters that no written ruling settles to the owner, as the rule, the code and two unlabeled answers.
 3. `publish.md` exports a preview, has a reviewer check every page for private context, runs the release check (tests, a fresh clone, a passing eval on this rubric), and opens one pull request.
 
 Written steps alone slipped in earlier rounds, so scripts check each one:
@@ -30,7 +30,7 @@ Written steps alone slipped in earlier rounds, so scripts check each one:
 - Sizing fetched one large repo file by file for over 15 minutes. Sizing now uses the repo's file list, and large repos are read from a shallow clone.
 - A mode the skill didn't have shipped in its README. The lint now refuses any file a skill names that doesn't exist.
 
-`harness_status.py` reads your round's ledger, reruns each scripted check, and names the file to open next. A skipped step shows up there before the next one starts.
+`harness_status.py` reads your round's ledger, reruns the materials lint and the release check, and names the file to open next. A skipped step shows up there before the next one starts.
 
 <a href="https://tiffygk.github.io/jev-mode/system/#d1-h"><picture><source media="(prefers-color-scheme: dark)" srcset="images/skills-dark.png"><img alt="How the skills fit" src="images/skills-light.png"></picture></a>
 
@@ -49,7 +49,7 @@ Put your never-publish regexes in `$JEVALUATE_LIBRARY/private-terms.txt`, and op
 
 ## Limits
 
-Like Jevaluate, it runs entirely on an LLM and never calls Jev, so it needs no TypeSafe API key. It rates nothing itself: each rating is a full Jevaluate run, about 45k tokens plus the files read. Not affiliated with TypeSafe.
+Like Jevaluate, it never calls Jev, so it needs no TypeSafe API key. It rates nothing itself: each rating is a full Jevaluate run, about 100-300k tokens by repo size. Not affiliated with TypeSafe.
 
 ## License
 

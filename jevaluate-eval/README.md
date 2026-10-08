@@ -4,16 +4,11 @@ Tests whether graders apply the Jevaluate rubric correctly, before a rubric chan
 
 | Situation | Use |
 |---|---|
-| You changed the rubric or a rater instruction | All three checks, in order |
+| You changed the rubric or a rater instruction | Materials check, quiz and judgment eval, in order |
 | You're about to freeze or publish a rubric version | The judgment eval on real projects |
+| A second rater rated the same projects | Rater agreement |
 
-## Three skills, three questions
-
-| Skill | The question it answers | It never |
-|---|---|---|
-| [Jevaluate](../jevaluate/) | Does this project use Jev well? | edits the project |
-| Jevaluate Eval | Do graders apply the rubric correctly? | edits the rubric or a rating |
-| [Jevaluate Harness](../jevaluate-harness/) | How do I run a round, change the rubric or publish? | judges a project itself |
+It never edits the rubric or a rating. Rating a project is [Jevaluate](../jevaluate/); running rounds and publishing is [Jevaluate Harness](../jevaluate-harness/).
 
 ## Who it's for
 
@@ -46,7 +41,7 @@ Maintainers of a Jevaluate fork who change its rubric.
 6. Label new projects twice: a blind model, and the owner from evidence cards.
 7. Run the judgment eval; every answer must be provable from the grader's evidence.
 8. Report per rule, with one wording fix per missed rule.
-9. When a second rater rates the same projects, compare the two outside the tuning sample, then score both against an answer key the owner labels without seeing either rater's answer ([rater-agreement.md](rater-agreement.md)).
+9. For a second rater, compare the two outside the tuning sample, then score both against a key the owner labels blind ([rater-agreement.md](rater-agreement.md)).
 
 <a href="https://tiffygk.github.io/jev-mode/system/#d3-h"><picture><source media="(prefers-color-scheme: dark)" srcset="images/eval-pipeline-dark.png"><img alt="Eval pipeline" src="images/eval-pipeline-light.png"></picture></a>
 
@@ -59,14 +54,14 @@ Written instructions alone didn't hold. Earlier rounds:
 - The rubric's own examples named seven eval cases. The lint now refuses eval-case names.
 - A blind labeler counted a snippet in a design doc as a call to Jev. Labels now pass the same call check as ratings.
 
-Code stamps each run with its commit and key fingerprint.
+Code stamps each quiz and judgment-eval run with its commit, and refuses to score an eval whose key changed since.
 
 ## Who judges what
 
-- A model that never sees the rubric writes the quiz scenarios.
-- Claude Sonnet, headless, is the grader under test.
+- A model that never sees the rubric writes most quiz scenarios.
+- Claude Sonnet, headless, and GPT-6 Sol in Codex are the graders under test.
 - The Claude session running the eval drafts one fix per miss; the owner approves it.
-- Code scores each answer against the owner's key, since each has one right value. An LLM judge would add cost and noise without adding accuracy. It waits for free text like suggested fixes, once it agrees with the owner's labels.
+- Code scores each answer against the owner's key, since each has one right value.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="images/answer-form-dark.png"><img alt="The owner's answer form" src="images/answer-form-light.png"></picture>
 
@@ -78,7 +73,7 @@ The rubric in `jevaluate/rubric.md`, with each rule's source in `shared/jev-rule
 
 ## Install and use
 
-Needs Claude Code with the `claude` CLI logged in and Python 3.8+.
+Needs Claude Code with the `claude` CLI logged in and Python 3.8+. The Sol grader also needs Codex.
 
 ```
 git clone https://github.com/tiffygk/jev-mode
@@ -89,7 +84,7 @@ From the repo, try `python3 jevaluate-eval/lint_materials.py`; every command is 
 
 ## Limits
 
-It runs on Claude and doesn't call Jev, so it needs no TypeSafe key. It only scores projects that call Jev through the TypeSafe API, not guides or Jev replacements that work like Jev yet. It will alert you to Jev projects that are false marketing and only falsely claim to use Jev. The owner's answers are the key when you change the rubric or need to resolve an edge case, so misreading a rule tunes graders to that reading. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
+It runs on Claude or Codex and doesn't call Jev, so it needs no TypeSafe key. It doesn't score guides or Jev replacements. The owner's answers are the key, so an owner who misreads a rule tunes graders to that reading. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
 
 ## License
 

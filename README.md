@@ -6,7 +6,7 @@ Not every skill calls Jev: some are guides and LLM evaluators for building with 
 
 | Name | What it does | Calls Jev | Status |
 |---|---|---|---|
-| [Jevaluate](jevaluate/) | Reads a Jev project's code and rates how well it uses Jev, with provenance for every finding | No: an evaluator that runs on the LLM alone | Available |
+| [Jevaluate](jevaluate/) | Reads a Jev project's code and rates how well it uses Jev, with provenance for every finding | No: an LLM rates, and code checks the rating | Available |
 | [Jevaluate, privately](jevaluate-private/) | Rates a project you can't publish, such as a client's code or a local folder, with the same rubric, and keeps the rating private | No | Available |
 | [Jev Lens](jev-lens/) | Turns images into a neutral JSON state that Jev can read, one shared schema across the set | Only for an optional check of the finished state | Available |
 | [Jevaluate Harness](jevaluate-harness/) | Runs rating rounds, re-rates and rubric tuning for Jevaluate | No | Available |
@@ -16,7 +16,7 @@ Not every skill calls Jev: some are guides and LLM evaluators for building with 
 
 Take the course as the Claude artifact when you can: Claude grades your glossary definitions on meaning, while the GitHub Pages copy uses an untested keyword check.
 
-How the three Jevaluate skills work together, with diagrams: the [system page](https://tiffygk.github.io/jev-mode/system/).
+How the Jevaluate skills work together, with diagrams: the [system page](https://tiffygk.github.io/jev-mode/system/).
 
 ## Install
 

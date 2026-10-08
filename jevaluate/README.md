@@ -20,15 +20,15 @@ Jevaluate reads a Jev project's code and rates how well it uses Jev. Every findi
 >
 > **Top fix:** the threshold was tuned on the sample it reports on. Re-check it on a fresh slice.
 
-The verdict comes from these rules, never an average:
+The rater picks the verdict, never an average; code refuses one above these rules:
 
-| Verdict | Definition | Set by |
+| Verdict | Definition | Rule |
 |---|---|---|
 | **5&nbsp;Learn&nbsp;from&nbsp;it** | Reference-grade: follows the rules, measured on labels | Execution, Fit and Evidence all 3, with thresholds or questions retuned on its results |
 | **4&nbsp;Use&nbsp;it** | Correct use, minor gaps | Execution and Fit 2 or better, no failed core fact |
 | **3&nbsp;Use&nbsp;with&nbsp;a&nbsp;fix** | Right idea, fixable flaws | A failed core fact, or results claimed with no measurement |
 | **2&nbsp;Rework&nbsp;it** | Core rules broken | Execution 1 or 0, or a fatal flaw: Jev computes values, or confidence is ignored on a high-stakes action |
-| **1&nbsp;with&nbsp;a&nbsp;code** | Not rated on the scale | 1a claims Jev and never calls it; 1b uses the name, claiming no call; 1c ignores Jev's answers; 1r replaces Jev and 1t teaches it, shown as n.a. |
+| **1&nbsp;with&nbsp;a&nbsp;code** | Not rated on the scale | A code from [`rubric.md`](rubric.md), such as 1a: claims Jev and never calls it |
 | **Can't&nbsp;rate&nbsp;yet** | Too little visible to judge | README only, or no traced call to Jev found yet |
 
 ## How it works
@@ -36,25 +36,23 @@ The verdict comes from these rules, never an average:
 1. Pins the commit, fetches every file that could change the verdict, and states the cost. Above 200k tokens it stops until you approve.
 2. Routes the project: the code line that calls Jev (an import, README or design doc never counts), then its type.
 3. Answers 23 facts, each citing a file:line or quote, and rates each decision's stakes.
-4. Scores four dimensions and sets the verdict.
-5. Traces each fix to the failed fact and the TypeSafe page with the remedy.
-6. Compares with the closest past ratings, explains any difference, then logs it.
+4. Scores four dimensions.
+5. Compares with the closest past ratings and the project's previous rating.
+6. Sets the verdict, traces each fix to the failed fact and the TypeSafe page with the remedy, then logs it.
 
 ## Code keeps raters on track
 
-Written instructions alone didn't hold. In round 1, a rater recorded a partial read as a full one, and a rating with 10 of 24 facts unknown, including whether the project calls Jev, passed as a 4. Now scripts run the steps:
+In round 1, a rater recorded a partial read as a full one, and a rating with 10 of 24 facts unknown passed as a 4. Now scripts run the steps:
 
-- `step.py` serves the rubric in five parts (routing, facts, scores, past-rating comparison, verdict), each only after the last is written, with only the rows that apply to this project.
-- Raters can't skip ahead: routing changed after the facts is refused, the previous rating appears only after the facts, and a transcript scan flags a rater that opens the rubric or past ratings directly.
+- `step.py` serves the rubric one part at a time, in the order above, with only the rows that apply to this project.
+- Raters can't skip ahead: routing changed after the facts is refused, the previous rating appears only after the facts and scores, and a transcript scan flags a rater that opens the rubric or past ratings directly.
 - `library.py check` refuses a rating that breaks a rule and names the line to redo; `add` fills in the kind, the top stakes and every "not applicable".
 
 <a href="https://tiffygk.github.io/jev-mode/system/#d2-h"><picture><source media="(prefers-color-scheme: dark)" srcset="images/routing-dark.png"><img alt="Routing flowchart" src="images/routing-light.png"></picture></a>
 
-The [system page](https://tiffygk.github.io/jev-mode/system/) shows the whole flow and the eval.
+## Where the rules come from
 
-## What it checks
-
-After routing, 23 facts in four groups: core principles, question design, execution, and the evidence behind claims. The full list is in [`rubric.md`](rubric.md); each rule in [`shared/jev-rules.md`](../shared/jev-rules.md) cites its source: TypeSafe's docs, one of its 18 cookbooks, or a finding from rating projects.
+The 23 facts are in [`rubric.md`](rubric.md). Each rule in [`shared/jev-rules.md`](../shared/jev-rules.md) cites its source: TypeSafe's docs, one of its 18 cookbooks, or a finding from rating projects.
 
 ## Install and use
 
@@ -65,11 +63,11 @@ git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jevaluate jev-mode/shared ~/.claude/skills/
 ```
 
-Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex), for comparable ratings. A rating costs 100-160k tokens for a small repo. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
+Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex). A rating costs about 100-300k tokens, by repo size. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
 
 ## Rating privately
 
-To rate something you can't publish, such as a client's code, your employer's pipeline or a local folder, use [Jevaluate, privately](../jevaluate-private/): `/jevaluate-private <link or folder>`. It runs the same rubric and checks, keeps the rating in a private library and refuses to export it.
+For code you can't publish, use [Jevaluate, privately](../jevaluate-private/): `/jevaluate-private <link or folder>`. The rating stays in a private library that export refuses.
 
 ## Published ratings
 
@@ -77,7 +75,7 @@ Ratings of community projects are in [`ratings/`](../ratings/), under CC0, with 
 
 ## Limits
 
-It runs entirely on an LLM and doesn't call Jev, so it needs no TypeSafe key. It reads public repos and never runs them. Not affiliated with TypeSafe.
+It doesn't call Jev, so it needs no TypeSafe key. It reads code and never runs it. Not affiliated with TypeSafe.
 
 ## License
 
