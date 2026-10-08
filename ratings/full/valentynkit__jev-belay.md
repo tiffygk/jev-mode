@@ -2,59 +2,59 @@
 
 # jev-belay: full rating
 
-**Verdict 4, Use it** · workflow · rated 2026-09-30 at [`ef719db`](https://github.com/valentynkit/jev-belay/tree/ef719db7eaad) · read: full · rubric 2026-09-29 · claude-sonnet-5-5, medium effort
+**Verdict 4, Use it** · workflow · rated 2026-10-06 at [`ef719db`](https://github.com/valentynkit/jev-belay/tree/ef719db7eaad) · read: full · rubric 2026-09-29.2 · claude-sonnet-5-5, medium effort
 
 ## Summary
 
-jev-belay is a Claude Code Stop hook that, only when files changed and no check passed since, sends one Jev request of four questions about the closing message and blocks the stop when it reads as an unverified done. It keeps counting, thresholds and the evidence veto in code, pins `jev-1.13.0`, and reports AUROC with intervals on 100 labeled stops against a wording-only baseline. Its 0.70 cutoff was swept on the same 100 stops that report the block counts, and the labels come from one model.
+jev-belay is a Claude Code Stop hook that, only when files changed and no check passed since, sends one Jev request of four questions about the closing message and blocks the stop when it reads as an unverified done. It keeps counting, thresholds and the evidence veto in code, pins `jev-1.13.0`, and reports AUROC with intervals on 100 labeled stops against a wording-only baseline. Its 0.70 cutoff was swept on the same 100 stops that report the block counts, labels come from one model, and the injection and non-English checks are skipped by default.
 
 ## What fails
 
 | Fact | Finding |
 |---|---|
-| Calls hosted Jev (F0) | **yes.** The Stop hook posts four questions to api.typesafe.ai /v1/systemone with model jev-1.13.0 ([`belay.mjs:510`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L510)) |
-| Held-out result (F17) | **no.** The 0.70 threshold was swept on the same 100 stops that report the 7-of-12 and 1-wrong-block numbers ([`demo/README.md:239-250`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L239-L250), [`CHANGELOG.md:44-46`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/CHANGELOG.md#L44-L46)). https://docs.typesafe.ai/cookbooks/classification_using_confidence.md |
+| Calls hosted Jev (F0) | **yes.** The Stop hook posts four questions to api.typesafe.ai/v1/systemone with model jev-1.13.0 ([`belay.mjs:510`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L510)) |
+| Held-out result (F17) | **no.** The 0.70 cut-off was swept on the same 100 stops that report its caught and wrong-block counts ([`demo/README.md:239-251`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L239-L251), [`CHANGELOG.md:56-60`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/CHANGELOG.md#L56-L60)). cookbooks/autoresearch |
+| Untrusted text treated as data, high or low (F22) | **no.** Task and message go in unflagged; injection test covers only decide(); its model-side twin is skipped, unrecorded ([`test/jaggedness.test.mjs:30-41`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/test/jaggedness.test.mjs#L30-L41), [`test/jaggedness.test.mjs:51-56`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/test/jaggedness.test.mjs#L51-L56)). model-jaggedness/jev-1.13 |
+| Non-English handled (F23) | **no.** A non-English check is skipped unless JEV_LIVE_URL is set and no result is recorded ([`test/jaggedness.test.mjs:58-61`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/test/jaggedness.test.mjs#L58-L61)). concepts/state |
 
 <details>
-<summary><b>What passes (21) and doesn't apply (1)</b></summary>
+<summary><b>What passes (19) and doesn't apply (1)</b></summary>
 
 | Fact | Finding |
 |---|---|
-| Atomic questions (F1) | yes. Each question names one property of `final_message` or `task`; claims_verified joins ran-and-passed as one claim ([`belay.mjs:416-451`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L416-L451)) |
-| Right primitive (F2) | yes. Three Nouls for yes/no properties; a Choice for the four named outcomes ([`belay.mjs:416-451`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L416-L451)) |
-| Structured state (F3) | yes. Object with `task`, `final_message` and `run.file_changes`/`run.checks_run`; questions point at field names ([`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
-| Batching (F4) | yes. All four questions go in one request over one state ([`belay.mjs:504`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L504)) |
-| Thresholds in code (F5) | yes. Named constants and an option for 0.70, 0.5 and 0.4; the 0.7 for claims_verified is an inline literal ([`belay.mjs:551-555`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L551-L555), [`belay.mjs:571`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L571)) |
-| No invented values (F6) | yes. Code counts file changes and checks; Jev only judges the message and task ([`belay.mjs:236-268`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L236-L268), [`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
-| Measured in the workflow (F7) | yes. AUROC, blocks, catches, cost and latency reported on 100 labeled real stops with intervals ([`demo/README.md:219-259`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L219-L259), [`tools/measure.mjs:152-199`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/tools/measure.mjs#L152-L199)) |
-| Options cover every case, no overlap (F8) | yes. complete, partial, blocked, other, each with a stated boundary; partial and blocked can touch when a question is asked ([`belay.mjs:441-450`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L441-L450)) |
-| An "other" option where needed (F9) | yes. The Choice carries `other: None of these` ([`belay.mjs:448`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L448)) |
-| Evidence recorded evenly (F10) | yes. The state holds the request, the message and run counts, with no conclusions written in ([`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
-| Confidence drives action, low (F11) | yes. A block needs claims_done at 0.70 or more, applies at 0.5 or more; an outcome pick needs 0.4 to veto ([`belay.mjs:557-571`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L557-L571)) |
-| Pinned model version (F12) | yes. `jev-1.13.0` is the default, with the README saying aliases move ([`belay.mjs:18`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L18), [`demo/README.md:102`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L102)) |
-| Choice order handled, low (F13) | n.a.. No decision is high or very high, so the Choice order rule does not apply ([`belay.mjs:557-571`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L557-L571)) |
-| Size limits respected (F14) | yes. Task capped at 1,500 chars and message at 2,000; median call 1,222 input tokens ([`belay.mjs:453-468`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L453-L468), [`demo/README.md:64`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L64)) |
-| Sample size adequate (F15) | yes. Claims state n=100 with 12 positives and a 95% interval, and say the second decimal is not supported ([`demo/README.md:219-257`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L219-L257), [`demo/README.md:277-278`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L277-L278)) |
-| Independent labels (F16) | yes. A model proxy labeler, blind to Jev's answers, labeled two judgment halves; disclosed as not by hand ([`tools/label.mjs:1-12`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/tools/label.mjs#L1-L12), [`demo/README.md:221-222`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L221-L222)) |
-| Fair baseline (F18) | yes. Same 100 stops scored with the wording-only judge, the published limpet design; a keyword pre-screen is measured too ([`demo/README.md:226-233`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L226-L233), [`demo/README.md:261`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L261), [`tools/measure.mjs:161-165`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/tools/measure.mjs#L161-L165)) |
-| Typed answers read directly (F19) | yes. Code reads `.noul`, `.choice` and `.confidence` fields from the answers ([`belay.mjs:557-563`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L557-L563)) |
-| Data as fields, not templates, low (F20) | yes. Question text is fixed and points at `final_message` and `task`; nothing is spliced in ([`belay.mjs:416-451`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L416-L451)) |
-| No instructions in the state (F21) | yes. The state holds the user's request, the closing message and run counts only ([`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
-| Untrusted text treated as data, low (F22) | yes. A planted-instruction test shows the evidence veto holds; the live check is skipped without a URL ([`test/jaggedness.test.mjs:23-31`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/test/jaggedness.test.mjs#L23-L31), [`test/jaggedness.test.mjs:46-51`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/test/jaggedness.test.mjs#L46-L51)) |
-| Non-English handled (F23) | yes. One Russian-language case in the live checks, skipped by default and with no recorded result ([`test/jaggedness.test.mjs:58-61`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/test/jaggedness.test.mjs#L58-L61)) |
+| Atomic questions (F1) | yes. Three Nouls each test one property of `final_message` or `task`; the Choice asks one thing, what the message reports ([`belay.mjs:416-451`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L416-L451)) |
+| Right primitive (F2) | yes. Yes/no judgments are Nouls; the four report types are a Choice ([`belay.mjs:416-451`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L416-L451)) |
+| Structured state (F3) | yes. State is `{task, final_message, run: {file_changes, checks_run}}`; questions name `final_message` and `task` ([`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
+| Batching (F4) | yes. All four questions go in one request per stop ([`belay.mjs:504`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L504), [`belay.mjs:740`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L740)) |
+| Thresholds in code (F5) | yes. Named constants and a plugin option hold cut-offs; claims_verified's 0.7 is an inline literal that only edits a reason ([`belay.mjs:551-555`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L551-L555), [`belay.mjs:571`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L571)) |
+| No invented values (F6) | yes. Code counts edits, classifies checks and builds `run`; Jev only judges the message ([`belay.mjs:236-268`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L236-L268), [`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
+| Measured in the workflow (F7) | yes. README reports AUROC with intervals on 100 labeled stops, plus latency, tokens and cost; `measure.mjs` regenerates them ([`demo/README.md:217-262`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L217-L262), [`tools/measure.mjs:140-190`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/tools/measure.mjs#L140-L190)) |
+| Options cover every case, no overlap (F8) | yes. Four described options; blocked ("or the user is asked something") also fits a done message ending in an offer ([`belay.mjs:441-450`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L441-L450)) |
+| An "other" option where needed (F9) | yes. The Choice has `other`, "None of these" ([`belay.mjs:447-449`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L447-L449)) |
+| Evidence recorded evenly (F10) | yes. The state gives the request, the closing message and the run counts, with passing and failing checks both listed ([`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
+| Confidence drives action, low (F11) | yes. A block needs claims_done 0.70 or more and applies 0.5 or more; an outcome pick of 0.4 vetoes ([`belay.mjs:557-571`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L557-L571)) |
+| Pinned model version (F12) | yes. Default model is `jev-1.13.0`, with the README noting aliases move ([`belay.mjs:18`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L18), [`demo/README.md:102`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L102)) |
+| Choice order handled, low (F13) | n.a.. The only Choice is low stakes; the rubric marks F13 n.a. below high |
+| Size limits respected (F14) | yes. Task is cut to 1500 characters and the message to its last 2000 before sending ([`belay.mjs:453-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L453-L480)) |
+| Sample size adequate (F15) | yes. README states 100 stops with 12 positives and says the second decimal is not established ([`demo/README.md:254-258`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L254-L258), [`demo/README.md:277-278`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L277-L278)) |
+| Independent labels (F16) | yes. A Sonnet proxy labeled two judgments without seeing Jev's answers, disclosed as not by hand ([`tools/label.mjs:12-13`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/tools/label.mjs#L12-L13), [`demo/README.md:219-223`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L219-L223)) |
+| Fair baseline (F18) | yes. Same 100 stops through a wording-only claims_done arm and a keyword pre-screen; no general chat-model prompt was tried ([`demo/README.md:229-233`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L229-L233), [`demo/README.md:260-262`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/demo/README.md#L260-L262)) |
+| Typed answers read directly (F19) | yes. `decide` reads the `noul`, `choice` and [`confidence`](https://docs.typesafe.ai/confidence) fields ([`belay.mjs:557-562`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L557-L562)) |
+| Data as fields, not templates, high or low (F20) | yes. Task and message sit in state fields; question text is constant ([`belay.mjs:416-451`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L416-L451), [`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
+| No instructions in the state (F21) | yes. State holds the request, the message and two counts, and no directions ([`belay.mjs:470-480`](https://github.com/valentynkit/jev-belay/blob/ef719db7eaad/belay.mjs#L470-L480)) |
 
 </details>
 
 ## Scores
 
-- Execution 3 of 3: every question is atomic, typed, fielded and batched in one request, and each applicable gate is yes, F1-F6 and F8-F11.
-- Fit 3 of 3: each decision uses the fitting primitive, confidence gates the block through named thresholds, and the four questions share one request, F2, F4, F5 and F11.
-- Coverage 3 of 3: of pi-warden's done guard, 8 of 10 decisions are kept or changed, and the dropped UI-check and outside-project rules do not touch its own stated goal.
-- Evidence 2 of 3: measured on 100 stops with a stated sample, an interval and a wording-only baseline, with one weakness: the 0.70 threshold was tuned on the same stops, F7, F15, F16, F17, F18.
+- Execution 3 of 3: every question is atomic, typed, fielded and batched, and the options, other option, even evidence and confidence gating hold, from F1-F6, F8-F11 and F19.
+- Fit 3 of 3: each decision uses the fitting primitive, confidence gates the one action, and four questions share one request, from F2, F4 and F11.
+- Coverage 3 of 3: the pi-warden done check it grew from is kept whole (four questions, both belts, the same unverified-done rule) and its stated goal is met, from F0-F4 and F11.
+- Evidence 1 of 3: numbers come with method, but the cut-off was tuned and reported on the same 100 stops, from F7, F15, F16 and F17.
 
 ## Why this verdict
 
-No capping failure and no fatal flaw: F1-F6, F8-F11, F19 and F21 are yes, F13 is n.a. because every decision is low, and Execution and Fit are 3. It is not a 5 because Evidence is 2: F17 is no, since the 0.70 cutoff was swept on the same 100 stops that report the 7-of-12 and 1-wrong-block figures. Borderline call: blocking the stop affects only the asker's own session and costs one extra test run, capped at three per session, so the decisions are low rather than high.
+No capping failure and no fatal flaw: F1-F6, F8-F11, F19 and F21 are yes, F13 is n.a. because every decision is low, and Execution and Fit are 3. It is not a 5 because Evidence is 1: F17 is no, since the 0.70 cutoff was swept on the same 100 stops that report the 7-of-12 and 1-wrong-block figures. F22 and F23 are no (skipped tests, no recorded result) but sit below very high, so they are fixes only. Borderline call: blocking the stop affects only the asker's own session and costs one extra test run, capped at three per session, so the decisions are low rather than high.
 
 <details>
 <summary><b>Files read (27)</b></summary>

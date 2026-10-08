@@ -637,7 +637,7 @@ def test_export_index_has_type_why_and_stale_mark(tmp_path, lib):
                 summary="First sentence is the fallback. Second one is not.")
     out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
     readme = (out / "README.md").read_text()
-    assert "| Project | Type | Verdict | Why | Rated |" in readme
+    assert "| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |" in readme
     assert "One compound option set holds it back." in readme
     assert "First sentence is the fallback." in readme and "Second one is not" not in readme
     assert "2026-09-20 †" in readme and "earlier rubric" in readme.lower()
@@ -1502,27 +1502,163 @@ def test_default_library_keeps_existing_claude_library(tmp_path):
 
 # ---- export: one row per rater family (Sonnet and Codex ratings in one table) ----
 
-def _codex_rating(tmp_path, lib, rated="2026-10-03", rater="gpt-6-sol"):
-    r = make_rating(tmp_path / f"c-{rated}.md", "Proj", "o", "https://github.com/o/proj", rated, summary="Codex summary.")
+def _codex_rating(tmp_path, lib, rated="2026-10-03", rater="gpt-6-sol", verdict=4):
+    r = make_rating(tmp_path / f"c-{rated}.md", "Proj", "o", "https://github.com/o/proj", rated, verdict=verdict, summary="Codex summary.")
     r.write_text(r.read_text().replace("rater: claude-sonnet-5-5", f"rater: {rater}", 1))
     assert run(lib, "add", str(r)).returncode == 0
 
-def test_export_two_raters_two_rows_two_pages(tmp_path, lib):
-    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+def _libmod():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    return m
+
+def _readme(tmp_path, lib):
     out = tmp_path / "out"; p = run(lib, "export", str(out))
     assert p.returncode == 0, p.stdout + p.stderr
-    assert "Uses Jev for triage" in (out / "o__proj.md").read_text()
-    assert "Codex summary." in (out / "o__proj--gpt-6-sol.md").read_text()
-    assert (out / "full" / "o__proj--gpt-6-sol.md").exists()
-    readme = (out / "README.md").read_text()
-    assert "| Project | Type | Verdict | Why | Rated | Rated by |" in readme
-    assert readme.count("](o__proj") == 2 and "| GPT-6 Sol |" in readme and "| Sonnet 5.5 |" in readme
-    assert "(o__proj--gpt-6-sol.md)" in readme
+    return out, (out / "README.md").read_text()
 
-def test_export_sonnet_only_one_row(tmp_path, lib):
+def _row(readme, slug="o__proj"):
+    rows = [l for l in readme.splitlines() if l.startswith("| [") and f"]({slug}" in l]
+    assert len(rows) == 1, rows
+    return rows[0]
+
+def _table(readme):
+    return readme.split("## Ratings")[1]
+
+def test_export_one_row_per_project_with_rater_columns(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)           # Sonnet 3, GPT-6 Sol 4
+    out, readme = _readme(tmp_path, lib)
+    assert "| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |" in readme
+    row = _row(readme)
+    assert row.startswith("| [o/Proj](o__proj--gpt-6-sol.md) |")       # the project links to the rating shown (the higher)
+    assert "**4 Use it**<br><sub>Rater disagreement: in review</sub>" in row
+    assert "Codex summary." in row
+    assert "[![Sonnet 5.5: 3 verdict in review](badges/sonnet-5-5-3-verdict-in-review.svg)](o__proj.md)" in row
+    assert "[![GPT-6 Sol: 4 verdict in review](badges/gpt-6-sol-4-verdict-in-review.svg)](o__proj--gpt-6-sol.md)" in row
+    svg = (out / "badges" / "sonnet-5-5-3-verdict-in-review.svg").read_text()
+    assert "#bc4c00" in svg and ">3 verdict in review<" in svg
+    assert "Rated by" not in _table(readme)
+
+def test_export_agreeing_raters_both_used_newest_why(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib, verdict=3)
+    _, readme = _readme(tmp_path, lib); row = _row(readme)
+    assert "in review" not in row and row.count("verdict used") == 2
+    assert "Codex summary." in row                                       # the newer rating (2026-10-03) gives the Why
+
+def test_export_single_rater_used_other_column_not_rated(tmp_path, lib):
     seed_export(tmp_path, lib)
-    out = tmp_path / "out"; assert run(lib, "export", str(out)).returncode == 0
-    assert (out / "README.md").read_text().count("](o__proj") == 1 and not list(out.glob("*--*.md"))
+    out, readme = _readme(tmp_path, lib); row = _row(readme)
+    assert "3 verdict used" in row and row.rstrip().endswith("| not rated |") and "in review" not in row
+    assert "#1a7f37" in (out / "badges" / "sonnet-5-5-3-verdict-used.svg").read_text()
+
+def test_export_na_rater_counts_as_disagreement_and_shows_scored(tmp_path, lib):
+    seed_export(tmp_path, lib)                                           # Sonnet 3
+    d = lib / "projects" / "o__proj"
+    make_rating(d / "2026-10-03.md", "Proj", "o", "https://github.com/o/proj", "2026-10-03", verdict=1, project_type="jev-replacement")
+    f = d / "2026-10-03.md"
+    f.write_text(f.read_text().replace("verdict_1_code: none", "verdict_1_code: 1r").replace("rater: claude-sonnet-5-5", "rater: gpt-6-sol", 1))
+    _, readme = _readme(tmp_path, lib); row = _row(readme)
+    assert "**3 Use with a fix**<br><sub>Rater disagreement: in review</sub>" in row
+
+def test_export_two_claude_models_share_one_column(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib, rated="2026-10-04", rater="claude-opus-5-5")
+    _, readme = _readme(tmp_path, lib)
+    assert "| Project | Type | Verdict | Why | Claude&nbsp;Rating | Codex&nbsp;Rating |" in readme
+    row = _row(readme)
+    assert "[![Opus 5.5: 4 verdict used]" in row and "Sonnet 5.5" not in row and row.rstrip().endswith("| not rated |")
+
+def test_export_verdict_one_codes_that_differ_are_not_a_disagreement(tmp_path, lib):
+    d = lib / "projects" / "o__fm"; d.mkdir(parents=True)
+    for day, rater, code in (("2026-09-30", "claude-sonnet-5-5", "1a"), ("2026-10-01", "gpt-6-sol", "1b")):
+        make_rating(d / f"{day}.md", "Fm", "o", "https://github.com/o/fm", day, verdict=1)
+        g = d / f"{day}.md"; g.write_text(g.read_text().replace("verdict_1_code: none", f"verdict_1_code: {code}").replace("rater: claude-sonnet-5-5", f"rater: {rater}", 1))
+    _, readme = _readme(tmp_path, lib)
+    assert "in review" not in _row(readme, "o__fm")                      # pick() compares verdict numbers, not labels
+
+def test_badge_svg_two_lines_text_and_label():
+    m = _libmod()
+    s = m.badge_svg("Sonnet 5.5", "4", "used")
+    assert 'aria-label="Sonnet 5.5: 4 verdict used"' in s and ">Sonnet 5.5<" in s and ">4 verdict used<" in s and "#1a7f37" in s
+    assert "#bc4c00" in m.badge_svg("GPT-6 Sol", "3", "in review") and "#6e7781" in m.badge_svg("GPT-6 Sol", "3", "not used")
+    wide = m.badge_svg("GPT-7 Sol Mini Preview", "3", "not used")
+    assert int(re.search(r'width="(\d+)"', wide).group(1)) >= 6 * len("GPT-7 Sol Mini Preview")
+    assert m.badge_file("GPT-6 Sol", "4", "in review") == "gpt-6-sol-4-verdict-in-review.svg"
+    # sized to its text (103 px in Verdana 11px), so GitHub's narrow table columns don't shrink it
+    assert 110 <= int(re.search(r'width="(\d+)"', m.badge_svg("GPT-6 Sol", "4", "in review")).group(1)) <= 124
+
+def test_review_records_choice_and_export_uses_it(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)            # Sonnet 3, GPT-6 Sol 4
+    p = run(lib, "review", "o__proj", "--use", "claude"); assert p.returncode == 0, p.stdout + p.stderr
+    rv = json.loads((lib / "reviews.json").read_text())["o__proj"]
+    assert rv["use"] == "claude" and set(rv["files"]) == {"claude", "codex"}
+    _, readme = _readme(tmp_path, lib); row = _row(readme)
+    assert row.startswith("| [o/Proj](o__proj.md) |") and "**3 Use with a fix**" in row and "in review" not in row
+    assert "3 verdict used" in row and "4 verdict not used" in row and f"reviewed {rv['date']}" in row
+    assert "Uses Jev for triage" in row                                  # the Why is the chosen rater's
+
+def test_review_stops_applying_after_a_new_rating(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    assert run(lib, "review", "o__proj", "--use", "claude").returncode == 0
+    _codex_rating(tmp_path, lib, rated="2026-10-05")
+    _, readme = _readme(tmp_path, lib)
+    assert "Rater disagreement: in review" in _row(readme)
+
+def test_review_refuses_when_raters_agree(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib, verdict=3)
+    p = run(lib, "review", "o__proj", "--use", "claude")
+    assert p.returncode != 0 and "nothing to review" in p.stdout + p.stderr
+
+def test_review_refuses_an_unknown_column(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    p = run(lib, "review", "o__proj", "--use", "opus")
+    assert p.returncode != 0 and "--use must be one of: claude, codex" in p.stdout + p.stderr
+
+def test_review_refuses_outside_the_golden_checkout(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    (lib / ".golden-checkout").write_text("/somewhere/else/jev-mode\n")
+    env = {k: v for k, v in os.environ.items() if k != "JEVALUATE_TEST_UNFROZEN"}; env["JEVALUATE_LIBRARY"] = str(lib)
+    p = subprocess.run([sys.executable, str(SCRIPT), "review", "o__proj", "--use", "claude"], capture_output=True, text=True, env=env)
+    assert p.returncode != 0 and "golden checkout" in p.stdout + p.stderr   # the golden check, not the test-escape refusal
+    assert not (lib / "reviews.json").exists()
+
+def test_review_stops_applying_after_the_picked_rating_is_replaced(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)            # Sonnet 3, GPT-6 Sol 4
+    assert run(lib, "review", "o__proj", "--use", "claude").returncode == 0
+    r = make_rating(tmp_path / "s-2026-10-05.md", "Proj", "o", "https://github.com/o/proj", "2026-10-05", verdict=3)
+    assert run(lib, "add", str(r)).returncode == 0                       # the picked (Claude) rating is re-rated
+    _, readme = _readme(tmp_path, lib)
+    assert "Rater disagreement: in review" in _row(readme)
+
+def test_export_with_a_cant_rate_rating(tmp_path, lib):
+    seed_export(tmp_path, lib)
+    d = lib / "projects" / "o__c"; d.mkdir(parents=True)
+    make_rating(d / "2026-10-03.md", "C", "o", "https://github.com/o/c", "2026-10-03", verdict="cant-rate")
+    _, readme = _readme(tmp_path, lib)
+    assert "cant-rate" in _row(readme, "o__c")
+
+def test_export_writes_no_em_dash(tmp_path, lib):
+    seed_export(tmp_path, lib)
+    d = lib / "projects" / "o__dash"; d.mkdir(parents=True)
+    make_rating(d / "2026-10-03.md", "Dash", "o", "https://github.com/o/dash", "2026-10-03",
+                summary="**3 — Use with a fix.** Calls Jev once — and checks confidence.")
+    out, _ = _readme(tmp_path, lib)
+    pages = [p for p in out.rglob("*.md")]
+    assert pages and not [p.name for p in pages if "—" in p.read_text()]
+    assert "**3: Use with a fix.**" in (out / "full" / "o__dash.md").read_text()
+
+def test_export_clears_badges_no_longer_used(tmp_path, lib):
+    seed_export(tmp_path, lib); _codex_rating(tmp_path, lib)
+    out, _ = _readme(tmp_path, lib)
+    assert (out / "badges" / "sonnet-5-5-3-verdict-in-review.svg").exists()
+    assert run(lib, "review", "o__proj", "--use", "claude").returncode == 0
+    p = run(lib, "export", str(out)); assert p.returncode == 0, p.stdout + p.stderr
+    used = set(re.findall(r"badges/([\w.-]+\.svg)", (out / "README.md").read_text()))
+    assert {f.name for f in (out / "badges").iterdir()} == used
+
+def test_rater_label_names_any_claude_model():
+    m = _libmod()
+    assert [m.rater_label(r) for r in ("claude-sonnet-5-5", "claude-opus-5-5", "claude-haiku-4-5", "gpt-6-sol", "unknown")] == \
+        ["Sonnet 5.5", "Opus 5.5", "Haiku 4.5", "GPT-6 Sol", "Sonnet"]
 
 def test_rater_family_unknown_is_sonnet():
     import importlib.util
@@ -1533,7 +1669,7 @@ def test_rater_family_unknown_is_sonnet():
 def test_rater_family_other_models_kept_apart():
     import importlib.util
     spec = importlib.util.spec_from_file_location("libmod", SCRIPT); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-    assert m.rater_family("claude-opus-5-5") == "claude-opus-5-5" and m.rater_label("claude-opus-5-5") == "claude-opus-5-5"
+    assert m.rater_family("claude-opus-5-5") == "claude-opus-5-5" and m.rater_label("claude-opus-5-5") == "Opus 5.5"   # own page, tidy badge name
 
 def test_point_version_is_not_stale():
     import importlib.util

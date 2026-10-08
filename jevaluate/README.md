@@ -73,7 +73,7 @@ To rate something you can't publish, such as a client's code, your employer's pi
 
 ## Published ratings
 
-Ratings of community projects are in [`ratings/`](../ratings/), under CC0. Each model's rating of a project is its own page, and the "Rated by" column names the model, so two raters can disagree in the open. Export leaves out any project listed in [`ratings-template/unpublished.txt`](ratings-template/unpublished.txt).
+Ratings of community projects are in [`ratings/`](../ratings/), under CC0, with a badge per model. Where verdicts differ, the row shows the higher one, marked in review, until a review picks one. To keep a project off the list, name it in [`ratings-template/unpublished.txt`](ratings-template/unpublished.txt).
 
 ## Limits
 

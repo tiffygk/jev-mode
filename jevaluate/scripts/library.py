@@ -14,6 +14,7 @@ Usage:
                                               check facts, fields, coverage vs the evidence manifest, docs links and the
                                               verdict cap (add runs this first)
   python3 library.py stale                    list ratings made under an older rubric than rubric.md
+  python3 library.py review <slug> --use <claude|codex>   record which rating the list shows when the raters disagree
   python3 library.py export <outdir>          latest rating per project as a short public page, plus README, LICENSE
                                               (refuses if a line matches <library>/private-terms.txt)
   python3 library.py migrate-fields           fill missing rater/effort/project_type/via on existing ratings (idempotent)
@@ -714,8 +715,8 @@ def rater_family(rater):
 def rater_label(rater):
     r = str(rater).strip().lower()
     if r.startswith("gpt-"): return "GPT-" + "-".join(w.capitalize() for w in r[4:].split("-")).replace("-", " ", 1)
-    m = re.match(r"claude-sonnet-(\d+)-(\d+)", r)
-    return f"Sonnet {m.group(1)}.{m.group(2)}" if m else ("Sonnet" if r in ("", "unknown") else str(rater))
+    m = re.match(r"claude-([a-z]+)-(\d+)-(\d+)", r)   # any Claude model: family and version, such as Opus 5.5
+    return f"{m.group(1).capitalize()} {m.group(2)}.{m.group(3)}" if m else ("Sonnet" if r in ("", "unknown") else str(rater))
 
 def page_slug(p):
     """A rating's page name: the project folder for Sonnet ratings (unchanged), plus --<rater> for Codex ones."""
@@ -907,32 +908,125 @@ def unpublished():
                 slug, _, why = l.partition("#"); out[slug.strip()] = why.strip() or "listed in unpublished.txt"
     return out
 
+BADGE_COLOR = {"used": "#1a7f37", "in review": "#bc4c00", "not used": "#6e7781"}
+
+def published(report=False):
+    """(latest, names) for the public list: newest full rating per page slug, minus unpublished projects, and each
+    project's one published name. export and review both use it, so the list and the review command never drift."""
+    skip = unpublished(); allp = latest_per_project(full_only=True)
+    if report:
+        for s in [s for s in allp if s.split("--")[0] in skip]: print(f"left out: {s} ({skip[s.split('--')[0]]})", file=sys.stderr)
+    latest = {s: p for s, p in allp.items() if s.split("--")[0] not in skip}
+    return latest, {s: display_name(front(p), s) for s, p in latest.items() if "--" not in s}
+
+def column_key(family):
+    return "claude" if family == "sonnet" or family.startswith("claude-") else family
+
+def column_title(key):
+    # non-breaking, so GitHub keeps the column at least this wide and the badges below it full size
+    return {"claude": "Claude&nbsp;Rating", "codex": "Codex&nbsp;Rating"}.get(key, key.split("-")[0].capitalize() + "&nbsp;Rating")
+
+def badge_file(model, verdict, state):
+    return re.sub(r"[^a-z0-9]+", "-", f"{model} {verdict} verdict {state}".lower()).strip("-") + ".svg"
+
+def badge_svg(model, verdict, state):
+    low = f"{verdict} verdict {state}"; w = int(max(len(model), len(low)) * 5.6) + 14; c = BADGE_COLOR[state]
+    alt = f"{model}: {low}"
+    t = lambda y, s: f'<text x="{w / 2}" y="{y}" fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">{s}</text>'
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{alt}" width="{w}" height="38" viewBox="0 0 {w} 38">'
+            f'<title>{alt}</title><rect width="{w}" height="38" rx="3" fill="{c}"/><rect width="{w}" height="19" rx="3" fill="#3d444d"/>'
+            f'<rect y="16" width="{w}" height="3" fill="#3d444d"/>{t(13.5, model)}{t(32.5, low)}</svg>\n')
+
+def reviews():
+    f = LIB / "reviews.json"
+    return json.loads(f.read_text()) if f.exists() else {}
+
+def project_entries(latest, names):
+    out = {}
+    for slug, p in sorted(latest.items()):
+        t = p.read_text(errors="ignore"); d = front_text(t); base = slug.split("--")[0]
+        rater = (d.get("rater") or "unknown").split()[0]
+        v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
+        r = d.get("rubric", "").split(); r = r[0] if r else ""
+        ptype = (d.get("project_type", "").split() or [""])[0]
+        un = not_rated(d)
+        e = {"slug": slug, "file": p.relative_to(LIB).as_posix(), "v": "" if un else v,
+             "label": f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(t, v)}",
+             "why": why_line(t, d), "rated": d.get("rated", ""), "model": rater_label(rater),
+             "stale": rubric_date(r) < rubric_date(RUBRIC), "type": "" if ptype == "unrecorded" else ptype.replace("-", " "),
+             "who": names.get(base) or display_name(d, slug)}
+        key = column_key(rater_family(rater)); cur = out.setdefault(base, {}).get(key)
+        if cur is None or (e["rated"], e["file"]) > (cur["rated"], cur["file"]): out[base][key] = e
+    return out
+
+def _num(e): return int(e["v"]) if e["v"].isdigit() else -1
+
+def pick(entries, review):
+    keys = sorted(entries)
+    if len(keys) == 1 or len({entries[k]["v"] for k in keys}) == 1:
+        newest = max(keys, key=lambda k: (entries[k]["rated"], entries[k]["file"]))
+        return {"shown": newest, "state": {k: "used" for k in keys}, "in_review": False, "reviewed": ""}
+    if review and review.get("files") == {k: entries[k]["file"] for k in keys} and review.get("use") in entries:
+        u = review["use"]
+        return {"shown": u, "state": {k: "used" if k == u else "not used" for k in keys}, "in_review": False, "reviewed": review["date"]}
+    hi = max(keys, key=lambda k: (_num(entries[k]), entries[k]["rated"]))
+    return {"shown": hi, "state": {k: "in review" for k in keys}, "in_review": True, "reviewed": ""}
+
+def review(slug, use):
+    """Record which rating the list shows for a project whose raters disagree. Runs only from the golden checkout,
+    like add, and each review is a library commit. A review stops applying once either rating is replaced."""
+    gate = add_gate() or library_dirty()
+    if gate: sys.exit("not recorded: " + gate)
+    latest, names = published()
+    es = project_entries(latest, names).get(slug)
+    if not es: sys.exit(f"{slug}: no published rating to review")
+    if len({e["v"] for e in es.values()}) == 1:
+        sys.exit(f"{slug}: the raters agree ({' and '.join(e['v'] or 'n.a.' for e in es.values())}); nothing to review")
+    if use not in es: sys.exit(f"--use must be one of: {', '.join(sorted(es))}")
+    rv = reviews()
+    rv[slug] = {"use": use, "date": datetime.date.today().isoformat(), "files": {k: e["file"] for k, e in es.items()}}
+    (LIB / "reviews.json").write_text(json.dumps(rv, indent=1, sort_keys=True) + "\n")
+    if (LIB / ".git").exists():  # as in add: every library change is a commit
+        g = lambda *a: subprocess.run(["git", "-C", str(LIB), *a], capture_output=True, text=True)
+        g("add", "--", "reviews.json")
+        r = g("-c", "user.name=jevaluate", "-c", "user.email=jevaluate@localhost", "commit", "-qm", f"review: {slug} uses the {use} rating")
+        if r.returncode: sys.exit("not recorded in git: " + r.stderr.strip()[:200])   # an uncommitted reviews.json would block every reply
+        print("library commit: ok")
+    print(f"{slug}: the list now uses the {use} rating")
+
 def export(outdir):
     if is_private_library():
         sys.exit(f"export refused: {LIB} is a private library (it holds a PRIVATE marker); private ratings are never published")
     outdir = pathlib.Path(outdir); pages = {}; rows = []; any_stale = False
     # Only full reads and approved scopes are published; quick (extract) ratings stay in the library.
-    latest = latest_per_project(full_only=True); skip = unpublished()
-    for slug in [s for s in latest if s.split("--")[0] in skip]:
-        print(f"left out: {slug} ({skip[slug.split('--')[0]]})", file=sys.stderr)
-    latest = {s: p for s, p in latest.items() if s.split("--")[0] not in skip}
+    latest, names = published(report=True)
     hidden = [s for s, p in latest.items() if is_private_rating(front(p)) or front(p).get("url", "").strip().startswith("local:")]
     if hidden:
         sys.exit("export refused: private ratings in a public library: " + ", ".join(hidden) + ". Move them to a private library.")
-    # One name per project: every rater's row uses the name from the project's own (default-rater) page.
-    names = {s: display_name(front(p), s) for s, p in latest.items() if "--" not in s}
+    # One name per project: every rater's row uses the name from the project's own (default-rater) page (published()).
     for slug, p in sorted(latest.items()):
         nm = names.get(slug.split("--")[0])
         detail, full, d, r, why = export_pages(p, slug, nm); pages[slug] = (p, detail, full)
         v = d.get("verdict", "").split()[0] if d.get("verdict") else ""
         stale = rubric_date(r) < rubric_date(RUBRIC); any_stale |= stale
-        who = nm or display_name(d, slug)
-        ptype = (d.get("project_type", "").split() or [""])[0]
-        ptype = "" if ptype == "unrecorded" else ptype.replace("-", " ")
-        un = not_rated(d); shown = f"n.a. ({un}, not yet rated)" if un else f"{v} {verdict_label(p.read_text(errors='ignore'), v)}"
-        rows.append((1 if un else -int(v) if v.isdigit() else 0, f"| [{who}]({slug}.md) | {ptype} | **{shown}** | {cell(why)} | {d.get('rated', '')}{' †' if stale else ''} | {rater_label((d.get('rater') or 'unknown').split()[0])} |"))
+    # One row per project: a badge per rater column; where verdicts differ, the higher one shows as in review until reviewed.
+    projects = project_entries(latest, names); revs = reviews(); badges = {}
+    cols = ["claude", "codex"] + sorted({k for es in projects.values() for k in es} - {"claude", "codex"})
+    for base, es in projects.items():
+        r = pick(es, revs.get(base)); e = es[r["shown"]]
+        cells = []
+        for k in cols:
+            if k not in es: cells.append("not rated"); continue
+            x = es[k]; st = r["state"][k]; f = badge_file(x["model"], x["v"] or "n.a.", st)
+            badges[f] = badge_svg(x["model"], x["v"] or "n.a.", st)
+            cells.append(f"[![{x['model']}: {x['v'] or 'n.a.'} verdict {st}](badges/{f})]({x['slug']}.md)<br>{x['rated']}{' †' if x['stale'] else ''}"
+                         + (f"<br>reviewed {r['reviewed']}" if st == "used" and r["reviewed"] else ""))
+        note = "<br><sub>Rater disagreement: in review</sub>" if r["in_review"] else ""
+        rank = 1 if not e["v"] else -int(e["v"]) if e["v"].isdigit() else 0
+        rows.append((rank, e["who"].lower(), f"| [{e['who']}]({e['slug']}.md) | {e['type']} | **{e['label']}**{note} | {cell(e['why'])} | " + " | ".join(cells) + " |"))
     tpl = SKILL / "ratings-template"
-    readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n| Project | Type | Verdict | Why | Rated | Rated by |\n|---|---|---|---|---|---|\n" + "\n".join(r for _, r in sorted(rows)) + "\n"
+    head = "| Project | Type | Verdict | Why | " + " | ".join(column_title(k) for k in cols) + " |\n|" + "---|" * (4 + len(cols)) + "\n"
+    readme = (tpl / "README.md").read_text().rstrip("\n") + "\n\n## Ratings\n\n" + head + "\n".join(x for *_, x in sorted(rows)) + "\n"
     if any_stale: readme += "\n† Rated under an earlier rubric; a re-rating is queued.\n"
     pt = LIB / "private-terms.txt"; pats = []
     if pt.exists():
@@ -959,9 +1053,13 @@ def export(outdir):
         sys.exit("export refused; nothing written:\n- " + "\n- ".join(hits))
     outdir.mkdir(parents=True, exist_ok=True)
     (outdir / "full").mkdir(exist_ok=True)
+    nodash = lambda x: re.sub(r"\s*\u2014\s*", ": ", x)   # rater prose may carry em-dashes; published pages carry none
     for s, (_, detail, full) in pages.items():
-        (outdir / f"{s}.md").write_text(detail); (outdir / "full" / f"{s}.md").write_text(full)
-    (outdir / "README.md").write_text(readme)
+        (outdir / f"{s}.md").write_text(nodash(detail)); (outdir / "full" / f"{s}.md").write_text(nodash(full))
+    (outdir / "badges").mkdir(exist_ok=True)
+    for old in (outdir / "badges").glob("*.svg"): old.unlink()   # a badge whose state changed is no longer linked
+    for f, svg in badges.items(): (outdir / "badges" / f).write_text(svg)
+    (outdir / "README.md").write_text(nodash(readme))
     shutil.copy(tpl / "LICENSE", outdir / "LICENSE")
     print(f"exported {len(pages)} pages to {outdir}")
 
@@ -1049,11 +1147,12 @@ def list_add(name, entries):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["add", "index", "similar", "check", "blind", "migrate", "list-add", "stale", "export", "migrate-fields", "fill-docs", "init-private"])
+    ap.add_argument("cmd", choices=["add", "index", "similar", "check", "blind", "migrate", "list-add", "stale", "export", "migrate-fields", "fill-docs", "init-private", "review"])
     ap.add_argument("file", nargs="?")
     ap.add_argument("list_file", nargs="?")
     ap.add_argument("--lineage"); ap.add_argument("--stage"); ap.add_argument("--limit", type=int, default=3); ap.add_argument("--exclude"); ap.add_argument("--out")
     ap.add_argument("--link-docs", action="store_true"); ap.add_argument("--evidence"); ap.add_argument("--supersedes")
+    ap.add_argument("--use")
     a = ap.parse_intermixed_args()
     if a.cmd == "init-private":
         if not a.file: sys.exit("usage: library.py init-private <dir>")
@@ -1073,6 +1172,7 @@ if __name__ == "__main__":
     elif a.cmd == "index": print(f"index: {index()} ratings")
     elif a.cmd == "migrate": migrate()
     elif a.cmd == "stale": stale()
+    elif a.cmd == "review": review(a.file, a.use) if a.file and a.use else sys.exit("review needs <project slug> --use <claude|codex>")
     elif a.cmd == "export":
         if not a.file: sys.exit("export needs <outdir>")
         export(a.file)
