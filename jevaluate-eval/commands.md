@@ -1,6 +1,6 @@
 # jevaluate-eval commands
 
-Run from the repo root.
+Run from the repo root. Run output goes to a runs folder: set `RUNS="${JEVALUATE_RUNS:-jevaluate-eval/.work}"` first. Set `JEVALUATE_RUNS` to a folder outside the repo to keep run output after the checkout is gone; `run_eval.py` then refuses any other `--out`.
 
 | Step | Command |
 |---|---|
@@ -12,10 +12,10 @@ Run from the repo root.
 | Evidence cards | `python3 jevaluate-eval/build_cards.py <packets dir> <notes.json> <cards.json>` |
 | Answer form, new cases | `python3 jevaluate-eval/quiz/build_answer_form.py --cards <cards.json> --out <form.html>` |
 | Key from answers | `python3 jevaluate-eval/quiz/build_answer_form.py --key <answers.json>` |
-| Quiz | `python3 jevaluate-eval/quiz/run_quiz.py --system vocab\|routing --reps N --out jevaluate-eval/.work/<run>` |
-| Quiz score | `python3 jevaluate-eval/quiz/score_quiz.py jevaluate-eval/.work/<run>` |
-| Eval, before a change | `python3 jevaluate-eval/run_eval.py --phase baseline --out jevaluate-eval/.work/<run>` (also `--reps`, `--effort`) |
-| Eval, after a change | `python3 jevaluate-eval/run_eval.py --phase after --out jevaluate-eval/.work/<run>` |
-| Eval score | `python3 jevaluate-eval/score.py jevaluate-eval/.work/<run>` |
+| Quiz | `python3 jevaluate-eval/quiz/run_quiz.py --system vocab\|routing --reps N --out "$RUNS/<run>"` |
+| Quiz score | `python3 jevaluate-eval/quiz/score_quiz.py "$RUNS/<run>"` |
+| Eval, before a change | `python3 jevaluate-eval/run_eval.py --phase baseline --out "$RUNS/<run>"` (also `--reps`, `--effort`) |
+| Eval, after a change | `python3 jevaluate-eval/run_eval.py --phase after --out "$RUNS/<run>"` |
+| Eval score | `python3 jevaluate-eval/score.py "$RUNS/<run>"` |
 
 Headless wording tests: `claude -p --setting-sources "" --strict-mcp-config --tools "" --system-prompt-file <f> --model <m> --effort <e> --output-format json < prompt.md` (`--bare` fails on OAuth logins). Sum each call's `usage`; agent token logs miss these calls.

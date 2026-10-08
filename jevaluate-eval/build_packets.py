@@ -2,6 +2,24 @@
 import json, os, pathlib, re, sys, urllib.request
 
 HERE = pathlib.Path(__file__).parent
+
+
+def runs_folder():
+    """(folder, problem). The runs folder holds eval run output: $JEVALUATE_RUNS when set, else jevaluate-eval/.work/
+    (git-ignored). A set value must be an absolute folder outside this repo and not holding it, so run output never
+    lands where git sees it; a blank or relative value is a problem, not a fallback."""
+    if "JEVALUATE_RUNS" not in os.environ:
+        return (HERE / ".work").resolve(), None
+    raw = os.environ["JEVALUATE_RUNS"].strip()
+    if not raw:
+        return None, "JEVALUATE_RUNS is set but blank; unset it to use jevaluate-eval/.work/, or give an absolute folder outside the repo"
+    p = pathlib.Path(raw).expanduser()
+    if not p.is_absolute():
+        return None, f"JEVALUATE_RUNS={raw} is a relative path; give an absolute folder outside the repo"
+    p, top = p.resolve(), HERE.parent.resolve()
+    if p == top or top in p.parents or p in top.parents:
+        return None, f"JEVALUATE_RUNS={p} is inside the repo or holds it; give a folder outside {top}"
+    return p, None
 KW = re.compile(r"typesafe|\bjev|api\.|fetch\(|^\s*(import|from)\s|require\(|choice|noul|score|threshold|probab|model|refund|email|review", re.I)
 PRI = re.compile(r"fetch\(|post\(|api[./]|typesafe|TypeSafeClient|base_?url|^\s*(import|from)\s|require\(|model", re.I)
 
@@ -55,5 +73,9 @@ def build(sources, outdir):
     return status
 
 if __name__ == "__main__":
-    out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / ".work" / "packets"
+    # Rewrites the packets folder on every run; the folder must be inside the runs folder.
+    runs, problem = runs_folder()
+    if problem: sys.exit(problem)
+    out = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else runs / "packets"
+    if runs not in out.resolve().parents: sys.exit(f"{out} must be inside the runs folder {runs}")
     for slug, st in build(json.loads((HERE / "sources.json").read_text()), out).items(): print(f"{slug}: {st}")

@@ -1,8 +1,10 @@
 """Run the judgment eval: SKILL.md + rubric section 1 (routing) as the system prompt, 4 packets per call, N reps.
-Refuses (exit 2) on a bad gold file, a dirty or behind-main repo, an --out outside .work/, or an --out folder that already holds files."""
-import argparse, json, pathlib, subprocess, sys
+Refuses (exit 2) on a bad gold file, a dirty or behind-main repo, an --out outside the runs folder, or an --out folder that
+already holds files. The runs folder is $JEVALUATE_RUNS when set (a folder outside the repo, so run output never sits in a
+checkout), else jevaluate-eval/.work/ (git-ignored)."""
+import argparse, json, os, pathlib, subprocess, sys
 import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
-from build_packets import build
+from build_packets import build, runs_folder
 import score, runners
 
 HERE = pathlib.Path(__file__).parent; SKILL = HERE.parent / "jevaluate"
@@ -28,9 +30,20 @@ def preflight_repo(repo):
     elif lg.stdout.strip(): probs.append("main has commits touching jevaluate/ or jevaluate-harness/ that this branch lacks; merge main first:\n" + lg.stdout.rstrip())
     return probs
 
+def runs_dir():
+    """Where run output goes (build_packets.runs_folder); exits 2 with one sentence on a bad JEVALUATE_RUNS."""
+    folder, problem = runs_folder()
+    if problem: print(problem, file=sys.stderr); sys.exit(2)
+    return folder
+
 def preflight_out(out):
-    p = pathlib.Path(out)
-    if ".work" not in p.parts: return [f"--out {out} must be under .work/ (git-ignored), or the git-status check refuses the next run"]
+    folder, problem = runs_folder()
+    if problem: return [problem]
+    p = pathlib.Path(out).resolve()
+    if "JEVALUATE_RUNS" in os.environ:
+        if folder not in p.parents:
+            return [f"--out {out} must be a folder inside $JEVALUATE_RUNS ({folder}): run output is kept outside the repo, so it outlives the checkout"]
+    elif ".work" not in p.parts: return [f"--out {out} must be under .work/ (git-ignored), or the git-status check refuses the next run"]
     used = sorted(x.name for x in p.iterdir()) if p.is_dir() else []
     if used: return [f"--out {out} is not empty ({', '.join(used[:4])}{' ...' if len(used) > 4 else ''}): its old rep files would mix into this run's score; pass a new --out folder"]
     return []

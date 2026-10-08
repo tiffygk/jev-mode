@@ -1,5 +1,5 @@
 """Run the comprehension quiz: invented scenarios, the eval grader's instructions, N reps.
-Usage: run_quiz.py --system routing|vocab --reps N --out <.work dir> [--ids q01,q02]
+Usage: run_quiz.py --system routing|vocab --reps N --out <runs dir: $JEVALUATE_RUNS, else jevaluate-eval/.work> [--ids q01,q02]
 routing = SKILL.md + rubric section 1 (what the eval grader gets); vocab = SKILL.md + only the allowed-value lines (the red control)."""
 import argparse, json, pathlib, subprocess, sys
 import tempfile as _tf; sys.pycache_prefix = _tf.mkdtemp(prefix="jev-pyc-")  # never load a cached .pyc another process wrote (2026-10-05)
