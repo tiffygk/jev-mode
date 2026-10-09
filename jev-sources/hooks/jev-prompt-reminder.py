@@ -10,6 +10,8 @@ def main():
     except Exception:
         return 0
     prompt = p.get("prompt") or ""
+    if not isinstance(prompt, str):
+        return 0
     # topic_text drops paths, file names and the repo's folder name, so a pasted command or "jev-mode" alone is not a
     # Jev question (2026-10-08: 4 of 4 fires in one session were a folder name or a pasted settings command).
     if HANDBACK.search(prompt) or not JEV.search(topic_text(prompt)):

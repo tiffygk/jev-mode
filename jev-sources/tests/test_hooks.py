@@ -131,3 +131,19 @@ def test_dispatch_allows_jev_in_the_middle_of_a_path_with_spaces():
     # Replay of real briefs: a path with spaces splits into pieces, and the middle piece "Notes/Jev" looks like a name pair.
     b = "Read ~/Documents/Study Notes/Jev Project/plan.md and count its headings."
     assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None
+
+
+# 2026-10-08 security review of the folder-name rule.
+def test_jev_model_and_modes_still_count():
+    for p in ["What is the Jev model?", "Jev modes: which one fits?", "uses Jev,state.json for the cache"]:
+        assert run("jev-prompt-reminder.py", {"prompt": p}), p
+    out = run("jev-dispatch-check.py", {"tool_name": "Agent", "tool_input": {"prompt": "Review the Jev model and say whether it needs one call per passage."}})
+    assert out and out["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+def test_folder_names_still_dropped():
+    from jev_terms import topic_text, JEV
+    for p in ["the jev-mode-eval folder", "jev-mode's README", "the GitHub Jev mode vault"]:
+        assert not JEV.search(topic_text(p)), p
+
+def test_reminder_ignores_a_non_text_prompt():
+    assert run("jev-prompt-reminder.py", {"prompt": ["a"]}) is None

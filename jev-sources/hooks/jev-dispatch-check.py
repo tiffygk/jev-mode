@@ -13,14 +13,17 @@ def main():
         p = json.load(sys.stdin)
     except Exception:
         return 0
-    prompt = (p.get("tool_input") or {}).get("prompt") or ""
+    ti = p.get("tool_input") if isinstance(p.get("tool_input"), dict) else {}
+    prompt = ti.get("prompt") or ""
+    if not isinstance(prompt, str):
+        return 0
     if not JEV.search(topic_text(prompt)) or MARKER in prompt:
         return 0
     m = OPTOUT.search(prompt)
     if m:
         log("jev-dispatch-check", f"OPTOUT session={p.get('session_id')} reason={m.group(1).strip()[:100]!r}")
         return 0
-    log("jev-dispatch-check", f"DENY session={p.get('session_id')} desc={(p.get('tool_input') or {}).get('description')!r}")
+    log("jev-dispatch-check", f"DENY session={p.get('session_id')} desc={ti.get('description')!r}")
     reason = ("jev-dispatch-check: this agent brief is about Jev but has no source-reading block, so its findings "
               "would rest on memory. Add this line to the brief and dispatch again:\n" + BRIEF
               + "\nIf the agent makes no claim about Jev (a copy edit, a question about other tooling), add instead a line "
