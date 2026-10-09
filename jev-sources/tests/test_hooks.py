@@ -16,6 +16,16 @@ def test_reminder_fires_on_jev_question():
     out = run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?"})
     assert "route.py" in out["hookSpecificOutput"]["additionalContext"]
 
+def test_reminder_quiet_on_folder_names_and_pasted_commands():
+    """2026-10-08: the reminder fired on the repo's name and on a pasted settings command, never on a Jev question."""
+    for p in ["Can you give me more information about the jev-mode-eval folder? We have a version of it on the repo.",
+              "This folder is public; plans should go to the GitHub Jev mode Obsidian vault instead.",
+              "cp ~/.claude/settings.json ~/.claude/settings.json.bak && jq -f ~/.claude/hooks/backups/jevaluate-runs.jq ~/.claude/settings.json > x",
+              "]cp\n  ~/.claude/settings.json\n  -f ~/.claude/hooks/backups/jevaluate-runs.jq\n"]:
+        assert run("jev-prompt-reminder.py", {"prompt": p}) is None, p
+    assert run("jev-prompt-reminder.py", {"prompt": "Should Jev score these with a Choice question?"})
+    assert run("jev-prompt-reminder.py", {"prompt": "rate this repo with jevaluate"})
+
 def test_reminder_quiet_on_common_words():
     for p in ["make a choice of font", "what score did the deck get", "save the state of the app", "a cooking cookbook"]:
         assert run("jev-prompt-reminder.py", {"prompt": p}) is None, p
