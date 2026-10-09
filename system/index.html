@@ -232,7 +232,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
     <h1 id="top">Jevaluate System</h1>
     <p class="lede">Jevaluate rates whether open-source projects use TypeSafe's Jev model well. The ratings are public, so every LLM rater has to read the rubric the same way. Code checks every rule a script can check. The rater reports only what it observes, and code derives the rest. An eval with blinded labels tests the rubric before any version is frozen.</p>
     <div class="chips">
-      <span class="chip hot">798 automated tests</span>
+      <span class="chip hot">805 automated tests</span>
       <span class="chip">19 golden projects keyed</span>
       <span class="chip">quiz: 33 of 33</span>
       <span class="chip">negative control: 73%</span>
@@ -554,7 +554,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
         <div class="body"><ol class="chain">
           <li><div class="cell"><span class="scr">run_eval.py</span><span>Pre-flight refuses uncommitted rubric changes or a branch behind main.</span></div></li>
           <li><div class="cell drv"><b>Stamp</b><span>Every quiz and eval run records the commit. Eval runs also fingerprint the answer key.</span></div></li>
-          <li><div class="cell"><span class="scr">score.py</span><span>Refuses to score if the key changed after the run.</span></div></li>
+          <li><div class="cell"><span class="scr">score.py</span><span>Judgment eval only: refuses to score if the key changed after the run.</span></div></li>
         </ol></div>
       </li>
 
