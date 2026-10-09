@@ -22,7 +22,7 @@ Open an issue if you disagree with a rating, if you've shipped improvements and 
 
 ## Still improving
 
-The Jevaluate skill is still early and doesn't handle edge cases well. The rubric, the rule set and the eval harness are still being tuned, so the AI raters will get more reliable. Until then, I regularly check new ratings, audit samples of them and rule on every verdict disagreement. As I keep improving it, some ratings will be redone. If one reads as too harsh or too generous, I'm sorry. Tell me in an issue, and it will help the next version.
+The Jevaluate skill is still early and doesn't handle edge cases well. The rubric, the rule set and the eval harness are still being tuned, so the AI raters will get more reliable. Until then, I regularly check new ratings, audit samples of them and rule on each verdict-changing disagreement that no written ruling settles. As I keep improving it, some ratings will be redone. If one reads as too harsh or too generous, I'm sorry. Tell me in an issue, and it will help the next version.
 
 The goal is a Jev community that uplevels itself, sharing resources built on the best practices TypeSafe has already laid out.
 

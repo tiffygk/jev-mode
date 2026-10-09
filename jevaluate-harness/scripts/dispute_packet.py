@@ -1,6 +1,6 @@
-"""Blind tiebreaker packet for one disputed fact (round step 6): the rubric row quoted exactly, the code both ratings
+"""Blind packet for one disputed fact (round step 6): the rubric row quoted exactly, the code both ratings
 cite, and the two answers as "Answer A" and "Answer B" in seeded order. No rater name, model ID or rating path
-appears, so the reviewer settles it from the code alone, and the controller, who has read both ratings, doesn't.
+appears, so whoever answers it can't tell which rater wrote which. The controller, who has read both ratings, never answers it.
 
 Usage: python3 dispute_packet.py <rating A> <rating B> <fact, e.g. F8> <evidence dir> [--seed N] > packet.md
 The evidence dir is the rating's evidence folder (its files/ holds the project's files, / flattened to __).
