@@ -2,6 +2,15 @@
 
 Pull requests are welcome. Every change reaches `main` through a PR, and CI runs the tests and the two checks below.
 
+## Working on a branch
+
+Work on a branch in its own worktree. In a fork, first add the upstream remote:
+
+    git remote add upstream https://github.com/tiffygk/jev-mode
+    git worktree add -b <name> ../jev-mode-<name> upstream/main
+
+Contributors push to their fork and open a pull request. Before pushing, run the full test suite (`python3 -m pytest`) and the pr-contents check's own tests (`python3 -m pytest .github/scripts`). On the owner's machine, a pre-push hook (not part of the clone) refuses private terms and checks freeze tags.
+
 ## Keep the docs from going stale
 
 Three rules keep this repo's docs true as it changes:

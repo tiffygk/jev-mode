@@ -6,12 +6,7 @@ Skills for building with Jev, TypeSafe's System One model. Each skill has its ow
 
 Everything in `jevaluate/`, `jevaluate-harness/`, `jevaluate-eval/` and `shared/` decides how ratings and evals are scored: the rubric, rater instructions, scripts and eval answer keys. On the owner's machine these files are read-only in the main checkout, and a hook blocks agent edits.
 
-To change one, work on a branch in its own worktree. In a fork, first add the upstream remote:
-
-    git remote add upstream https://github.com/tiffygk/jev-mode
-    git worktree add -b <name> ../jev-mode-<name> upstream/main
-
-For any rating rule, follow the rubric-change guide in `jevaluate-harness/`, then open a pull request. The owner merges it.
+To change one, work on a branch in its own worktree (commands in `CONTRIBUTING.md`). For any rating rule, follow the rubric-change guide in `jevaluate-harness/`, then open a pull request. The owner merges it.
 
 ## Branches and tags
 
@@ -28,7 +23,7 @@ Run `git fetch upstream && git log <branch>..upstream/main -- jevaluate/ jevalua
 
 ## Before a push
 
-Before pushing, run the full test suite (`python3 -m pytest`) and fix any failure. Contributors push to their fork and open a pull request. Its description has a `Scope:` line naming the folders and files it changes; the `pr-contents` check fails on any file outside it, and on any file that reads like a plan or a private note. Run the check's tests with `python3 -m pytest .github/scripts`. Before asking for a merge, confirm every check on the pull request is green. Keep personal names, emails and private notes out of every file. On the owner's machine, a pre-push hook (not part of the clone) refuses private terms and checks freeze tags.
+Before pushing, run the full test suite (`python3 -m pytest`) and fix any failure. Every pull request description has a `Scope:` line (`CONTRIBUTING.md`, "The pr-contents check"). Before asking for a merge, confirm every check on the pull request is green. Keep personal names, emails and private notes out of every file.
 
 ## Ratings
 
