@@ -303,7 +303,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
           <li><span class="scr">library.py add</span></li>
           <li><span class="st">adjudicated</span></li>
           <li><span class="scr">dispute_packet.py</span></li>
-          <li><span class="st">owner rules</span></li>
+          <li><span class="st">owner rules on verdict-changing splits</span></li>
           <li><span class="scr">library.py review</span></li>
           <li><span class="st">final gate</span></li>
         </ol>
@@ -459,7 +459,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   <text class="qt mid" x="131" y="671">Facts</text><text id="ph1" class="sm dim mid" x="131" y="689">23 rule checks, each with evidence</text>
   <line class="ln" x1="232" y1="674" x2="276" y2="674" marker-end="url(#ah)"/>
   <rect class="box" x="276" y="650" width="202" height="48"/>
-  <text class="qt mid" x="377" y="671">Scores and stages</text><text id="ph2" class="sm dim mid" x="377" y="689">0-3 on 4 areas; build steps covered</text>
+  <text class="qt mid" x="377" y="671">Scores and stages</text><text id="ph2" class="sm dim mid" x="377" y="689">0-3 on 4 areas; build stages</text>
   <line class="ln" x1="478" y1="674" x2="522" y2="674" marker-end="url(#ah)"/>
   <rect class="box" x="522" y="650" width="202" height="48"/>
   <text class="qt mid" x="623" y="671">Comparison cards</text><text id="ph3" class="sm dim mid" x="623" y="689">similar ratings and its last one</text>
@@ -509,7 +509,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
         <header><span class="n">2</span><h3>Comprehension quiz</h3><p>Does a grader understand the rules on invented projects?</p></header>
         <div class="body">
           <ol class="chain">
-            <li><div class="cell"><span class="tag blind">blind writer</span><b>Invented projects</b><span>From a model that never saw the rubric, plus five lookalikes written for a rubric change. Some mislead on the surface. Any overlap with rubric wording is rewritten.</span></div></li>
+            <li><div class="cell"><span class="tag blind">blind writer</span><b>Invented projects</b><span>11 from a model that never saw the rubric, and 5 lookalikes a Claude session wrote for a rubric change. Some mislead on the surface. Any overlap with rubric wording is rewritten.</span></div></li>
             <li><div class="cell pk"><b>Owner's key, 16 projects</b><span>Answered first, observable fields only. A script derives the rest and refuses contradictory answers.</span></div></li>
             <li><div class="cell"><b>8 tuning, 8 held out</b><span>Three drawn at random (seed 29) after the key was final, plus the five lookalikes. Two of those no longer count as held out on stakes: their key changed after a run.</span></div></li>
           </ol>
@@ -521,7 +521,8 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
             <p class="thl"><i></i>80% give-away line: the negative control must score under it</p>
           </div>
           <p class="note"><b>Negative control:</b> A grader given only the allowed values must score under 80%, or the scenarios give their answers away. Its three misses are the three rules the vocabulary can't supply.</p>
-          <p class="note"><b>Pass bar:</b> Every tuning case right in 3 of 3 runs, held-out in 2 of 3. Every rule tag passed, held-out 3 of 3, and no wording fix was needed.</p>
+          <p class="note"><b>Pass bar:</b> Every tuning case right in 3 of 3 runs, held-out in 2 of 3.</p>
+          <p class="note"><b>Result, 2026-09-30:</b> Every rule tag passed, held-out 3 of 3, and no wording fix was needed.</p>
         </div>
       </li>
 
@@ -578,7 +579,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
     <table class="tbl">
       <thead><tr><th scope="col">Who</th><th scope="col">Blind to</th><th scope="col">Why</th><th scope="col">Guards against</th></tr></thead>
       <tbody>
-        <tr><th scope="row">Scenario writer</th><td data-k="Blind to">The rubric and the answer keys</td><td data-k="Why">Scenarios that echo rubric wording test string matching, not understanding.</td><td data-k="Guards against"><span class="tag">leakage</span></td></tr>
+        <tr><th scope="row">Scenario writer, 11 of 16 quiz projects</th><td data-k="Blind to">The rubric and the answer keys</td><td data-k="Why">Scenarios that echo rubric wording test string matching, not understanding.</td><td data-k="Guards against"><span class="tag">leakage</span></td></tr>
         <tr><th scope="row">The owner, setting the key</th><td data-k="Blind to">Every model answer and the controller's reading, until the key is set</td><td data-k="Why">Golden labels can't anchor on a model.</td><td data-k="Guards against"><span class="tag">anchoring</span></td></tr>
         <tr><th scope="row">The owner, ruling on a disagreement</th><td data-k="Blind to">Which rater gave which answer: two answers, A and B, in seeded order, with the rule and the code</td><td data-k="Why">A ruling can't lean toward one model.</td><td data-k="Guards against"><span class="tag">anchoring</span></td></tr>
         <tr><th scope="row">Blind labelers</th><td data-k="Blind to">The rubric's accept lists and each other's labels. Labels stay sealed until the owner answers.</td><td data-k="Why">An independent second opinion that can't touch the key.</td><td data-k="Guards against"><span class="tag">leakage</span><span class="tag">anchoring</span></td></tr>

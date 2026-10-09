@@ -5,7 +5,7 @@ Instrument 4. It answers two questions about a second rater, such as a different
 1. **Consistency:** do the two raters read the rubric the same way? The measure is agreement.
 2. **Accuracy:** is either rater right? The measure is an answer key the owner labels.
 
-Agreement alone never shows accuracy. Two raters reading the same rubric can agree and both be wrong.
+Agreement alone never shows accuracy. Two raters reading the same rubric can agree and both be wrong. Tune rubric wording for both, never for agreement over accuracy.
 
 Script: `rater_agreement/rater_agreement.py` (its `--help` lists the commands). It reads the library that `JEVALUATE_LIBRARY` points to.
 

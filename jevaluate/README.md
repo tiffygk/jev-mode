@@ -28,7 +28,7 @@ The rater picks the verdict, never an average; code refuses one above these rule
 | **4&nbsp;Use&nbsp;it** | Correct use, minor gaps | Execution and Fit 2 or better, no failed core fact |
 | **3&nbsp;Use&nbsp;with&nbsp;a&nbsp;fix** | Right idea, fixable flaws | A failed core fact, or results claimed with no measurement |
 | **2&nbsp;Rework&nbsp;it** | Core rules broken | Execution 1 or 0, or a fatal flaw: Jev computes values, or confidence is ignored on a high-stakes action |
-| **1&nbsp;with&nbsp;a&nbsp;code** | Not rated on the scale | Guides and Jev replacements aren't rated yet; [1a](rubric.md) flags false marketing: claims Jev, never calls it |
+| **1&nbsp;with&nbsp;a&nbsp;code** | Not rated on the scale | Guides and Jev replacements aren't rated yet. [1a](rubric.md): false marketing, claims Jev and never calls it; 1b: no call claimed; 1c: ignores Jev's answers |
 | **Can't&nbsp;rate&nbsp;yet** | Too little visible to judge | README only, or no traced call to Jev found yet |
 
 ## How it works
@@ -42,10 +42,10 @@ The rater picks the verdict, never an average; code refuses one above these rule
 
 ## Code keeps raters on track
 
-In round 1, a rater recorded a partial read as a full one, and a rating with 10 of 24 facts unknown passed as a 4. Now scripts run the steps:
+In round 1, a rater recorded a partial read as a full one, and a rating with 10 of 24 round-1 facts unknown passed as a 4. Now scripts run the steps:
 
 - `step.py` serves the rubric one part at a time, in the order above, with only the rows that apply to this project.
-- Raters can't skip ahead: routing changed after the facts is refused, the previous rating appears only after the facts and scores, and a transcript scan flags a rater that opens the rubric or past ratings directly.
+- Raters can't skip ahead: routing changed after the facts is refused, the previous rating appears only after the facts and scores, and a transcript scan flags a rater that opens the rubric or past ratings.
 - `library.py check` refuses a rating that breaks a rule and names the line to redo; `add` fills in the kind, the top stakes and every "not applicable".
 
 <a href="https://tiffygk.github.io/jev-mode/system/#d2-h"><picture><source media="(prefers-color-scheme: dark)" srcset="images/routing-dark.png"><img alt="Routing flowchart" src="images/routing-light.png"></picture></a>
