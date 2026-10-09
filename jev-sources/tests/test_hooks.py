@@ -16,6 +16,16 @@ def test_reminder_fires_on_jev_question():
     out = run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?"})
     assert "route.py" in out["hookSpecificOutput"]["additionalContext"]
 
+def test_reminder_quiet_on_folder_names_and_pasted_commands():
+    """2026-10-08: the reminder fired on the repo's name and on a pasted settings command, never on a Jev question."""
+    for p in ["Can you give me more information about the jev-mode-eval folder? We have a version of it on the repo.",
+              "This folder is public; plans should go to the GitHub Jev mode Obsidian vault instead.",
+              "cp ~/.claude/settings.json ~/.claude/settings.json.bak && jq -f ~/.claude/hooks/backups/jevaluate-runs.jq ~/.claude/settings.json > x",
+              "]cp\n  ~/.claude/settings.json\n  -f ~/.claude/hooks/backups/jevaluate-runs.jq\n"]:
+        assert run("jev-prompt-reminder.py", {"prompt": p}) is None, p
+    assert run("jev-prompt-reminder.py", {"prompt": "Should Jev score these with a Choice question?"})
+    assert run("jev-prompt-reminder.py", {"prompt": "rate this repo with jevaluate"})
+
 def test_reminder_quiet_on_common_words():
     for p in ["make a choice of font", "what score did the deck get", "save the state of the app", "a cooking cookbook"]:
         assert run("jev-prompt-reminder.py", {"prompt": p}) is None, p
@@ -121,3 +131,19 @@ def test_dispatch_allows_jev_in_the_middle_of_a_path_with_spaces():
     # Replay of real briefs: a path with spaces splits into pieces, and the middle piece "Notes/Jev" looks like a name pair.
     b = "Read ~/Documents/Study Notes/Jev Project/plan.md and count its headings."
     assert run("jev-dispatch-check.py", {"tool_input": {"prompt": b}}) is None
+
+
+# 2026-10-08 security review of the folder-name rule.
+def test_jev_model_and_modes_still_count():
+    for p in ["What is the Jev model?", "Jev modes: which one fits?", "uses Jev,state.json for the cache"]:
+        assert run("jev-prompt-reminder.py", {"prompt": p}), p
+    out = run("jev-dispatch-check.py", {"tool_name": "Agent", "tool_input": {"prompt": "Review the Jev model and say whether it needs one call per passage."}})
+    assert out and out["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+def test_folder_names_still_dropped():
+    from jev_terms import topic_text, JEV
+    for p in ["the jev-mode-eval folder", "jev-mode's README", "the GitHub Jev mode vault"]:
+        assert not JEV.search(topic_text(p)), p
+
+def test_reminder_ignores_a_non_text_prompt():
+    assert run("jev-prompt-reminder.py", {"prompt": ["a"]}) is None

@@ -91,15 +91,24 @@ TOOLING = re.compile(r"route\.py|read\.py|refresh\.sh|build_index|topics\.json|s
 HANDBACK = re.compile(r"^\s*(Another Claude session sent a message:\s*)?(<agent-message\b|<task-notification>|\[SYSTEM NOTIFICATION)", re.I)
 
 
+FILE_NAME = re.compile(r"\.(jq|json|jsonl|md|py|sh|txt|yml|yaml|html|log)$")
+
+
 def topic_text(text):
     """The brief's own words: drops code spans, file paths and quoted identifiers (plan names, slugs),
     where a Jev word names a folder or a plan rather than the task (2026-10-06: 3 refusals in one session)."""
     t = strip_code(text)
+    # the repo's own name ("jev-mode", "jev-mode-eval", spoken "Jev mode") names a folder, not Jev. Whole words only:
+    # "Jev model" and "Jev modes" stay (2026-10-08 review: the first version erased them, so a real brief got past the
+    # dispatch check). A bare "Jev mode" meaning Jev's modes is dropped too; any other Jev word still counts.
+    t = re.sub(r"\bjev(?:-mode(?:-\w+)*|\s+mode)(?!\w)", " ", t, flags=re.I)
     # a quoted span counts as an identifier when it is one token holding - _ or / ("plan-name", 'a/b'); the bounded,
     # non-overlapping pattern keeps this linear (the first version backtracked: 38 s on a 200k-char unclosed quote)
     t = re.sub(r"([\"'])([^\"'\s]{1,200})\1", lambda m: " " if re.search(r"[-_/]", m.group(2)) else m.group(0), t)
     ws = t.split()
-    drop = [is_path(w) for w in ws]
+    # a file name is dropped, but only that piece of a comma- or semicolon-joined word ("Jev,state.json" keeps Jev)
+    ws = [p for w in ws for p in (re.split(r"(?<=[,;])", w) if FILE_NAME.search(w.strip(".,;:()[]\"'")) else [w])]
+    drop = [is_path(w) or bool(FILE_NAME.search(w.strip(".,;:()[]\"'"))) for w in ws]
     for i in range(1, len(ws)):   # a path with spaces splits into pieces: a slashed piece right after a path piece is one too
         if drop[i - 1] and "/" in ws[i]:
             drop[i] = True
