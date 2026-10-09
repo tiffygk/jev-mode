@@ -22,7 +22,7 @@ Open the file for the workflow and follow it in order; each step names the gate 
 | Workflow | File | Done when |
 |---|---|---|
 | Change the rubric | `rubric-change.md` | `jevaluate-eval` passes and the owner approves the version |
-| Rate or re-rate projects | `rating-round.md` | every rating logged by `library.py add`, scan clean |
+| Rate or re-rate projects | `rating-round.md` (rater prompt: `rater-brief.md`) | every rating logged by `library.py add`, scan clean |
 | Publish ratings | `publish.md` | one pull request, reviewed |
 
 To see where you are: `python3 jevaluate-harness/scripts/harness_status.py <ledger> --workflow rubric|round` (`round` runs through publishing). It reruns the scripted gates it has (the materials check), reads the other steps from the ledger, and names the file to open next. Ledger lines: `done: <step> <YYYY-MM-DD> <evidence>`. Steps: rubric = rules-written, materials-checked, quiz-passed, eval-passed, owner-approved, frozen; round = picked, sized, costs-approved, rated, scanned, adjudicated, final-gate, release-check, published.
