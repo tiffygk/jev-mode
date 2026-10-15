@@ -6,19 +6,30 @@ import numpy as np
 from paths import DATA
 
 MODEL_ID = "minishlab/potion-base-8M"   # measured in Task 1: 256-d, ~0.26 s cold load plus one embed
+RETRIEVAL_ID = "minishlab/potion-retrieval-32M"  # trial: used under the JEV_ROUTER flag `retrieval`
 VEC, META = os.path.join(DATA, "embeddings.npy"), os.path.join(DATA, "embeddings.json")
 os.environ.setdefault("HF_HOME", os.path.join(DATA, "models"))
 ALLOW_DOWNLOAD = False  # build_index.py sets True: index time may download the model once
-_model = None
+_model, _model_of = None, None
+
+
+def _flags():
+    import route  # the JEV_ROUTER trial switch lives there; imported late because route imports this module
+    return route.flags()
+
+
+def model_id():
+    return RETRIEVAL_ID if "retrieval" in _flags() else MODEL_ID
 
 
 def _load_model():
-    global _model
-    if _model is None:
+    global _model, _model_of
+    mid = model_id()
+    if _model is None or _model_of != mid:
         if not ALLOW_DOWNLOAD:
             os.environ["HF_HUB_OFFLINE"] = "1"  # query time never touches the network
         from model2vec import StaticModel
-        _model = StaticModel.from_pretrained(MODEL_ID)
+        _model, _model_of = StaticModel.from_pretrained(mid), mid
     return _model
 
 
@@ -54,8 +65,23 @@ def prose(lines):
     return "\n".join(out)
 
 
+def signature_words(lines):
+    """Words of the fenced lines (an SDK signature), identifiers split: `request_id: str` gives `request id str`."""
+    code, fence = [], False
+    for ln in lines:
+        if ln.lstrip().startswith(("```", "~~~")):
+            fence = not fence; continue
+        if fence:
+            code.append(ln)
+    return " ".join(p.lower() for t in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", "\n".join(code).replace("\\_", "_"))
+                    for p in re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+", t))
+
+
 def section_text(row, lines):
-    body = prose(lines[row["line_start"] - 1:row["line_end"]])
+    seg = lines[row["line_start"] - 1:row["line_end"]]
+    body = prose(seg)
+    if row.get("kind") == "sdk" and "sigwords" in _flags():  # trial: signatures are fenced, so prose() drops them
+        body = body + "\n" + signature_words(seg)
     return row["heading"] + "\n" + body[:20000]
 
 
@@ -98,7 +124,7 @@ def build(rows, texts):
     v = _embed(parts)
     np.save(VEC, v)
     with open(META, "w") as fh:
-        json.dump({"model": MODEL_ID, "dim": int(v.shape[1]), "ids": [r["id"] for r in rows], "owners": owners,
+        json.dump({"model": model_id(), "dim": int(v.shape[1]), "ids": [r["id"] for r in rows], "owners": owners,
                    "keys": {r["id"]: _key(r) for r in rows}}, fh)
 
 
@@ -109,7 +135,7 @@ def scores(q, rows):
         v = np.load(VEC)
     except (FileNotFoundError, ValueError, OSError):
         return None, "no semantic index; run refresh.sh"
-    if meta.get("model") != MODEL_ID:
+    if meta.get("model") != model_id():
         return None, f"index built with model {meta.get('model')}; run refresh.sh"
     ids, owners = meta.get("ids", []), meta.get("owners", [])
     pos = {i: k for k, i in enumerate(ids)}

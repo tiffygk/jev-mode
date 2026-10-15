@@ -11,19 +11,21 @@ import usage_log
 import applicability
 from paths import CODE
 
+CAP = 12000
 ORDER = {"reference": 0, "pattern": 1, "sdk": 2, "example": 3, "vendor": 4, "other": 5}
 
 
-def bundle(questions, model=None, cap=12000):
+def bundle(questions, model=None, cap=CAP, log=True):
     seen, sem = {}, "off"
     model = model or applicability.find_model(" ".join(questions))  # found once, from every phrasing; the oldest wins
     used_model = model
     for q in questions:
         res = R.route(q, model=model)
         sem = res["semantic"]
-        usage_log.write("route", question=q, model=model, via="jev.py", semantic=res["semantic"],
-                        sections=[{"id": s["id"], "depth": s["depth"], "kind": s["kind"], "by": s.get("by")} for s in res["sections"]],
-                        definitions=[{"id": d["id"], "depth": "READ FULL", "kind": d["kind"]} for d in res.get("definitions", [])])
+        if log:
+            usage_log.write("route", question=q, model=model, via="jev.py", semantic=res["semantic"],
+                            sections=[{"id": s["id"], "depth": s["depth"], "kind": s["kind"], "by": s.get("by")} for s in res["sections"]],
+                            definitions=[{"id": d["id"], "depth": "READ FULL", "kind": d["kind"]} for d in res.get("definitions", [])])
         defs = [dict(s, depth="READ FULL") for s in res.get("definitions", [])]  # route.py prints these as READ FULL
         for d in res["sections"] + defs:
             if d["id"] not in seen or (d["depth"] == "READ FULL" and seen[d["id"]]["depth"] != "READ FULL"):
@@ -34,7 +36,7 @@ def bundle(questions, model=None, cap=12000):
     def too_new(s):
         return bool(s.get("needs_newer")) or (used_model is not None and not applicability.allowed(s, used_model))
     full.sort(key=lambda s: (too_new(s), ORDER.get(s["kind"], 9)))
-    read, read_ids, not_read, used = [], [], [], 0
+    read, read_ids, read_refs, not_read, used = [], [], [], [], 0
     for s in full:
         if read and used + s["tokens"] > cap:
             not_read.append(s)
@@ -42,9 +44,11 @@ def bundle(questions, model=None, cap=12000):
         first, rest = RD.render(s["id"]).split("\n", 1)
         read.append(first + R.marks(s) + "\n" + rest)  # CITE AS line plus any NEEDS / EXPERIMENTAL label
         read_ids.append(s["id"])
-        usage_log.write("read", id=s["id"], extract=False, tokens=s["tokens"], via="jev.py")
+        read_refs.append(f"{s['path']}#{s['heading']}")
+        if log:
+            usage_log.write("read", id=s["id"], extract=False, tokens=s["tokens"], via="jev.py")
         used += s["tokens"]
-    return {"read": read, "read_ids": read_ids, "not_read": not_read, "extract": extract, "semantic": sem}
+    return {"read": read, "read_ids": read_ids, "read_refs": read_refs, "not_read": not_read, "extract": extract, "semantic": sem}
 
 
 def main():
@@ -52,7 +56,7 @@ def main():
     ap.add_argument("question")
     ap.add_argument("--docs-words")
     ap.add_argument("--model")
-    ap.add_argument("--cap", type=int, default=12000)
+    ap.add_argument("--cap", type=int, default=CAP)
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     qs = [a.question] + ([a.docs_words] if a.docs_words else [])

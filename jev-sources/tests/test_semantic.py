@@ -159,3 +159,39 @@ def test_rebuild_without_model_removes_old_vectors(tmp_path, monkeypatch):
     monkeypatch.setattr(semantic, "available", lambda: (False, "model unavailable (test)"))
     build_index.main()
     assert not (tmp_path / "embeddings.npy").exists() and not (tmp_path / "embeddings.json").exists()
+
+
+def test_model_id_follows_the_retrieval_flag(sem, monkeypatch):
+    s, d = sem
+    monkeypatch.delenv("JEV_ROUTER", raising=False)
+    assert s.model_id() == "minishlab/potion-base-8M"
+    monkeypatch.setenv("JEV_ROUTER", "rec3")
+    assert s.model_id() == "minishlab/potion-base-8M"
+    monkeypatch.setenv("JEV_ROUTER", "retrieval")
+    assert s.model_id() == "minishlab/potion-retrieval-32M"
+    monkeypatch.setenv("JEV_ROUTER", "rec3+4")
+    assert s.model_id() == "minishlab/potion-retrieval-32M"
+
+
+def test_an_index_built_with_another_model_is_reported_stale(sem, monkeypatch):
+    s, d = sem
+    ok, why = s.available()
+    if not ok: pytest.skip(why)
+    s.build(ROWS, TEXTS)
+    monkeypatch.setenv("JEV_ROUTER", "retrieval")
+    sc, why = s.scores("anything", ROWS)
+    assert sc is None and "minishlab/potion-base-8M" in why
+
+
+SIG_ROWS = [{"id": "docs/sdk#0", "path": "docs/sdk.md", "heading": "typesafe_sdk.SystemOneResponse.request_id", "kind": "sdk",
+             "line_start": 1, "line_end": 7}]
+SIG_LINES = ["### typesafe_sdk.SystemOneResponse.request_id", "", "```python", "request_id: str", "```", "", "The request id header."]
+
+
+def test_sigwords_add_signature_words_for_sdk_sections_only(sem, monkeypatch):
+    s, d = sem
+    monkeypatch.setenv("JEV_ROUTER", "sigwords")
+    assert "request id str" in s.section_text(SIG_ROWS[0], SIG_LINES)
+    assert "request id str" not in s.section_text(dict(SIG_ROWS[0], kind="reference"), SIG_LINES)
+    monkeypatch.setenv("JEV_ROUTER", "today")
+    assert "request id str" not in s.section_text(SIG_ROWS[0], SIG_LINES)

@@ -181,7 +181,7 @@ def embed(rows):
                 lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")
                 texts.append(semantic.section_text(r, lines))
             semantic.build(rows, texts)
-            print(f"semantic index: {len(rows)} sections, {semantic.MODEL_ID}")
+            print(f"semantic index: {len(rows)} sections, {semantic.model_id()}")
         else:
             print(f"semantic index skipped: {why}")
     except Exception as e:

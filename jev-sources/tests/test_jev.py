@@ -282,3 +282,28 @@ def test_a_batch_job_latency_question_routes_no_vendor_section(lib):
     out = subprocess.run([sys.executable, os.path.join(SCRIPTS, "route.py"), "is Jev faster than an LLM"],
                          capture_output=True, text=True).stdout
     assert "vendor claim" in out
+
+
+def test_read_refs_are_the_path_and_heading_of_each_read_id(J, monkeypatch):
+    routes(J, monkeypatch, {"q": {"sections": [sec("docs/a#1", kind="pattern"), sec("docs/b#2", kind="reference"), sec("docs/c#0", tokens=900)]}})
+    b = J.bundle(["q"], cap=500)
+    assert b["read_ids"] == ["docs/b#2", "docs/a#1"]
+    assert b["read_refs"] == ["docs/b.md#Hdocs/b#2", "docs/a.md#Hdocs/a#1"]
+
+
+def test_cap_default_is_12000(J):
+    assert J.CAP == 12000
+
+
+def test_log_false_writes_no_usage_line_even_with_logging_on(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(tmp_path))
+    monkeypatch.setenv("JEV_LOG", "on")
+    for name in ("jev", "route", "read", "usage_log", "paths", "applicability", "semantic"):
+        sys.modules.pop(name, None)
+    import jev
+    monkeypatch.setattr(jev.RD, "render", lambda sid, extract_terms=None: f"CITE AS: {sid}\nbody")
+    monkeypatch.setattr(jev.R, "route", lambda q, model=None: dict(definitions=[], semantic="on", sections=[sec("docs/a#0")]))
+    jev.bundle(["q"], log=False)
+    assert not (tmp_path / "logs").exists()
+    jev.bundle(["q"])
+    assert (tmp_path / "logs" / "route.jsonl").exists() and (tmp_path / "logs" / "read.jsonl").exists()

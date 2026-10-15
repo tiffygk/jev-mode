@@ -18,5 +18,6 @@
  {"q": "Should I include questions in a request even if their answers will only be needed for some inputs?", "heading": "Ask speculative questions"},
  {"q": "How much cheaper and faster is it to bundle 13 questions in one request versus calling 13 times?", "heading": "Ask speculative questions"},
  {"q": "Why does accuracy drop when I dump a huge amount of loosely related data into the input, and what should I do instead?", "heading": "Large state full of irrelevant detail"},
- {"q": "If I can't trim the input in my own code, is there another way to cut out the irrelevant parts?", "heading": "Large state full of irrelevant detail"}
+ {"q": "If I can't trim the input in my own code, is there another way to cut out the irrelevant parts?", "heading": "Large state full of irrelevant detail"},
+ {"q": "What does a Box question ask and what fields does its answer return?", "heading": "Response structure", "path": "docs/primitives__box.md"}
 ]
