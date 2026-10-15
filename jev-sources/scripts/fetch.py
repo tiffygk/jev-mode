@@ -4,13 +4,26 @@ A page that fails (404, rate limit) or has moved is named and skipped; the run c
 A blog post with nothing below its title (a video post) is named as skipped and does not fail the run.
 A page whose text changed is archived first (archive/<run time>/changed/), and the changed and removed sections go
 through the same record and checks as check_new.py: section_changes.json, STALE_CITATIONS.md, the routing retest."""
-import datetime, os, sys
+import datetime, os, subprocess, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pages, blog, check_new
+from paths import SCRIPTS
 
 
 def main(fetch=None):
+    if not pages.take_lock():
+        print("fetch: another check is running; try again when it finishes")
+        return 1
+    try:
+        return _main(fetch)
+    finally:
+        pages.drop_lock()
+
+
+def _main(fetch):
     fetch = fetch or pages.get
+    if pages.prepare(locked=True):  # migrated or re-cleaned pages: the index follows
+        subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=False, capture_output=True)
     try:
         found, _ = pages.live_pages(fetch)
     except RuntimeError as e:
@@ -22,7 +35,10 @@ def main(fetch=None):
     for slug in slugs:
         try:
             text = fetch(pages.BASE + slug + ".md")
-            if slug in lib and pages.digest(pages.body(lib[slug])) != pages.digest(text):
+            raw = pages.raw_text(lib[slug]) if slug in lib else None
+            if slug in lib and raw is None:  # no raw copy to compare: the unverified copy is kept in the archive
+                pages.archive(lib[slug], "replaced", now)
+            elif slug in lib and pages.digest(raw) != pages.digest(text):
                 pages.archive(lib[slug], "changed", now)
                 changed.append(slug)
             elif slug not in lib:

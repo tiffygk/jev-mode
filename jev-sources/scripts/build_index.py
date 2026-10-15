@@ -140,7 +140,13 @@ def sections(path):
     return rows
 
 
-def main():
+def main(prepare=True):
+    if prepare:  # migrate old pages and re-clean after a cleaner version change; --no-prepare when the caller just did
+        import pages
+        pages.prepare()
+        for slug, path in pages.library().items():
+            if pages.cleaner_of(path) == f"failed:{pages.clean.VERSION}" and slug not in pages.FAILED_NOW:
+                print(f"NOTICE: could not clean {os.path.relpath(path, ROOT).replace(os.sep, '/')} (cleaner failed {pages.clean.VERSION}; the raw text is indexed)")
     out = []
     blocked = blocked_blog_files()
     for b in blocked:
@@ -189,4 +195,4 @@ def embed(rows):
 
 
 if __name__ == "__main__":
-    main()
+    main(prepare="--no-prepare" not in sys.argv[1:])

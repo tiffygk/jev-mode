@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Check TypeSafe's docs for changed, new and removed pages and update the library.
-A page is flagged when its sitemap date is newer than its saved time; only flagged and new pages are downloaded,
-and a download is kept only when its text changed (the old copy goes to archive/<run time>/changed/). A library page
-that is in neither the sitemap nor llms.txt and returns 404 or redirects goes to archive/<run time>/removed/.
+A page is flagged when its sitemap date is newer than its saved time (or it has no raw copy); only flagged and new pages
+are downloaded, and a download is kept only when its text changed against the raw copy (the old copies, raw and
+cleaned, go to archive/<run time>/changed/). A cleaner version change re-cleans pages from raw and is never a change.
+A library page that is in neither the sitemap nor llms.txt and returns 404 or redirects goes to archive/<run time>/removed/.
 Blog posts (typesafe.ai's sitemap): only posts not yet saved are fetched, and a saved post is never pruned.
 Writes NEW_PAGES.txt (shown once by the reminder hook), section_changes.json and last_check.json.
 Started in the background by hooks/refresh_trigger.py; safe to run by hand."""
@@ -14,7 +15,8 @@ import usage_log
 
 STATE, NOTICE = os.path.join(DATA, "last_check.json"), os.path.join(DATA, "NEW_PAGES.txt")
 NOTICE_CAP = 1500  # the hook shows this to the model; page names and errors come from TypeSafe's site
-CHANGES, LOCK = os.path.join(DATA, "section_changes.json"), os.path.join(DATA, "check.lock")
+CHANGES, LOCK = os.path.join(DATA, "section_changes.json"), pages.LOCK
+take_lock = pages.take_lock  # the lock lives in pages.py; build_index and fetch take it too
 
 
 def state_read():
@@ -74,7 +76,7 @@ def record_changes(res, now, rebuild=True):
     the routing, applicability and citation checks. Returns their notice lines. Shared with fetch.py (full refresh)."""
     before = headings()
     if rebuild:
-        subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py")], check=False, capture_output=True)
+        subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=False, capture_output=True)
         after = headings()
         res["removed_sections"] = sorted([p, h] for p, h in before - after)
         res["added_sections"] = sorted([p, h] for p, h in after - before)
@@ -91,6 +93,8 @@ def run(fetch=None, now=None, rebuild=True):
     fetch = fetch or pages.get
     now = now or datetime.datetime.now(pages.UTC)
     notes = []
+    if pages.prepare(locked=True) and rebuild:  # migrated or re-cleaned pages: the index follows, and this is no docs change
+        subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=False, capture_output=True)
     live, read = pages.live_pages(fetch)  # RuntimeError when neither list reads
     both = read == {"sitemap", "llms"}
     if not both:
@@ -98,7 +102,9 @@ def run(fetch=None, now=None, rebuild=True):
     lib = pages.library()
     new = sorted(s for s in live if s not in lib)
     flagged = sorted(s for s, p in lib.items() if live.get(s) and (pages.saved_at(p) is None or live[s] > pages.saved_at(p) - MARGIN))
-    res = {"changed": [], "added": [], "redated": [], "removed": [], "moved": {}, "failed": [], "listed_missing": [],
+    unraw = {s for s in pages.needs_raw() if s in lib}  # cleaned pages with no raw copy: refetched whatever their date
+    flagged = sorted(set(flagged) | unraw)
+    res = {"changed": [], "added": [], "redated": [], "reraw": [], "removed": [], "moved": {}, "failed": [], "listed_missing": [],
            "removed_sections": [], "added_sections": []}
     for s in flagged + new:
         try:
@@ -113,12 +119,17 @@ def run(fetch=None, now=None, rebuild=True):
             res["failed"].append(f"{s} ({e})")
             continue
         if s in lib:
-            if pages.digest(pages.body(lib[s])) == pages.digest(text):
+            raw = pages.raw_text(lib[s])
+            if raw is None:  # no raw copy to compare: this download becomes it; the unverified copy is kept in the archive
+                pages.archive(lib[s], "replaced", now)
+                res["reraw"].append(s)
+            elif pages.digest(raw) == pages.digest(text):
                 pages.touch(lib[s], now)
                 res["redated"].append(s)
                 continue
-            pages.archive(lib[s], "changed", now)
-            res["changed"].append(s)
+            else:
+                pages.archive(lib[s], "changed", now)
+                res["changed"].append(s)
         else:
             res["added"].append(s)
         pages.write_page(s, text, now)
@@ -174,23 +185,6 @@ def run(fetch=None, now=None, rebuild=True):
     return res
 
 
-def take_lock():
-    """True when this run owns the lock: created with O_EXCL, or a stale lock (over an hour old) replaced."""
-    os.makedirs(DATA, exist_ok=True)
-    for _ in range(2):
-        try:
-            os.close(os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
-            return True
-        except FileExistsError:
-            try:
-                if time.time() - os.path.getmtime(LOCK) < 3600:
-                    return False
-                os.remove(LOCK)
-            except OSError:
-                return False
-    return False
-
-
 def main(fetch=None, locked=False):
     """locked=True when refresh_trigger already took the lock for this run (it passes --locked)."""
     if not locked and not take_lock():
@@ -205,10 +199,7 @@ def main(fetch=None, locked=False):
         print(f"check_new: {e}", file=sys.stderr)
         return 1
     finally:
-        try:
-            os.remove(LOCK)  # only the run that owns the lock gets here
-        except OSError:
-            pass
+        pages.drop_lock()  # only the run that owns the lock gets here
 
 
 if __name__ == "__main__":
