@@ -22,16 +22,18 @@ def main(fetch=None):
 
 def _main(fetch):
     fetch = fetch or pages.get
-    if pages.prepare(locked=True):  # migrated or re-cleaned pages: the index follows
+    now = datetime.datetime.now(pages.UTC)
+    prepared = pages.prepare(locked=True, now=now)
+    half = list(pages.HALF_WRITTEN)  # new raw text beside an old cleaned copy (a crash): reported as changed below
+    if prepared and not half:  # migrated or re-cleaned pages: the index follows
         subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=False, capture_output=True)
     try:
         found, _ = pages.live_pages(fetch)
     except RuntimeError as e:
         sys.exit(f"fetch: {e}")
     slugs = sorted(found)
-    now = datetime.datetime.now(pages.UTC)
     lib = pages.library()
-    ok, failed, changed, added = 0, [], [], []
+    ok, failed, changed, added = 0, [], list(half), []
     for slug in slugs:
         try:
             text = fetch(pages.BASE + slug + ".md")
@@ -39,8 +41,9 @@ def _main(fetch):
             if slug in lib and raw is None:  # no raw copy to compare: the unverified copy is kept in the archive
                 pages.archive(lib[slug], "replaced", now)
             elif slug in lib and pages.digest(raw) != pages.digest(text):
-                pages.archive(lib[slug], "changed", now)
-                changed.append(slug)
+                if slug not in changed:  # prepare already archived a half-written page's old copy
+                    pages.archive(lib[slug], "changed", now)
+                    changed.append(slug)
             elif slug not in lib:
                 added.append(slug)
             pages.write_page(slug, text)

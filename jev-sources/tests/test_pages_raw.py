@@ -249,3 +249,46 @@ def glob_changed(tmp_path):
         if os.sep + "changed" in root + os.sep:
             out += [os.path.join(root, f) for f in files]
     return out
+
+
+def half_written(pg, slug, old, new):
+    """A crash between the raw write and the cleaned write: raw holds the new text and time, cleaned the old text and time."""
+    pg.write_page(slug, old, T13)
+    raw = pg.raw_dest(slug)
+    with open(raw, "w", encoding="utf-8") as f:
+        f.write(f"<!-- saved 2026-10-14T21:07:12Z from {pg.BASE}{slug}.md -->\n\n{new}")
+
+
+def test_a_half_written_page_is_reported_changed_and_indexed_from_the_new_text(env, tmp_path):
+    pg, cn = env
+    new = RAW + "A paragraph that landed while the crash was pending.\n"
+    half_written(pg, "models", RAW, new)
+    assert pg.cleaner_of(pg.dest("models")) == pg.clean.VERSION  # the old skip rule would pass this page over
+    res = cn.run(site(pg, {"models": new}, {"models": "2026-10-14T20:00:00Z"}, ["models"], []), now=T14, rebuild=False)
+    assert res["changed"] == ["models"] and "models" in res["notice"]
+    assert "pending" in pg.body(pg.dest("models"))
+    assert pg.saved_at(pg.dest("models")) == pg.saved_at(pg.raw_dest("models"))
+    old = tmp_path / "archive" / RUN14 / "changed" / "docs" / "models.md"
+    assert old.exists() and "pending" not in old.read_text(encoding="utf-8")
+    assert "models" in json.load(open(cn.CHANGES))["changed"]
+
+
+def test_prepare_alone_recleans_a_half_written_page(env):
+    pg, _ = env
+    half_written(pg, "models", RAW, RAW + "Newer.\n")
+    assert pg.prepare() == ["models"]
+    assert "Newer." in pg.body(pg.dest("models"))
+    assert pg.prepare() == []
+
+
+def test_a_version_bump_with_equal_saved_times_is_still_silent(env, tmp_path, monkeypatch):
+    pg, cn = env
+    pg.write_page("models", RAW, T13)
+    stale = tmp_path / "STALE_CITATIONS.md"
+    stale.write_text("old")
+    os.utime(stale, (1000, 1000))
+    monkeypatch.setattr(clean_mod(), "VERSION", 2)
+    res = cn.run(site(pg, {"models": RAW}, {"models": "2026-10-14T21:00:00Z"}, ["models"], []), now=T14, rebuild=False)
+    assert res["changed"] == [] and not os.path.exists(cn.CHANGES)
+    assert os.path.getmtime(stale) == 1000
+    assert not (tmp_path / "archive").exists()

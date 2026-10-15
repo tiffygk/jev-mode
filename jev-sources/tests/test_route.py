@@ -115,6 +115,8 @@ def test_fetch_names_failed_pages(tmp_path, monkeypatch):
     sys.path.insert(0, f"{CODE}/scripts")
     import fetch, pages
     monkeypatch.setattr(pages, "DATA", str(tmp_path))
+    monkeypatch.setattr(pages, "LOCK", str(tmp_path / "check.lock"))  # bound at import: without this the lock lands in the configured library
+    monkeypatch.setattr(pages, "NEEDS_RAW", str(tmp_path / "needs_raw.json"))
     def fake(url, tries=3):
         if url.endswith("llms.txt"):
             return "[a](https://docs.typesafe.ai/concepts/state.md) [b](https://docs.typesafe.ai/cookbooks/gone.md)"

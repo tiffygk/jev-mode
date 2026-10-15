@@ -15,6 +15,7 @@ UTC = datetime.timezone.utc
 HEADER = re.compile(r"^<!-- saved (\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2}:\d{2})Z)? from \S+(?: \| cleaner (failed )?(\d+))? -->")
 FROM_URL = re.compile(r"^<!-- saved \S+ from (\S+)")
 LOCK, NEEDS_RAW = os.path.join(DATA, "check.lock"), os.path.join(DATA, "needs_raw.json")
+HALF_WRITTEN = []  # slugs the last prepare() found with a raw copy newer than the cleaned one: new docs text the index never saw
 FAILED_NOW = set()  # slugs whose cleaning raised in this process: the build names them once
 SKIP = ("docs/cookbooks__", "docs/patterns__")  # old MDX duplicates of cookbooks/ and patterns/
 
@@ -307,12 +308,16 @@ def needs_raw():
         return []
 
 
-def prepare(locked=False):
+def prepare(locked=False, now=None):
     """Brings every library page to the current layout and returns the slugs it rewrote.
     No raw copy, old-style header: the page file is the raw copy, kept byte for byte, then cleaned.
     No raw copy, cleaner header (or no header): never treated as raw; listed in needs_raw.json for a refetch.
     Raw copy and a cleaner version other than clean.VERSION: re-cleaned from raw, saved time kept.
-    'cleaner failed <VERSION>': skipped, that version already failed on the page."""
+    'cleaner failed <VERSION>': skipped, that version already failed on the page.
+    Raw copy saved at a different time than the cleaned one (a crash between write_page's two writes): the raw copy is
+    docs text the index never saw, so the old cleaned copy is first copied to archive/<run>/changed/, the page is re-cleaned
+    whatever its cleaner version, and its slug is listed in HALF_WRITTEN (callers report it as changed)."""
+    HALF_WRITTEN.clear()
     own = False
     if not locked:
         if not take_lock():
@@ -332,8 +337,16 @@ def prepare(locked=False):
                         needs.append(slug)
                         continue
                     _atomic_write(raw_path, open(path, "rb").read())
-                elif cl == clean.VERSION or cl == f"failed:{clean.VERSION}":
-                    continue
+                else:
+                    t_raw, t_clean = saved_at(raw_path), saved_at(path)
+                    if t_raw is not None and t_clean is not None and t_raw != t_clean:
+                        run = os.path.join(DATA, "archive", (now or datetime.datetime.now(UTC)).strftime("%Y-%m-%dT%H%M%SZ"), "changed")
+                        keep = os.path.join(run, os.path.relpath(path, DATA))
+                        os.makedirs(os.path.dirname(keep), exist_ok=True)
+                        shutil.copy2(path, keep)
+                        HALF_WRITTEN.append(slug)
+                    elif cl == clean.VERSION or cl == f"failed:{clean.VERSION}":
+                        continue
                 head = open(raw_path, encoding="utf-8").readline()
                 m = HEADER.match(head)
                 if not m:

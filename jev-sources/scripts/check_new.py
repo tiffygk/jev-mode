@@ -93,7 +93,9 @@ def run(fetch=None, now=None, rebuild=True):
     fetch = fetch or pages.get
     now = now or datetime.datetime.now(pages.UTC)
     notes = []
-    if pages.prepare(locked=True) and rebuild:  # migrated or re-cleaned pages: the index follows, and this is no docs change
+    prepared = pages.prepare(locked=True, now=now)
+    half = [s for s in pages.HALF_WRITTEN]  # a crash left new raw text beside an old cleaned copy: a docs change, recorded below
+    if prepared and rebuild and not half:  # migrated or re-cleaned pages: the index follows, and this is no docs change
         subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=False, capture_output=True)
     live, read = pages.live_pages(fetch)  # RuntimeError when neither list reads
     both = read == {"sitemap", "llms"}
@@ -104,7 +106,7 @@ def run(fetch=None, now=None, rebuild=True):
     flagged = sorted(s for s, p in lib.items() if live.get(s) and (pages.saved_at(p) is None or live[s] > pages.saved_at(p) - MARGIN))
     unraw = {s for s in pages.needs_raw() if s in lib}  # cleaned pages with no raw copy: refetched whatever their date
     flagged = sorted(set(flagged) | unraw)
-    res = {"changed": [], "added": [], "redated": [], "reraw": [], "removed": [], "moved": {}, "failed": [], "listed_missing": [],
+    res = {"changed": list(half), "added": [], "redated": [], "reraw": [], "removed": [], "moved": {}, "failed": [], "listed_missing": [],
            "removed_sections": [], "added_sections": []}
     for s in flagged + new:
         try:
@@ -128,8 +130,9 @@ def run(fetch=None, now=None, rebuild=True):
                 res["redated"].append(s)
                 continue
             else:
-                pages.archive(lib[s], "changed", now)
-                res["changed"].append(s)
+                if s not in res["changed"]:  # prepare already archived a half-written page's old copy
+                    pages.archive(lib[s], "changed", now)
+                    res["changed"].append(s)
         else:
             res["added"].append(s)
         pages.write_page(s, text, now)
