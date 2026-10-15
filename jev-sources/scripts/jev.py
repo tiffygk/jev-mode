@@ -3,16 +3,31 @@
 section in reading order up to a token cap, and print one bundle with a citation line per section. Sections past the
 cap are listed with their read.py commands, never dropped.
   jev.py "<question>" [--docs-words "<question in the docs' words>"] [--model jev-1.13.0] [--cap 12000] [--json]"""
-import argparse, json, os, sys
+import argparse, json, os, shlex, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import route as R
 import read as RD
 import usage_log
 import applicability
-from paths import CODE
+from paths import CODE, REFRESH
+import clean
 
 CAP = 12000
 ORDER = {"reference": 0, "pattern": 1, "sdk": 2, "example": 3, "vendor": 4, "other": 5}
+
+
+def reading_plan(not_read, cap):
+    """Batches of unread sections in reading order; each fits the cap, and a section over the cap stands alone."""
+    batches, cur, used = [], [], 0
+    for s in not_read:
+        if cur and used + s["tokens"] > cap:
+            batches.append(cur)
+            cur, used = [], 0
+        cur.append(s)
+        used += s["tokens"]
+    if cur:
+        batches.append(cur)
+    return batches
 
 
 def bundle(questions, model=None, cap=CAP, log=True):
@@ -36,7 +51,7 @@ def bundle(questions, model=None, cap=CAP, log=True):
     def too_new(s):
         return bool(s.get("needs_newer")) or (used_model is not None and not applicability.allowed(s, used_model))
     full.sort(key=lambda s: (too_new(s), ORDER.get(s["kind"], 9)))
-    read, read_ids, read_refs, not_read, used = [], [], [], [], 0
+    read, read_ids, read_refs, not_read, notices, used = [], [], [], [], [], 0
     for s in full:
         if read and used + s["tokens"] > cap:
             not_read.append(s)
@@ -45,10 +60,16 @@ def bundle(questions, model=None, cap=CAP, log=True):
         read.append(first + R.marks(s) + "\n" + rest)  # CITE AS line plus any NEEDS / EXPERIMENTAL label
         read_ids.append(s["id"])
         read_refs.append(f"{s['path']}#{s['heading']}")
+        n = clean.code_shaped(rest.split("\n"))
+        if n >= 10:
+            notices.append(f"NOTICE: {s['path']}#{s['heading']} looks like site code ({n} code-shaped lines). "
+                           f"Run {REFRESH} to re-clean; treat this section as unverified until then.")
         if log:
             usage_log.write("read", id=s["id"], extract=False, tokens=s["tokens"], via="jev.py")
         used += s["tokens"]
-    return {"read": read, "read_ids": read_ids, "read_refs": read_refs, "not_read": not_read, "extract": extract, "semantic": sem}
+    plan = reading_plan(not_read, cap) if sum(s["tokens"] for s in not_read) > cap else []
+    return {"read": read, "read_ids": read_ids, "read_refs": read_refs, "not_read": not_read, "extract": extract,
+            "semantic": sem, "plan": [[s["id"] for s in b] for b in plan], "plan_batches": plan, "notices": notices}
 
 
 def main():
@@ -65,12 +86,27 @@ def main():
     usage_log.write("jev", questions=qs, model=model, cap=a.cap, read=b["read_ids"],
                     not_read=[s["id"] for s in b["not_read"]], extract=[s["id"] for s in b["extract"]])
     if a.json:
-        print(json.dumps({**b, "not_read": [s["id"] for s in b["not_read"]], "extract": [s["id"] for s in b["extract"]]}, indent=1))
+        print(json.dumps({**{k: v for k, v in b.items() if k != "plan_batches"}, "not_read": [s["id"] for s in b["not_read"]],
+                          "extract": [s["id"] for s in b["extract"]]}, indent=1))
         return 0
     print("\n\n".join(b["read"]) or "no section found; route in other words or refresh")
     rd = f"python3 {os.path.join(CODE, 'scripts', 'read.py')}"
-    for s in b["not_read"]:
-        print(f"NOT YET READ (over the cap): {rd} '{s['id']}'  # {s['path']}#{s['heading']}")
+    for line in b["notices"]:
+        print(line)
+    if b["plan_batches"]:
+        total = sum(s["tokens"] for s in b["not_read"])
+        print(f"READING PLAN: {len(b['not_read'])} sections, {total:,} tokens not yet read, more than the cap ({a.cap:,}). "
+              f"Start one reader per batch (SKILL.md, \"Over the cap\").")
+        print("GOAL: " + " | ".join(qs))
+        for n, batch in enumerate(b["plan_batches"], 1):
+            print(f"BATCH {n} (~{sum(s['tokens'] for s in batch):,} tokens):")
+            for s in batch:
+                print(f"  {rd} {shlex.quote(s['id'])}   # {s['path']}#{s['heading']}")
+        print("Each reader returns only lines of this form, with no page text:")
+        print('FINDING: <one sentence> | CITE AS: <path#heading (label)> | QUOTE: "<exact words>"')
+    else:
+        for s in b["not_read"]:
+            print(f"NOT YET READ (over the cap): {rd} '{s['id']}'  # {s['path']}#{s['heading']}")
     for s in b["extract"]:
         print(f"EXTRACT (claims from it are unverified until read in full): {rd} '{s['id']}'")
     print(f"semantic: {b['semantic']}")

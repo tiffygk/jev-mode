@@ -322,3 +322,118 @@ def test_presets_expand_to_their_flags(trial, monkeypatch):
         assert trial.flags() == flags, name
     monkeypatch.delenv("JEV_ROUTER")
     assert trial.flags() == set()
+
+
+# ---- read.py: CITE AS forms and the quote check, on an invented library ----------------------------------------
+
+H = "<!-- saved 2026-10-15T09:00:00Z from https://docs.typesafe.ai/x.md | cleaner 1 -->\n\n"
+READ_PAGES = {
+    "docs/primitives__box.md": H + "# Box\n\nIntro line.\n\n## Response structure\n\nThe box returns four numbers.\n\n"
+                               "## Primitives (Questions)\n\nA question has one primitive.\n",
+    "cookbooks/setup_twice.md": H + "# Walkthrough\n\n## Setup\n\nInstall the client first.\n\n## Setup\n\n"
+                                 "Pass the **request\\_id** back with   every call.\n",
+}
+
+
+@pytest.fixture
+def rlib(tmp_path):
+    data = tmp_path / "data"
+    for p, text in READ_PAGES.items():
+        (data / p).parent.mkdir(parents=True, exist_ok=True)
+        (data / p).write_text(text)
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    rows = [json.loads(l) for l in open(data / "sections.jsonl")]
+    return env, rows
+
+
+def read_cli(env, *args):
+    return subprocess.run([sys.executable, f"{CODE}/scripts/read.py", *args], capture_output=True, text=True, env=env)
+
+
+@pytest.mark.parametrize("sid", ["docs/primitives__box.md#Response structure", "docs/primitives__box#Response structure",
+                                 "docs/primitives__box.md#Response structure (reference rule)"])
+def test_read_accepts_the_cite_as_forms(rlib, sid):
+    r = read_cli(rlib[0], sid)
+    assert r.returncode == 0 and "The box returns four numbers." in r.stdout, r.stderr
+    assert r.stdout.startswith("SOURCE: docs/primitives__box.md#Response structure")
+
+
+def test_a_heading_ending_in_a_parenthesis_that_is_not_a_label_keeps_it(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box.md#Primitives (Questions)")
+    assert r.returncode == 0 and "A question has one primitive." in r.stdout
+
+
+def test_an_unknown_heading_exits_1_with_no_section(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box.md#Nothing here")
+    assert r.returncode == 1 and "no section" in r.stderr + r.stdout
+
+
+def test_a_repeated_heading_exits_1_and_names_both_numeric_ids(rlib):
+    env, rows = rlib
+    ids = [x["id"] for x in rows if x["heading"] == "Setup"]
+    assert len(ids) == 2
+    r = read_cli(env, "cookbooks/setup_twice.md#Setup")
+    assert r.returncode == 1 and all(i in r.stderr + r.stdout for i in ids)
+    assert "several sections named 'Setup'" in r.stderr + r.stdout
+
+
+def test_a_numeric_id_still_reads(rlib):
+    env, rows = rlib
+    sid = next(x["id"] for x in rows if x["heading"] == "Response structure")
+    assert "four numbers" in read_cli(env, sid).stdout
+
+
+def test_check_quote_finds_an_exact_sentence(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "The box returns four numbers.")
+    assert r.returncode == 0
+    assert r.stdout.startswith("QUOTE FOUND | docs/primitives__box.md#Response structure | line ")
+    assert ": The box returns four numbers." in r.stdout
+
+
+def test_check_quote_ignores_spacing_bold_and_escaped_underscores(rlib):
+    env, rows = rlib
+    second = [x["id"] for x in rows if x["heading"] == "Setup"][1]
+    for q in ("Pass the request_id back with every call.", "Pass the **request_id** back  with every call.", "Pass the request\\_id back with every call."):
+        assert read_cli(env, second, "--check-quote", q).returncode == 0, q
+
+
+def test_check_quote_with_a_changed_word_exits_1(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "The box returns five numbers.")
+    assert r.returncode == 1 and r.stdout.startswith("QUOTE NOT FOUND | docs/primitives__box.md#Response structure")
+
+
+def test_check_quote_is_case_sensitive(rlib):
+    assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "the box returns four numbers.").returncode == 1
+
+
+def test_check_quote_with_an_empty_quote_exits_2(rlib):
+    for q in ("", "  **  "):
+        assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", q).returncode == 2
+
+
+def test_check_quote_in_a_repeated_heading_finds_the_second_and_prints_its_id(rlib):
+    env, rows = rlib
+    second = [x["id"] for x in rows if x["heading"] == "Setup"][1]
+    r = read_cli(env, "cookbooks/setup_twice.md#Setup", "--check-quote", "Pass the request_id back")
+    assert r.returncode == 0 and second in r.stdout and "QUOTE FOUND" in r.stdout
+
+
+def test_check_quote_never_prints_the_section_text(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "four numbers")
+    assert "The box returns four numbers." in r.stdout  # the matching line only
+    assert "Intro line." not in r.stdout and "SOURCE:" not in r.stdout
+    assert len(r.stdout.splitlines()) == 1
+
+
+def test_check_quote_function_returns_the_row_and_line(rlib, monkeypatch):
+    env, rows = rlib
+    monkeypatch.setenv("JEV_SOURCES_DATA", env["JEV_SOURCES_DATA"])
+    monkeypatch.syspath_prepend(f"{CODE}/scripts")
+    for n in ("paths", "read", "usage_log", "applicability"):
+        sys.modules.pop(n, None)
+    import read
+    found, row, line_no, line = read.check_quote("docs/primitives__box#Response structure", "four numbers")
+    assert found and row["heading"] == "Response structure" and line == "The box returns four numbers."
+    assert line_no == row["line_start"] + 2

@@ -5,6 +5,7 @@ import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import CODE
 import route as R
+from jev import bundle
 
 BAR = 0.80  # for paraphrases.json; every release_questions.json question must hit as READ FULL, and carry the label its "expect" names
 SETS = {"paraphrases.json": False, "release_questions.json": True}  # name -> strict
@@ -31,9 +32,13 @@ def expected(s, q):
     return True
 
 
-def hit(res, q):
+def hit(res, q, delivered=None):
+    """Did the question reach its section? A strict question needs the section READ FULL and, when delivered (the
+    ids jev.bundle printed in full) is given, actually among them: a section that falls past the cap is a miss."""
+    def strict_ok(s):
+        return s["depth"] == "READ FULL" and (delivered is None or s.get("id") in delivered)
     return any(s["heading"] == q["heading"] and (not q.get("path") or s["path"] == q["path"])
-               and (not q.get("strict") or s["depth"] == "READ FULL") and expected(s, q) for s in res["sections"])
+               and (not q.get("strict") or strict_ok(s)) and expected(s, q) for s in res["sections"])
 
 
 def run():
@@ -41,7 +46,13 @@ def run():
     try:
         for mode in ("keywords", "meaning"):
             R.semantic = None if mode == "keywords" else sem
-            miss = [q for q in qs if not hit(R.route(q["q"], model=q.get("model")), q)]
+            miss = []
+            for q in qs:
+                delivered = None
+                if q["strict"]:  # what a reader is actually given: jev.py's bundle, not the router's list
+                    delivered = set(bundle([q["q"]], model=q.get("model"), log=False)["read_ids"])
+                if not hit(R.route(q["q"], model=q.get("model")), q, delivered):
+                    miss.append(q)
             loose = [q for q in qs if not q["strict"]]
             rep[mode] = {"hits": len(loose) - sum(not m["strict"] for m in miss), "total": len(loose),
                          "strict_misses": [f"{m['heading']} <- {m['q'][:70]}" for m in miss if m["strict"]],

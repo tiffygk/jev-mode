@@ -307,3 +307,100 @@ def test_log_false_writes_no_usage_line_even_with_logging_on(tmp_path, monkeypat
     assert not (tmp_path / "logs").exists()
     jev.bundle(["q"])
     assert (tmp_path / "logs" / "route.jsonl").exists() and (tmp_path / "logs" / "read.jsonl").exists()
+
+
+# ---- the reading plan -------------------------------------------------------------------------------------------
+
+def test_reading_plan_batches_in_order_and_a_big_section_stands_alone(J):
+    mk = lambda i, t: {"id": i, "tokens": t}
+    plan = J.reading_plan([mk("a", 5000), mk("b", 6000), mk("c", 3000), mk("big", 13000), mk("d", 100)], 12000)
+    assert [[s["id"] for s in b] for b in plan] == [["a", "b"], ["c"], ["big"], ["d"]]
+    assert J.reading_plan([], 12000) == []
+
+
+def plan_lib_pages(n, tokens_each=1000):
+    body = "\n".join("Sentence number %d about the batch limit goes here." % i for i in range(tokens_each * 4 // 52 + 1))
+    pages = {}
+    for k in range(n):
+        pages["docs/p%d.md" % k] = "# What's the batch limit %d\n\n%s\n" % (k, body)
+    return pages
+
+
+def make_lib(tmp_path, monkeypatch, pages):
+    data = tmp_path / "data"
+    for p, text in pages.items():
+        (data / p).parent.mkdir(parents=True, exist_ok=True)
+        (data / p).write_text(text)
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=True, capture_output=True, env=env)
+    return env
+
+
+def run_jev(env, *args):
+    return subprocess.run([sys.executable, os.path.join(SCRIPTS, "jev.py"), *args], capture_output=True, text=True, env=env)
+
+
+def test_over_twice_the_cap_prints_a_plan_with_runnable_numeric_id_commands(tmp_path, monkeypatch):
+    pages = plan_lib_pages(4, 1000)
+    env = make_lib(tmp_path, monkeypatch, pages)
+    r = run_jev(env, "what is the batch limit", "--cap", "1500")
+    assert r.returncode == 0, r.stderr
+    out = r.stdout
+    assert "READING PLAN: " in out and "tokens not yet read, more than the cap (1,500)" in out
+    assert "GOAL: what is the batch limit" in out
+    assert "BATCH 1 (~" in out and "BATCH 2 (~" in out
+    assert "NOT YET READ" not in out
+    assert 'FINDING: <one sentence> | CITE AS: <path#heading (label)> | QUOTE: "<exact words>"' in out
+    cmds = [l.strip() for l in out.splitlines() if l.strip().startswith("python3 ") and "read.py" in l]
+    assert cmds and all("  # docs/" in c and "#" in c.split("  # ", 1)[0] for c in cmds)
+    apos = [c for c in cmds if "What's the batch limit" in c]
+    assert apos
+    cmd = apos[0].split("  # ", 1)[0].replace("python3 ", "", 1)
+    import shlex
+    res = subprocess.run([sys.executable, *shlex.split(cmd)], capture_output=True, text=True, env=env)
+    assert res.returncode == 0 and res.stdout.startswith("SOURCE: docs/p") and "#What's the batch limit" in res.stdout.split("|")[0], res.stderr
+
+
+def test_at_or_under_the_cap_the_unread_sections_are_listed_not_planned(tmp_path, monkeypatch):
+    env = make_lib(tmp_path, monkeypatch, plan_lib_pages(3, 1000))
+    over = run_jev(env, "what is the batch limit", "--cap", "1500", "--json")  # 2,000 tokens unread: over the cap
+    assert json.loads(over.stdout)["plan"]
+    out = run_jev(env, "what is the batch limit", "--cap", "2500").stdout  # 1,000 unread: at or under
+    assert "READING PLAN" not in out and "NOT YET READ (over the cap)" in out
+
+
+def test_a_section_over_the_cap_stands_alone_in_the_cli_plan(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=100), sec("b", tokens=13000), sec("c", tokens=200), sec("d", tokens=12500)]}})
+    b = J.bundle(["q"])
+    assert [[s["id"] for s in x] for x in J.reading_plan(b["not_read"], J.CAP)] == [["b"], ["d"]]
+    monkeypatch.setattr(sys, "argv", ["jev.py", "q"])
+    J.main()
+    out = capsys.readouterr().out
+    assert out.count("BATCH ") == 2 and "BATCH 1 (~13,000 tokens)" in out
+
+
+def test_json_carries_plan_and_read_refs(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=100), sec("b", tokens=13000)]}})
+    monkeypatch.setattr(sys, "argv", ["jev.py", "q", "--json"])
+    J.main()
+    d = json.loads(capsys.readouterr().out)
+    assert d["plan"] == [["b"]] and d["read_refs"] == ["a.md#Ha"]
+
+
+def test_a_printed_section_with_ten_code_shaped_lines_gets_a_notice(J, monkeypatch, capsys):
+    code = "\n".join("const a%d = () => 1;" % i for i in range(10))
+    monkeypatch.setattr(J.RD, "render", lambda sid, extract_terms=None: f"CITE AS: {sid}\nSOURCE: x\n{code}")
+    routes(J, monkeypatch, {"q": {"sections": [sec("a")]}})
+    monkeypatch.setattr(sys, "argv", ["jev.py", "q"])
+    J.main()
+    out = capsys.readouterr().out
+    assert "NOTICE: a.md#Ha looks like site code (10 code-shaped lines). Run bash " in out
+    assert "to re-clean; treat this section as unverified until then." in out
+
+
+def test_a_clean_section_gets_no_notice(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a")]}})
+    monkeypatch.setattr(sys, "argv", ["jev.py", "q"])
+    J.main()
+    assert "looks like site code" not in capsys.readouterr().out

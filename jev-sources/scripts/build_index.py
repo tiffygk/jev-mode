@@ -140,6 +140,52 @@ def sections(path):
     return rows
 
 
+HTML_HEADING = re.compile(r"<h[1-6][\s>]")
+
+
+def health(rows):
+    """NOTICE lines for sections that still look like site code or pages the cleaner did not finish: at most 10
+    lines plus "and N more". Reads each page from the library; a missing page is skipped (the build names it)."""
+    import pages
+    import jev
+    notes, seen, cache = [], set(), {}
+    for r in rows:
+        path = r["path"]
+        full = os.path.join(ROOT, path)
+        if path not in cache:
+            try:
+                cache[path] = open(full, encoding="utf-8").read().split("\n")
+            except OSError:
+                cache[path] = None
+        lines = cache[path]
+        if lines is None:
+            continue
+        if path not in seen and not path.startswith("blog/"):
+            seen.add(path)
+            v = pages.cleaner_of(full)
+            if v is None:
+                notes.append(f"NOTICE: cleaner: {path} (cleaner version missing; run the refresh to re-clean)")
+            elif isinstance(v, str):
+                notes.append(f"NOTICE: cleaner: {path} (cleaner {v.replace(':', ' ')}; the raw text is indexed)")
+            elif v < pages.clean.VERSION:
+                notes.append(f"NOTICE: cleaner: {path} (cleaner {v} is older than {pages.clean.VERSION}; run the refresh to re-clean)")
+        body = lines[r["line_start"] - 1:r["line_end"]]
+        ref = f"{path}#{r['heading']}"
+        n = pages.clean.code_shaped(body)
+        if n >= 10:
+            notes.append(f"NOTICE: code-shaped lines: {ref} ({n} lines outside code fences)")
+        longest = max((len(l) for l in body), default=0)
+        if longest > 1000:
+            notes.append(f"NOTICE: long line: {ref} ({longest} characters)")
+        if any(HTML_HEADING.search(l) for l, inside in zip(body, pages.clean.fences(body)) if not inside):
+            notes.append(f"NOTICE: html heading: {ref} (a heading tag is left in the page)")
+        if r["tokens"] > jev.CAP:
+            notes.append(f"NOTICE: section over the cap: {ref} (~{r['tokens']} tokens, cap {jev.CAP})")
+    if len(notes) > 10:
+        return notes[:10] + [f"and {len(notes) - 10} more"]
+    return notes
+
+
 def main(prepare=True):
     if prepare:  # migrate old pages and re-clean after a cleaner version change; --no-prepare when the caller just did
         import pages
@@ -167,6 +213,11 @@ def main(prepare=True):
         for r in out:
             fh.write(json.dumps(r) + "\n")
     print(f"{len(out)} sections from {len({r['path'] for r in out})} files")
+    try:
+        for line in health(out):
+            print(line)
+    except Exception as e:  # the checks are advice; the index is already written
+        print(f"NOTICE: build checks did not run ({type(e).__name__}: {e}).")
     try:
         import sources
         sources.write(blocked, data=ROOT)  # this build's own folder, whatever a cached module points at

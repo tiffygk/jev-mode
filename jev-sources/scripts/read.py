@@ -2,7 +2,9 @@
 """Print one source section in full, with the file's scope caveats and captions.
 
   python3 scripts/read.py 'cookbooks/rerank_typesafe#7'
+  python3 scripts/read.py 'cookbooks/rerank_typesafe.md#Setup (cookbook example)'   a CITE AS line works too
   ... --extract "<terms>"   12 lines around each hit, capped at 1,500 tokens (marked as an extract)
+  ... --check-quote "<quote>"   is the quote in that section? Prints one QUOTE FOUND / QUOTE NOT FOUND line, never the text
 
 The first line is the citation to quote: SOURCE: <path>#<heading> | KIND | READ.
 A section with a model or readiness limit gets a second line: APPLIES: needs <model> | experimental (<source>).
@@ -20,17 +22,76 @@ EXAMPLE_NOTE = ("EXAMPLE: one build TypeSafe published. Its layout, call counts 
                 "check the scope notes below and the reference rules.")
 
 
-def _row(sid):
+def _index():
     try:
-        rows = [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
+        return [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
     except FileNotFoundError:
         sys.exit(f"library index missing; run {REFRESH}")
-    r = next((x for x in rows if x["id"] == sid), None)
-    if not r:
-        sys.exit(f"no section {sid!r}; run route.py to get ids")
+
+
+def _rows(sid):
+    """Every section a section id names. A numeric id (docs/primitives__box#2) names one. A path#heading, with or
+    without .md and with or without a trailing (label) from CITE AS, names every section of that file with that
+    heading, which is more than one where a page repeats a heading. Exits 1 when none matches."""
+    sid = sid.strip()
+    rows = _index()
+    hit = [x for x in rows if x["id"] == sid]
+    if hit:
+        return hit
+    if "#" in sid:
+        path, heading = sid.split("#", 1)
+        if not path.endswith((".md", ".txt")):
+            path += ".md"
+        heads = [heading]
+        for label in LABEL.values():  # a trailing label counts only when it is one of ours
+            if heading.endswith(f" ({label})"):
+                heads.append(heading[:-len(label) - 3])
+        for h in heads:  # the whole text first: a heading may really end in a parenthesis
+            hit = [x for x in rows if x["path"] == path and x["heading"] == h]
+            if hit:
+                return hit
+    sys.exit(f"no section {sid!r}; run route.py to get ids")
+
+
+def _row(sid):
+    hit = _rows(sid)
+    if len(hit) > 1:
+        sys.exit(f"several sections named {hit[0]['heading']!r} in {hit[0]['path']}: use one of " + ", ".join(x["id"] for x in hit))
+    r = hit[0]
     if not os.path.exists(os.path.join(ROOT, r["path"])):
         sys.exit(f"missing source {r['path']}; run {REFRESH}")
     return r
+
+
+_ESCAPED = re.compile(r"\\([*_`\s])")
+_SKIP = re.compile(r"[\s*_`]")
+
+
+def _squash(text):
+    return _SKIP.sub("", _ESCAPED.sub(r"\1", text))
+
+
+def check_quote(sid, quote):
+    """(found, row, line_no, line): is the quote in the section sid names? When a heading repeats, every same-named
+    section is checked and row is the one that holds it. Matching ignores whitespace, *, _ and ` (and a backslash
+    before them) and is case-sensitive; the quote may span lines. line_no is the file line the quote starts on.
+    When it is not found, row is the first section checked and line_no and line are None."""
+    want = _squash(quote)
+    rows = _rows(sid)
+    for r in rows:
+        if not os.path.exists(os.path.join(ROOT, r["path"])):
+            sys.exit(f"missing source {r['path']}; run {REFRESH}")
+        lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+        flat, owner = [], []
+        for i, ln in enumerate(lines):
+            sq = _squash(ln)
+            flat.append(sq)
+            owner += [i] * len(sq)
+        pos = "".join(flat).find(want) if want else -1
+        if pos >= 0:
+            i = owner[pos]
+            return True, r, r["line_start"] + i, lines[i]
+    return False, rows[0], None, None
 
 
 def render(sid, extract_terms=None):
@@ -70,13 +131,29 @@ def render(sid, extract_terms=None):
 
 def main():
     if len(sys.argv) < 2:
-        sys.exit("usage: read.py <section id> [--extract terms]")
+        sys.exit("usage: read.py <section id> [--extract terms | --check-quote \"<quote>\"]")
     sid = sys.argv[1]
+    if "--check-quote" in sys.argv:
+        i = sys.argv.index("--check-quote")
+        quote = " ".join(sys.argv[i + 1:])
+        if not _squash(quote):
+            print("usage: read.py <section id> --check-quote \"<quote>\" (the quote is empty)", file=sys.stderr)
+            return 2
+        found, r, line_no, line = check_quote(sid, quote)
+        several = len([x for x in _index() if x["path"] == r["path"] and x["heading"] == r["heading"]]) > 1
+        ref = f"{r['path']}#{r['heading']}" + (f" [{r['id']}]" if several else "")
+        usage_log.write("check_quote", id=r["id"], found=found)
+        if found:
+            print(f"QUOTE FOUND | {ref} | line {line_no}: {line.strip()[:200]}")
+            return 0
+        print(f"QUOTE NOT FOUND | {ref}")
+        return 1
     terms = sys.argv[sys.argv.index("--extract") + 1:] if "--extract" in sys.argv else None
     text = render(sid, terms)
     print(text.split("\n", 1)[1])  # the CITE AS line is for jev.py's bundle; this command's output starts at SOURCE
     usage_log.write("read", id=sid, extract=terms is not None, tokens=_row(sid)["tokens"])
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
