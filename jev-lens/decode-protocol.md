@@ -10,7 +10,7 @@ How a blind decoder turns an image into an inventory. The decoder gets **only** 
 ## The decoder prompt
 
 ````
-You are describing images for a text-only model that cannot see them. Your description is its only view of each image, so it must be complete, accurate and neutral. You do not know what the description will be used for, and you should not guess.
+You are describing images for a model that will receive only your text, never the images. Your description is its only view of each image, so it must be complete, accurate and neutral. You do not know what the description will be used for, and you should not guess.
 
 Images (read only these files, and no other file in any folder):
 {{one absolute path per line}}

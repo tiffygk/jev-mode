@@ -1,11 +1,11 @@
 ---
 name: jev-lens
-description: Use when images (photos, illustrations, screenshots) need to become input for TypeSafe's Jev (System One) model, which reads only text -- "turn this photo into a Jev state", "describe these images for Jev", "decode images for System One", or a Jev project whose decision depends on what a picture shows. Handles 1 to about 100 images; produces a neutral, complete decode and a JSON state, checked against Jev.
+description: Legacy. Use only when images (photos, illustrations, screenshots) must reach TypeSafe's Jev (System One) model as text, because the request can't send the `TypeSafe-Danger-Zone-Images` header that lets Jev read images directly. Triggers on "turn this photo into a Jev state", "describe these images for Jev", "decode images for System One", or a Jev project whose decision depends on what a picture shows. Handles 1 to about 100 images; produces a neutral, complete decode and a JSON state, checked against Jev.
 ---
 
 # Jev Lens
 
-> **Jev can't see images. Jev Lens describes them for it, neutrally and completely.**
+> **Legacy.** Since October 14, 2026, Jev 1.13 and 1.14 read images directly when a request sends the `TypeSafe-Danger-Zone-Images: true` header (TypeSafe's Images page, docs.typesafe.ai/images). Before anything else, ask whether the user's requests can send it. If they can, recommend sending the images to Jev directly and stop: that skips designing the state by description. Run Jev Lens only when they can't, or when they ask for it anyway.
 
 Turns images into a JSON `state` for Jev. In priority order:
 1. **An excellent decode:** a complete, accurate, unbiased record of what the image shows.
