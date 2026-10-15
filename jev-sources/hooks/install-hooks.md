@@ -34,4 +34,4 @@ Codex runs the same reminder from `~/.codex/hooks.json`. Use absolute paths:
 ]}}
 ```
 
-Codex runs a new hook only after you review and trust it in Codex. The dispatch check has no Codex version.
+Codex runs a new hook only after you review and trust it in Codex. If you also installed the plugin in Codex, check that the reminder doesn't appear twice; if it does, remove this entry. The dispatch check has no Codex version.
