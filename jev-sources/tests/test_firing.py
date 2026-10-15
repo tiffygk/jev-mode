@@ -150,3 +150,38 @@ def test_report_falls_back_to_cwd_and_window(tmp_path):
     assert "2026-10-14T12:00:00Z" in out
     assert "Route calls with no fire before them: 1" in out
     assert "too late" in out and "in window" not in out.split("Route calls with no fire")[1]
+
+
+# Task A7: firing test set. Bars are the picked rule's recall (69/77 = 0.8961) and specificity (197/321 = 0.6137)
+# on the labeled real prompts at Task A5 (per prompt, empty `recent`), each minus 0.05, rounded down to 3 decimals.
+CASES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "firing_cases.json")
+with open(CASES_PATH, encoding="utf-8") as _f:
+    CASES = json.load(_f)
+RECALL_BAR, SPECIFICITY_BAR = 0.846, 0.563
+
+
+def rates(rows, rule):
+    pos = [r for r in rows if r[1]]
+    neg = [r for r in rows if not r[1]]
+    fired = lambda p: decide(p, rule)[0]
+    return sum(fired(p) for p, _ in pos) / max(len(pos), 1), sum(not fired(p) for p, _ in neg) / max(len(neg), 1)
+
+
+def test_public_cases():
+    # The invented set weighs messages that only name Jev tools or TypeSafe far more than real prompts do, so the
+    # specificity bar from real prompts does not apply here: the default rule must not do worse than "current".
+    from firing import DEFAULT_RULE
+    rows = [(c["prompt"], c["should_fire"]) for c in CASES]
+    recall, spec = rates(rows, DEFAULT_RULE)
+    _, baseline_spec = rates(rows, "current")
+    assert recall >= RECALL_BAR, f"recall {recall:.2f}"
+    assert spec >= baseline_spec, f"specificity {spec:.2f} below current's {baseline_spec:.2f}"
+
+
+@pytest.mark.skipif(not os.environ.get("JEV_FIRING_PRIVATE_CASES"), reason="real labeled prompts live only on the owner's machine")
+def test_private_cases():
+    from firing import DEFAULT_RULE
+    with open(os.environ["JEV_FIRING_PRIVATE_CASES"], encoding="utf-8") as f:
+        rows = [json.loads(l) for l in f if l.strip()]
+    recall, spec = rates([(r["prompt"], r["label"] == "yes") for r in rows if r["label"] != "unsure"], DEFAULT_RULE)
+    assert recall >= RECALL_BAR and spec >= SPECIFICITY_BAR, f"recall {recall:.2f}, specificity {spec:.2f}"
