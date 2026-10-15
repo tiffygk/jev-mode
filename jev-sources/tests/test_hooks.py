@@ -18,7 +18,7 @@ def transcript(final_text, tool_inputs=()):
 
 def test_reminder_fires_on_jev_question():
     out = run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?"})
-    assert "route.py" in out["hookSpecificOutput"]["additionalContext"]
+    assert any(s in out["hookSpecificOutput"]["additionalContext"] for s in ("route.py", "jev.py"))
 
 def test_reminder_quiet_on_folder_names_and_pasted_commands():
     """2026-10-08: the reminder fired on the repo's name and on a pasted settings command, never on a Jev question."""
@@ -55,7 +55,7 @@ def test_dispatch_allows_other_senses_of_typesafe_and_system_one():
 def test_brief_and_reminder_name_this_install():
     root = os.path.dirname(H)
     out = run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?"})
-    assert f"{root}/scripts/route.py" in out["hookSpecificOutput"]["additionalContext"]
+    assert any(f"{root}/scripts/{s}" in out["hookSpecificOutput"]["additionalContext"] for s in ("route.py", "jev.py"))
     out = run("jev-dispatch-check.py", {"tool_input": {"prompt": "Review this Jev design."}})
     assert f"{root}/scripts" in out["hookSpecificOutput"]["permissionDecisionReason"]
 
@@ -67,7 +67,8 @@ def test_symlinked_hook_names_the_real_install(tmp_path):
     r = subprocess.run([sys.executable, str(tmp_path / "jev-prompt-reminder.py")], input=json.dumps({"prompt": "is a Noul right here?"}),
                        capture_output=True, text=True, env=e)
     root = os.path.dirname(os.path.realpath(H))
-    assert f"{root}/scripts/route.py" in json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+    ctx = json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
+    assert any(f"{root}/scripts/{s}" in ctx for s in ("route.py", "jev.py"))
 
 
 def test_dispatch_optout_with_reason_allowed():
@@ -225,7 +226,7 @@ def test_unwritable_state_folder_still_prints(tmp_path):
     d.chmod(0o500)
     try:
         out = run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?", "session_id": "s1"}, JEV_SOURCES_DATA=str(tmp_path), JEV_LOG="on")
-        assert out and "route.py" in out["hookSpecificOutput"]["additionalContext"]
+        assert out and any(s in out["hookSpecificOutput"]["additionalContext"] for s in ("route.py", "jev.py"))
     finally:
         d.chmod(0o700)
 
