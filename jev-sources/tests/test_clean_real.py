@@ -12,7 +12,7 @@ import clean
 
 BACKUP = os.path.expanduser("~/.claude/backups/jev-sources-data-2026-10-15-pre-clean")
 KINDS = ("docs", "cookbooks", "patterns")
-pytestmark = pytest.mark.skipif(
+real = pytest.mark.skipif(
     os.environ.get("JEV_CLEAN_REAL") != "1" or not os.path.isdir(os.path.join(BACKUP, "docs")),
     reason="set JEV_CLEAN_REAL=1 with the backup library present")
 
@@ -75,34 +75,47 @@ def exempt(ln):
 CODE_PUNCT = re.compile(r"[;{}=()]")
 
 
-def dropped_lines(raw_lines, kept_lines):
-    """Indexes of raw lines the cleaner removed (it only deletes whole lines or rewrites them)."""
-    gone, j = set(), 0
-    for i, ln in enumerate(raw_lines):
-        if j < len(kept_lines) and kept_lines[j] == ln:
-            j += 1
-        else:
-            gone.add(i)
-    return gone
+def lost_prose(raw, cleaned):
+    """Raw lines of 6 or more words whose words are missing from the cleaned page. A line the cleaner removed whole
+    (absent from the cleaned lines) is exempt when it reads as code; prose in a mis-ended block ends in a full stop."""
+    nt = norm_text(cleaned)
+    kept = set(cleaned.split("\n"))
+    lost = []
+    for i, ln in enumerate(raw.split("\n")):
+        w = words(ln)
+        if ln not in kept and not ln.rstrip().endswith((".", "!", "?")) and (CODE_PUNCT.search(ln) or ln.rstrip().endswith(",")):
+            continue
+        if len(w) >= 6 and not exempt(ln) and " " + " ".join(w).lower() + " " not in nt:
+            lost.append((i + 1, ln.strip()[:160]))
+    return lost
 
 
+PROSE = "Keep this sentence (with parentheses) as written here."
+HEADED = '<h3 id="a.b.c">\n  x\n</h3>\n\n' + PROSE
+
+
+def test_a_rewritten_heading_does_not_mark_later_lines_removed():
+    out = clean.clean(HEADED)
+    assert PROSE in out
+    assert lost_prose(HEADED, out) == []
+
+
+def test_prose_deleted_after_a_heading_is_reported_lost():
+    out = clean.clean(HEADED).replace(PROSE, "")
+    assert [n for n, _ in lost_prose(HEADED, out)] == [5]
+
+
+@real
 def test_no_lost_prose(trees):
     lost = []
     for rel, raw in trees["raw"].items():
-        if raw == trees["clean"][rel]:
-            continue
-        nt = norm_text(trees["clean"][rel])
-        raw_lines = raw.split("\n")
-        gone = dropped_lines(raw_lines, trees["clean"][rel].split("\n"))
-        for i, ln in enumerate(raw_lines):
-            w = words(ln)
-            if i in gone and (CODE_PUNCT.search(ln) or ln.rstrip().endswith(",")):
-                continue  # a removed widget line that reads as code; prose in a mis-ended block ends in a full stop
-            if len(w) >= 6 and not exempt(ln) and " " + " ".join(w).lower() + " " not in nt:
-                lost.append((rel, i + 1, ln.strip()[:160]))
+        if raw != trees["clean"][rel]:
+            lost += [(rel,) + x for x in lost_prose(raw, trees["clean"][rel])]
+    print("lost prose lines=%d" % len(lost))
     assert not lost, "lost prose lines: %d, first: %s" % (len(lost), lost[:10])
 
 
+@real
 def test_flagged_sections_are_gone(trees, monkeypatch):
     def flagged(tree, key):
         n = []
@@ -117,6 +130,7 @@ def test_flagged_sections_are_gone(trees, monkeypatch):
     assert not after, after
 
 
+@real
 def test_no_long_lines_or_html_headings(trees):
     for rel, text in trees["clean"].items():
         for i, ln in enumerate(text.split("\n")):
@@ -125,6 +139,7 @@ def test_no_long_lines_or_html_headings(trees):
         assert not re.search(r"<h[1-6]\b", "\n".join(outside)), rel
 
 
+@real
 def test_converted_html_headings_are_unique_within_a_page(trees, monkeypatch):
     converted = {}
     for rel, raw in trees["raw"].items():
@@ -142,6 +157,7 @@ def test_converted_html_headings_are_unique_within_a_page(trees, monkeypatch):
     assert seen and not dup, dup
 
 
+@real
 def test_llms_full_prose_is_in_the_cleaned_pages(trees):
     full = os.path.join(BACKUP, "llms-full.txt")
     if not os.path.exists(full):
@@ -171,7 +187,7 @@ def test_llms_full_prose_is_in_the_cleaned_pages(trees):
         for ln in lines:
             w = words(ln)
             needle = " " + " ".join(w).lower() + " "
-            if len(w) >= 6 and not exempt(ln) and needle not in by_url[url]:
+            if len(w) >= 6 and needle not in by_url[url]:
                 # absent from the saved raw page too: the site changed since the page was saved, not the cleaner
                 (missing if needle in raw_by_url[url] else drift).append((url, ln.strip()[:160]))
     print("llms-full pages checked=%d missing lines=%d site-drift lines=%d" % (checked, len(missing), len(drift)))
