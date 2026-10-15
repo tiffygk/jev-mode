@@ -1,62 +1,302 @@
 [
-{"prompt": "I'm building a support-ticket router. Should the urgency check be a Noul question or a Score question in Jev?", "should_fire": true, "category": "jev_design"},
-{"prompt": "Would a Choice question with six options work better than six separate Noul questions for classifying invoice types with Jev?", "should_fire": true, "category": "jev_design"},
-{"prompt": "Is it a good idea to put the whole customer email thread into a single Box and ask one Score question about tone?", "should_fire": true, "category": "jev_design"},
-{"prompt": "My app uses a big prompt to decide if a refund is allowed. Could Jev replace that step, and how would I structure the questions?", "should_fire": true, "category": "jev_design"},
-{"prompt": "How should I order options in a Choice question so position bias doesn't skew the answers from Jev?", "should_fire": true, "category": "jev_design"},
-{"prompt": "Review my design: three Noul questions feed a confidence gate, and low-confidence items go to a human. Does Jev support that pattern well?", "should_fire": true, "category": "jev_design"},
-{"prompt": "Should I ask Jev to extract the shipping address, or only to judge whether the address is present?", "should_fire": true, "category": "jev_design"},
-{"prompt": "I want to use Score questions to rank 200 résumés. Is that what Score is meant for, or should I use pairwise Choice?", "should_fire": true, "category": "jev_design"},
-{"prompt": "Can Jev sit before my main LLM as a cheap filter for spam, or does it only make sense after generation?", "should_fire": true, "category": "jev_design"},
-{"prompt": "Is splitting a compound question like 'is it polite and accurate?' into two Noul questions better with Jev?", "should_fire": true, "category": "jev_design"},
-{"prompt": "What is the maximum number of options a Choice question accepts in Jev?", "should_fire": true, "category": "jev_api"},
-{"prompt": "Which model ID should I pass to the Jev API for the newest release, and is the older one still served?", "should_fire": true, "category": "jev_api"},
-{"prompt": "What are the rate limits on the Jev endpoint for a free account?", "should_fire": true, "category": "jev_api"},
-{"prompt": "Does a Box in Jev have a size cap in tokens, and what happens if my text goes over it?", "should_fire": true, "category": "jev_api"},
-{"prompt": "What does a Noul response contain? Is it a probability, a boolean, or both?", "should_fire": true, "category": "jev_api"},
-{"prompt": "What range does a Score question return, and is it calibrated across different questions?", "should_fire": true, "category": "jev_api"},
-{"prompt": "Can I batch several questions against one Box in a single Jev API request?", "should_fire": true, "category": "jev_api"},
-{"prompt": "Does Jev support streaming responses, or do I always wait for the full answer?", "should_fire": true, "category": "jev_api"},
-{"prompt": "What error does the Jev API return when I exceed the request limit, and should I retry with backoff?", "should_fire": true, "category": "jev_api"},
-{"prompt": "Which Jev model versions support Choice questions with more than one correct answer?", "should_fire": true, "category": "jev_api"},
-{"prompt": "Fix the typo in the README heading: it says 'jev-sorces' but the skill is called jev-sources.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Reformat the table in docs/skills.md so the columns line up. Don't change any wording about jevaluate or jev-lens.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Shorten the intro paragraph of the jevaluate-harness README to under 100 words, keeping the tool names as they are.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Add a table of contents to the top of SKILL.md for jev-lens.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Rename every mention of 'the harness' to 'the jevaluate-harness' in CONTRIBUTING.md.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Change the bullet list in the README that names jev-sources, jev-lens and jevaluate into a numbered list.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Fix the broken relative link in docs/index.md that points to ../jev-lens/readme.md instead of README.md.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Remove the trailing whitespace and double blank lines from the jev-sources README.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Swap the order of the two sections 'Install' and 'Usage' in the README for the jevaluate-eval folder.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Capitalize the headings in the jev-lens README consistently, using sentence case.", "should_fire": false, "category": "edit_docs"},
-{"prompt": "Run the jevaluate harness on the sample folder and show me the output.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Run python3 -m pytest in the repo and tell me which tests fail.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Execute ./run scorer.py in my sandbox and paste the last twenty lines of output.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Use library.py check to see whether the ratings folder is in order.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Run the skill_check script on the new skill folder and list any warnings.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Start the study site locally with the build command and tell me the port it uses.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Run the eval script again with the same inputs and diff the result against yesterday's output file.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Run git fetch upstream and show me what changed in the harness folder since my branch started.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Please run the doctor script from the sandbox and report whether the environment is ready.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Re-run the fetch_docs script for two slugs and tell me whether the files were written.", "should_fire": false, "category": "run_tool"},
-{"prompt": "Draft a short thank-you email to the recruiter I spoke with at TypeSafe on Tuesday.", "should_fire": false, "category": "job_email"},
-{"prompt": "Help me tighten my cover letter for the product manager opening at TypeSafe. Keep it under 250 words.", "should_fire": false, "category": "job_email"},
-{"prompt": "Make a checklist for my interview day at TypeSafe: what to bring, when to arrive, who to ask for.", "should_fire": false, "category": "job_email"},
-{"prompt": "Reply to this email from TypeSafe's scheduling coordinator offering me Thursday at 2pm or Friday at 10am.", "should_fire": false, "category": "job_email"},
-{"prompt": "Update my LinkedIn headline now that I've applied to TypeSafe and two other startups.", "should_fire": false, "category": "job_email"},
-{"prompt": "Write a follow-up note to the hiring manager at TypeSafe asking about the timeline for next steps.", "should_fire": false, "category": "job_email"},
-{"prompt": "Add a row to my job tracker spreadsheet: TypeSafe, applied October 3, waiting on a phone screen.", "should_fire": false, "category": "job_email"},
-{"prompt": "Proofread this paragraph from my application to TypeSafe for grammar only.", "should_fire": false, "category": "job_email"},
-{"prompt": "Which of my past projects should I list first on a resume for the TypeSafe application? Here are the five.", "should_fire": false, "category": "job_email"},
-{"prompt": "Turn my rough notes from the TypeSafe phone screen into three bullet points for my own records.", "should_fire": false, "category": "job_email"},
-{"prompt": "Why does TypeScript say 'Type string is not assignable to type number' on this line? I need a typesafe way to parse the config.", "should_fire": false, "category": "other_senses"},
-{"prompt": "Make this reducer typesafe so the action payload type narrows on the action name.", "should_fire": false, "category": "other_senses"},
-{"prompt": "Explain Kahneman's System One versus System Two in two sentences for my blog intro.", "should_fire": false, "category": "other_senses"},
-{"prompt": "Is the anchoring effect a System One bias or a System Two one, according to Thinking, Fast and Slow?", "should_fire": false, "category": "other_senses"},
-{"prompt": "Give me a choice of three fonts for a legal-tech landing page, one serif, one sans, one mono.", "should_fire": false, "category": "other_senses"},
-{"prompt": "What's a good choice of database for a small to-do app with a few hundred users?", "should_fire": false, "category": "other_senses"},
-{"prompt": "How do I get a typesafe query builder in Go without code generation?", "should_fire": false, "category": "other_senses"},
-{"prompt": "Write a Python score function that returns a number from 0 to 100 for a password's strength.", "should_fire": false, "category": "other_senses"},
-{"prompt": "Put the product list inside a CSS box with a one-pixel border and 16px padding.", "should_fire": false, "category": "other_senses"},
-{"prompt": "Give me a yes/no helper in Bash that asks the user to confirm before deleting a folder.", "should_fire": false, "category": "other_senses"}
+ {
+  "prompt": "I'm building a support-ticket router. Should the urgency check be a Noul question or a Score question in Jev?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "Would a Choice question with six options work better than six separate Noul questions for classifying invoice types with Jev?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "Is it a good idea to put the whole customer email thread into a single Box and ask one Score question about tone?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "My app uses a big prompt to decide if a refund is allowed. Could Jev replace that step, and how would I structure the questions?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "How should I order options in a Choice question so position bias doesn't skew the answers from Jev?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "Review my design: three Noul questions feed a confidence gate, and low-confidence items go to a human. Does Jev support that pattern well?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "Should I ask Jev to extract the shipping address, or only to judge whether the address is present?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "I want to use Score questions to rank 200 résumés. Is that what Score is meant for, or should I use pairwise Choice?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "Can Jev sit before my main LLM as a cheap filter for spam, or does it only make sense after generation?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "Is splitting a compound question like 'is it polite and accurate?' into two Noul questions better with Jev?",
+  "should_fire": true,
+  "category": "jev_design"
+ },
+ {
+  "prompt": "What is the maximum number of options a Choice question accepts in Jev?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "Which model ID should I pass to the Jev API for the newest release, and is the older one still served?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "What are the rate limits on the Jev endpoint for a free account?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "Does a Box in Jev have a size cap in tokens, and what happens if my text goes over it?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "What does a Noul response contain? Is it a probability, a boolean, or both?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "What range does a Score question return, and is it calibrated across different questions?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "Can I batch several questions against one Box in a single Jev API request?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "Does Jev support streaming responses, or do I always wait for the full answer?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "What error does the Jev API return when I exceed the request limit, and should I retry with backoff?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "Which Jev model versions support Choice questions with more than one correct answer?",
+  "should_fire": true,
+  "category": "jev_api"
+ },
+ {
+  "prompt": "Fix the typo in the README heading: it says 'jev-sorces' but the skill is called jev-sources.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Reformat the table in docs/skills.md so the columns line up. Don't change any wording about jevaluate or jev-lens.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Shorten the intro paragraph of the jevaluate-harness README to under 100 words, keeping the tool names as they are.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Add a table of contents to the top of SKILL.md for jev-lens.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Rename every mention of 'the harness' to 'the jevaluate-harness' in CONTRIBUTING.md.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Change the bullet list in the README that names jev-sources, jev-lens and jevaluate into a numbered list.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Fix the broken relative link in docs/index.md that points to ../jev-lens/readme.md instead of README.md.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Remove the trailing whitespace and double blank lines from the jev-sources README.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Swap the order of the two sections 'Install' and 'Usage' in the README for the jevaluate-eval folder.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Capitalize the headings in the jev-lens README consistently, using sentence case.",
+  "should_fire": false,
+  "category": "edit_docs"
+ },
+ {
+  "prompt": "Run the jevaluate harness on the sample folder and show me the output.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Run python3 -m pytest in the repo and tell me which tests fail.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Execute ./run scorer.py in my sandbox and paste the last twenty lines of output.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Use library.py check to see whether the ratings folder is in order.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Run the skill_check script on the new skill folder and list any warnings.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Start the study site locally with the build command and tell me the port it uses.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Run the eval script again with the same inputs and diff the result against yesterday's output file.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Run git fetch upstream and show me what changed in the harness folder since my branch started.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Please run the doctor script from the sandbox and report whether the environment is ready.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Re-run the fetch_docs script for two slugs and tell me whether the files were written.",
+  "should_fire": false,
+  "category": "run_tool"
+ },
+ {
+  "prompt": "Why does TypeScript say 'Type string is not assignable to type number' on this line? I need a typesafe way to parse the config.",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Make this reducer typesafe so the action payload type narrows on the action name.",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Explain Kahneman's System One versus System Two in two sentences for my blog intro.",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Is the anchoring effect a System One bias or a System Two one, according to Thinking, Fast and Slow?",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Give me a choice of three fonts for a legal-tech landing page, one serif, one sans, one mono.",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "What's a good choice of database for a small to-do app with a few hundred users?",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "How do I get a typesafe query builder in Go without code generation?",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Write a Python score function that returns a number from 0 to 100 for a password's strength.",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Put the product list inside a CSS box with a one-pixel border and 16px padding.",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Give me a yes/no helper in Bash that asks the user to confirm before deleting a folder.",
+  "should_fire": false,
+  "category": "other_senses"
+ },
+ {
+  "prompt": "Can you help me write a polite reply to the TypeSafe account rep who sent invoice #4471 twice? I just want to ask them to void the duplicate.",
+  "should_fire": false,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "Our procurement team needs a vendor comparison spreadsheet with columns for price, contract term and support tier. Please add a row for TypeSafe and one for two other vendors, leaving the cells blank.",
+  "should_fire": false,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "I'm organizing a meetup and a TypeSafe speaker is coming. Draft a short logistics email covering parking, the 6pm start and the projector setup.",
+  "should_fire": false,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "A customer forwarded me a note saying their TypeSafe renewal notice went to spam. Can you draft a short apology and ask for their current billing contact?",
+  "should_fire": false,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "Summarize this email thread with the TypeSafe sales rep into three bullets: the quote amount, the proposed start date and the open questions about the payment terms.",
+  "should_fire": false,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "Our procurement checklist asks for a W-9 and a security questionnaire from every vendor. Make a checklist item list for onboarding TypeSafe as a new vendor.",
+  "should_fire": false,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "My colleague wrote in Slack that the TypeSafe Jev API caps each request at a fixed number of Noul questions. Is that right? I need to put the real limit in the vendor comparison sheet.",
+  "should_fire": true,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "The TypeSafe support reply says our Choice questions failed because we used the wrong Jev model ID. Which model ID should we use, and can you draft my answer to support confirming it?",
+  "should_fire": true,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "For the conference booth sign, I need one accurate sentence on whether TypeSafe's Jev scores a Box question the same way it scores a Score question. Can you write it?",
+  "should_fire": true,
+  "category": "vendor_admin"
+ },
+ {
+  "prompt": "The TypeSafe sales email claims Jev handles long documents without any length limit. Before I send our budget approval to finance, can you check that claim and note what the actual limits are?",
+  "should_fire": true,
+  "category": "vendor_admin"
+ }
 ]

@@ -8,7 +8,7 @@ CONTINUATION = re.compile(r"^\s*This session is being continued from a previous 
 EXTRA = re.compile(r"\bbox (primitive|question)s?\b|\btypesafe-danger-zone[\w-]*", re.I)
 RULES = ("current", "skip_continuations", "needs_design_word", "once_per_topic", "combined")
 WINDOW = 10  # prompts in one session within which the same Jev words don't fire again
-DEFAULT_RULE = "skip_continuations"  # picked at Task A5 on labeled real prompts
+DEFAULT_RULE = "skip_continuations"  # picked on blind-labeled real prompts
 
 
 def jev_words(prompt, extra=True):

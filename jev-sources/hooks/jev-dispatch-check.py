@@ -13,12 +13,17 @@ def main():
         p = json.load(sys.stdin)
     except Exception:
         return 0
+    if not isinstance(p, dict):
+        return 0
     ti = p.get("tool_input") if isinstance(p.get("tool_input"), dict) else {}
     prompt = ti.get("prompt") or ""
     if not isinstance(prompt, str):
         return 0
     sid, desc = p.get("session_id"), str(ti.get("description") or "")[:80]
-    if not JEV.search(topic_text(prompt)) or MARKER in prompt:  # not about Jev, or carries the block: allowed
+    if not JEV.search(topic_text(prompt)):  # not about Jev: allowed
+        log_event("dispatch", session=sid, decision="not_jev", desc=desc)
+        return 0
+    if MARKER in prompt:  # about Jev and carries the block: allowed
         log_event("dispatch", session=sid, decision="allow", desc=desc)
         return 0
     m = OPTOUT.search(prompt)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Report on the prompt reminder's decisions: per day, prompts seen, fires, fire rate, reasons and top words. When the
-route and read logs exist (written by route.py and read.py) it also lists likely needless fires, likely missed fires,
+route log or a session ledger exists (written by route.py and read.py) it also lists likely needless fires, likely missed fires,
 and READ FULL sections that were routed but never read.
 
 Usage: firing_report.py [--since YYYY-MM-DD]. Reads <data>/logs/ ($JEV_SOURCES_DATA or ~/.claude/jev-sources-data)."""
@@ -69,10 +69,20 @@ def _day_table(rem):
 
 
 def _ref_ids(r):
-    v = r.get("refs") if r.get("refs") is not None else r.get("ref")
-    if v is None:
-        v = r.get("read_full")
+    """Section ids in a ledger row: refs is a list of "path#heading"."""
+    v = r.get("refs")
     return [v] if isinstance(v, str) else list(v or [])
+
+
+def _read_full_ids(routes):
+    """Ids a route call marked READ FULL (route.jsonl: sections is a list of {id, depth, ...})."""
+    return {s["id"] for r in routes for s in (r.get("sections") or [])
+            if isinstance(s, dict) and s.get("depth") == "READ FULL" and s.get("id")}
+
+
+def _read_in_full_ids(reads):
+    """Ids read.py read in full (read.jsonl: extract is a list of words, or null for a full read)."""
+    return {r["id"] for r in reads if r.get("id") and not r.get("extract")}
 
 
 def _join_by_session(fires, routes, led):
@@ -114,11 +124,11 @@ def report(data, since=None):
     out = ["Reminder decisions" + (f" since {since}" if since else "")]
     out += _day_table(rem) or ["no reminder log lines"]
     route_p, read_p = os.path.join(logs, "route.jsonl"), os.path.join(logs, "read.jsonl")
-    if not (os.path.exists(route_p) and os.path.exists(read_p)):
+    led = _ledger(logs)
+    if not (os.path.exists(route_p) or led):
         return "\n".join(out) + "\n"
     routes = [r for r in _rows(route_p) if _t(r.get("ts")) and (not since or str(r["ts"])[:10] >= since)]
-    reads = _rows(read_p)
-    led = _ledger(logs)
+    reads = _rows(read_p)  # empty when read.py never logged: every READ FULL item then counts as unread
     fires = [r for r in rem if r.get("fire") and _t(r.get("ts"))]
     if led:
         out += ["", "Join: by session (ledger)"]
@@ -136,8 +146,8 @@ def report(data, since=None):
         returned = {ref for rows in led.values() for r in rows if r.get("event") == "routed" for ref in _ref_ids(r)}
         was_read = {ref for rows in led.values() for r in rows if r.get("event") == "read" for ref in _ref_ids(r)}
     else:
-        returned = {ref for r in routes for ref in _ref_ids(r)}
-        was_read = {ref for r in reads for ref in _ref_ids(r)}
+        returned = _read_full_ids(routes)
+        was_read = _read_in_full_ids(reads)
     unread = sorted(returned - was_read)
     out.append(f"READ FULL sections routed but never read: {len(unread)}")
     out += [f"    {ref}" for ref in unread]

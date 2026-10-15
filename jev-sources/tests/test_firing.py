@@ -71,7 +71,7 @@ def test_step_walks_a_session():
     assert fire and words == ["jev"]
 
 
-# Task A6: firing_report.py, on small invented logs.
+# firing_report.py, on small invented logs in the shapes route.py, read.py and the ledger write.
 import hashlib, json
 SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
 
@@ -115,12 +115,17 @@ def test_report_without_plan_b_logs_has_no_join_section(tmp_path):
     assert "Join:" not in _report(tmp_path)
 
 
+def _route(ts, question, sections, cwd="/w"):
+    return {"ts": ts, "question": question, "constraint": None, "topics": [], "semantic": False, "cwd": cwd,
+            "sections": [{"id": i, "depth": d, "kind": "reference", "by": "topic"} for i, d in sections]}
+
+
 def test_report_joins_by_session_ledger(tmp_path):
     h = lambda s: hashlib.sha1(s.encode()).hexdigest()[:16]
     _write(tmp_path, "reminder.jsonl", REMINDERS)
-    _write(tmp_path, "route.jsonl", [{"ts": "2026-10-14T10:02:00Z", "question": "q1"},
-                                     {"ts": "2026-10-15T09:30:00Z", "question": "q-missed"}])
-    _write(tmp_path, "read.jsonl", [{"ts": "2026-10-14T10:03:00Z", "ref": "a.md#One"}])
+    _write(tmp_path, "route.jsonl", [_route("2026-10-14T10:02:00Z", "q1", [("docs/a#1", "READ FULL")]),
+                                     _route("2026-10-15T09:30:00Z", "q-missed", [("docs/c#3", "READ FULL")])])
+    _write(tmp_path, "read.jsonl", [{"ts": "2026-10-14T10:03:00Z", "id": "docs/a#1", "extract": None, "tokens": 10}])
     led = tmp_path / "logs" / "ledger"; led.mkdir()
     (led / (h("s1") + ".jsonl")).write_text("".join(json.dumps(r) + "\n" for r in [
         {"ts": "2026-10-14T10:02:00Z", "session": "s1", "cwd": "/w", "event": "routed", "refs": ["a.md#One", "b.md#Two"]},
@@ -141,23 +146,41 @@ def test_report_falls_back_to_cwd_and_window(tmp_path):
         _rem("2026-10-14T10:00:00Z", "s1", True, "jev_word", ["jev"], cwd="/a"),
         _rem("2026-10-14T12:00:00Z", "s2", True, "jev_word", ["jev"], cwd="/b")])
     _write(tmp_path, "route.jsonl", [
-        {"ts": "2026-10-14T10:10:00Z", "question": "in window", "cwd": "/a"},      # 10 min after the /a fire: matched
-        {"ts": "2026-10-14T12:20:00Z", "question": "too late", "cwd": "/b"}])     # 20 min after: not matched
-    _write(tmp_path, "read.jsonl", [])
+        _route("2026-10-14T10:10:00Z", "in window", [("docs/a#1", "READ FULL"), ("docs/b#2", "EXTRACT")], cwd="/a"),  # 10 min after the /a fire: matched
+        _route("2026-10-14T12:20:00Z", "too late", [("docs/c#3", "READ FULL")], cwd="/b")])                          # 20 min after: not matched
+    _write(tmp_path, "read.jsonl", [
+        {"ts": "2026-10-14T10:11:00Z", "id": "docs/a#1", "extract": ["batch"], "tokens": 5},   # an extract is not a full read
+        {"ts": "2026-10-14T10:12:00Z", "id": "docs/b#2", "extract": None, "tokens": 50}])      # read in full, but never READ FULL
     out = _report(tmp_path)
     assert "Join: by cwd + 15-minute window (no session ledger)" in out
     assert "Fires with no route call afterwards: 1" in out
     assert "2026-10-14T12:00:00Z" in out
     assert "Route calls with no fire before them: 1" in out
     assert "too late" in out and "in window" not in out.split("Route calls with no fire")[1]
+    assert "READ FULL sections routed but never read: 2" in out
+    assert "    docs/a#1" in out and "    docs/c#3" in out and "    docs/b#2" not in out
 
 
-# Task A7: firing test set. Bars are the picked rule's recall (69/77 = 0.8961) and specificity (197/321 = 0.6137)
-# on the labeled real prompts at Task A5 (per prompt, empty `recent`), each minus 0.05, rounded down to 3 decimals.
+def test_report_with_routes_and_no_read_log(tmp_path):
+    _write(tmp_path, "reminder.jsonl", [_rem("2026-10-14T10:00:00Z", "s1", True, "jev_word", ["jev"], cwd="/a"),
+                                        _rem("2026-10-14T12:00:00Z", "s2", True, "jev_word", ["jev"], cwd="/b")])
+    _write(tmp_path, "route.jsonl", [_route("2026-10-14T10:10:00Z", "q", [("docs/a#1", "READ FULL"), ("docs/b#2", "EXTRACT")], cwd="/a")])
+    out = _report(tmp_path)
+    assert "Join: by cwd + 15-minute window" in out
+    assert "Fires with no route call afterwards: 1" in out
+    assert "READ FULL sections routed but never read: 1" in out and "    docs/a#1" in out
+
+
+# Bars: the picked rule's recall (69/77 = 0.8961) and specificity (197/321 = 0.6137) on blind-labeled real prompts
+# (per prompt, empty `recent`), each minus 0.05, rounded down to 3 decimals.
 CASES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "firing_cases.json")
 with open(CASES_PATH, encoding="utf-8") as _f:
     CASES = json.load(_f)
 RECALL_BAR, SPECIFICITY_BAR = 0.846, 0.563
+# The invented set weighs messages that only name Jev tools or TypeSafe far more than real prompts do, so it has its
+# own specificity bar. Today's rule ("current") scores 18/36 on these cases; the picked rule must not be worse.
+# Widening the matcher lowers this number.
+PUBLIC_SPECIFICITY_BAR = 0.5
 
 
 def rates(rows, rule):
@@ -168,14 +191,12 @@ def rates(rows, rule):
 
 
 def test_public_cases():
-    # The invented set weighs messages that only name Jev tools or TypeSafe far more than real prompts do, so the
-    # specificity bar from real prompts does not apply here: the default rule must not do worse than "current".
     from firing import DEFAULT_RULE
     rows = [(c["prompt"], c["should_fire"]) for c in CASES]
     recall, spec = rates(rows, DEFAULT_RULE)
-    _, baseline_spec = rates(rows, "current")
+    print(f"public recall={recall} specificity={spec}")
     assert recall >= RECALL_BAR, f"recall {recall:.2f}"
-    assert spec >= baseline_spec, f"specificity {spec:.2f} below current's {baseline_spec:.2f}"
+    assert spec >= PUBLIC_SPECIFICITY_BAR, f"specificity {spec:.2f}"
 
 
 @pytest.mark.skipif(not os.environ.get("JEV_FIRING_PRIVATE_CASES"), reason="real labeled prompts live only on the owner's machine")

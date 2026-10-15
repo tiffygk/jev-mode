@@ -1,4 +1,4 @@
-import json, os, subprocess, sys, tempfile
+import json, os, shutil, subprocess, sys, tempfile
 H = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hooks")
 
 def run(hook, payload, **env):
@@ -62,8 +62,10 @@ def test_brief_and_reminder_name_this_install():
 def test_symlinked_hook_names_the_real_install(tmp_path):
     for f in ("jev-prompt-reminder.py", "jev_terms.py"):
         os.symlink(os.path.join(H, f), tmp_path / f)
+    iso = tempfile.mkdtemp()  # same isolated env as run(): the state prune must not touch the real data folder
+    e = {**os.environ, "JEV_SOURCES_DATA": iso, "JEV_HOOK_LOG_DIR": iso, "JEV_LOG": "off", "JEV_CHECK": "off"}
     r = subprocess.run([sys.executable, str(tmp_path / "jev-prompt-reminder.py")], input=json.dumps({"prompt": "is a Noul right here?"}),
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, env=e)
     root = os.path.dirname(os.path.realpath(H))
     assert f"{root}/scripts/route.py" in json.loads(r.stdout)["hookSpecificOutput"]["additionalContext"]
 
@@ -153,7 +155,7 @@ def test_reminder_ignores_a_non_text_prompt():
     assert run("jev-prompt-reminder.py", {"prompt": ["a"]}) is None
 
 
-# Task A6: session state and decision logging.
+# Session state and decision logging.
 def _lines(data, name):
     f = os.path.join(str(data), "logs", name + ".jsonl")
     return [json.loads(x) for x in open(f)] if os.path.exists(f) else []
@@ -192,11 +194,11 @@ def test_corrupt_state_file_still_fires(tmp_path):
     kw = dict(JEV_LOG="on", JEV_SOURCES_DATA=str(tmp_path))
     assert run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?", "session_id": "s1"}, **kw)
 
-def test_dispatch_logs_allow_for_non_jev_brief(tmp_path):
+def test_dispatch_logs_not_jev_for_non_jev_brief(tmp_path):
     kw = dict(JEV_LOG="on", JEV_SOURCES_DATA=str(tmp_path))
     assert run("jev-dispatch-check.py", {"session_id": "s1", "tool_input": {"prompt": "Review the recipe layout.", "description": "recipe review"}}, **kw) is None
     (x,) = _lines(tmp_path, "dispatch")
-    assert x["decision"] == "allow" and x["session"] == "s1" and x["desc"] == "recipe review"
+    assert x["decision"] == "not_jev" and x["session"] == "s1" and x["desc"] == "recipe review"
 
 def test_dispatch_logs_deny_and_optout(tmp_path):
     kw = dict(JEV_LOG="on", JEV_SOURCES_DATA=str(tmp_path))
@@ -242,3 +244,21 @@ def test_hook_matches_step_over_a_session(tmp_path):
     for pr in prompts:
         fire, _, _, state = step(state, pr, "once_per_topic")
         assert bool(run("jev-prompt-reminder.py", {"prompt": pr, "session_id": "walk"}, **kw)) == fire, pr
+
+def test_non_dict_json_payload_is_ignored():
+    tmp = tempfile.mkdtemp()
+    e = {**os.environ, "JEV_SOURCES_DATA": tmp, "JEV_HOOK_LOG_DIR": tmp, "JEV_LOG": "off", "JEV_CHECK": "off"}
+    for hook in ("jev-prompt-reminder.py", "jev-dispatch-check.py"):
+        r = subprocess.run([sys.executable, f"{H}/{hook}"], input="[]", capture_output=True, text=True, env=e)
+        assert r.returncode == 0 and r.stdout == "" and "Traceback" not in r.stderr, hook
+
+def test_fault_in_the_rule_never_errors_the_prompt(tmp_path):
+    """A fault while picking the rule or reading state must exit 0 with no output, not a traceback."""
+    e = {**os.environ, "JEV_SOURCES_DATA": str(tmp_path), "JEV_HOOK_LOG_DIR": str(tmp_path), "JEV_LOG": "off", "JEV_CHECK": "off"}
+    d = tmp_path / "hooks"; d.mkdir()
+    for f in ("jev-prompt-reminder.py", "jev_terms.py", "reminder_state.py"):
+        shutil.copy(os.path.join(H, f), d / f)
+    (d / "firing.py").write_text("RULES = ()\nDEFAULT_RULE = 'x'\ndef step(*a):\n    raise RuntimeError('boom')\n")
+    r = subprocess.run([sys.executable, str(d / "jev-prompt-reminder.py")], input=json.dumps({"prompt": "is a Noul right here?"}),
+                       capture_output=True, text=True, env=e)
+    assert r.returncode == 0 and r.stdout == "" and "Traceback" not in r.stderr
