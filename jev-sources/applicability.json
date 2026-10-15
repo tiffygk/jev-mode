@@ -1,0 +1,113 @@
+{
+ "_note": "Which Jev model a section needs (needs: the oldest model it works on) and whether TypeSafe calls it not production-ready (status). match is a page path or path#heading; a heading entry wins over its page. Every quote is verbatim from source (path#heading) and is checked against the library by tests/test_applicability.py. jev-preview and jev-latest resolve through ALIASES in applicability.py. Add an entry only with a quote read from the page. status is experimental or part-experimental (only part of the section, such as its image support, is); note, when present, replaces the generic EXPERIMENTAL wording on route lines and must keep to the page's own words.",
+ "entries": [
+  {
+   "match": "docs/primitives__box.md",
+   "needs": "jev-1.14.0",
+   "status": "experimental",
+   "source": "docs/primitives__box.md#Box",
+   "quote": "Box questions need Jev 1.14",
+   "also": [
+    {
+     "source": "docs/primitives__box.md#Box",
+     "quote": "Images and Box questions aren't yet up to our standards to call ready for production"
+    }
+   ]
+  },
+  {
+   "match": "docs/images.md",
+   "needs": "jev-1.13.0",
+   "status": "experimental",
+   "source": "docs/images.md#Sending images in a request",
+   "quote": "Jev 1.13 and Jev 1.14 both accept images",
+   "also": [
+    {
+     "source": "docs/images.md#Images",
+     "quote": "Images and Box questions aren't yet up to our standards to call ready for production"
+    }
+   ]
+  },
+  {
+   "match": "docs/models.md#Long context",
+   "needs": null,
+   "status": "experimental",
+   "source": "docs/models.md#Long context",
+   "quote": "send the `TypeSafe-Danger-Zone-Long-Context: true` header",
+   "note": "off by default, needs the TypeSafe-Danger-Zone-Long-Context header, and TypeSafe says it is slower and less accurate than the default limits",
+   "also": [
+    {
+     "source": "docs/models.md#Long context",
+     "quote": "It is slower and less accurate than staying within the default limits"
+    }
+   ]
+  },
+  {
+   "match": "docs/sdk__javascript.md#Images",
+   "needs": null,
+   "status": "experimental",
+   "source": "docs/sdk__javascript.md#Images",
+   "quote": "Image support is experimental"
+  },
+  {
+   "match": "docs/sdk__javascript.md#Place the image in the content",
+   "needs": null,
+   "status": "experimental",
+   "source": "docs/sdk__javascript.md#Images",
+   "quote": "Image support is experimental"
+  },
+  {
+   "match": "docs/sdk__javascript.md#Write the image into text with `withAssets`",
+   "needs": null,
+   "status": "experimental",
+   "source": "docs/sdk__javascript.md#Images",
+   "quote": "Image support is experimental"
+  },
+  {
+   "match": "docs/sdk__javascript.md#Choose your own references with `assets`",
+   "needs": null,
+   "status": "experimental",
+   "source": "docs/sdk__javascript.md#Images",
+   "quote": "Image support is experimental"
+  },
+  {
+   "match": "docs/sdk__javascript.md#Locate something with `box`",
+   "needs": "jev-1.14.0",
+   "status": "experimental",
+   "source": "docs/sdk__javascript.md#Locate something with `box`",
+   "quote": "Use the `jev-preview` model for `box`",
+   "also": [
+    {
+     "source": "docs/sdk__javascript.md#Images",
+     "quote": "Image support is experimental"
+    }
+   ]
+  },
+  {
+   "match": "docs/sdk__javascript__api__functions__box.md",
+   "needs": "jev-1.14.0",
+   "status": "experimental",
+   "source": "docs/sdk__javascript__api__functions__box.md#Function: box()",
+   "quote": "Use the `jev-preview` model for `box` questions.",
+   "also": [
+    {
+     "source": "docs/primitives__box.md#Box",
+     "quote": "Images and Box questions aren't yet up to our standards to call ready for production"
+    }
+   ]
+  },
+  {
+   "match": "docs/sdk__python__api__types__assets.md",
+   "needs": "jev-1.13.0",
+   "status": "experimental",
+   "source": "docs/images.md#Images",
+   "quote": "Images and Box questions aren't yet up to our standards to call ready for production"
+  },
+  {
+   "match": "docs/sdk__python__usage__basic.md",
+   "needs": null,
+   "status": "part-experimental",
+   "source": "docs/sdk__python__usage__basic.md#Basic usage",
+   "quote": "image support is only dreamer-ready"
+  }
+ ]
+}

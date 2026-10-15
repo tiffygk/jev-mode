@@ -52,9 +52,10 @@ def source_read(name, inp):
 def strip_code(text):
     return re.sub(r"```.*?```|`[^`\n]*`", " ", text, flags=re.S)
 MARKER = "JEV-SOURCES:"
-BRIEF = ("JEV-SOURCES: before any finding, run route.py on the question and read every READ FULL item with "
-         f"read.py ({ROOT}/scripts); quote verbatim, give path#heading, label reference rule or "
-         "cookbook example; findings without this are unverified.")
+BRIEF = ("JEV-SOURCES: before any finding, run "
+         f"`python3 {ROOT}/scripts/jev.py \"<the question, in your words>\" --docs-words \"<the same question in the docs' words>\"` "
+         "(it routes the question twice) and read what it prints; quote verbatim, give path#heading, label reference rule, pattern, cookbook example, "
+         "sdk reference or vendor claim; findings without this are unverified.")
 
 
 def sentences(text):

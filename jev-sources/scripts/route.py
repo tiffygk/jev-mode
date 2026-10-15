@@ -18,6 +18,8 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import CODE as CODE_DIR, DATA, SCRIPTS, REFRESH
+import usage_log
+import applicability
 try:
     import semantic
 except ImportError:  # numpy missing: BM25 alone
@@ -26,7 +28,7 @@ ROOT = DATA
 CONSTRAINT = re.compile(r"\b(must|require[sd]?|only|can'?t|cannot|one call|per request|per call|limit|allowed|wrong|correct|need to|have to)\b", re.I)
 CODE = re.compile(r"\b(sdk|python|javascript|typescript|client|method|install|import|async|http|api)\b", re.I)
 FULL_UNDER = 2500
-BOOST = {"reference": 1.35, "pattern": 1.3, "example": 1.0, "other": 0.6, "sdk": 0.35}
+BOOST = {"reference": 1.35, "pattern": 1.3, "example": 1.0, "vendor": 0.9, "other": 0.6, "sdk": 0.35}
 DEFS = {"noul": "docs/primitives__noul.md", "choice": "docs/primitives__choice.md",
         "score": "docs/primitives__score.md", "state": "docs/concepts__state.md",
         "confidence": "docs/confidence.md"}
@@ -87,7 +89,8 @@ def bm25(rows, texts, base, extra, k1=1.4, b=0.75):
     return out
 
 
-def route(q):
+def route(q, model=None):
+    model = model or applicability.find_model(q)
     rows, texts = load()
     base, extra = expand(q)
     scores = bm25(rows, texts, base, extra)
@@ -116,6 +119,11 @@ def route(q):
         topics = json.load(open(os.path.join(CODE_DIR, "topics.json")))["topics"]
     except (json.JSONDecodeError, KeyError) as e:
         sys.exit(f"topics.json is malformed ({e}); fix it before routing (refresh does not rebuild it)")
+    by_name = {t["name"]: t for t in topics}
+    for t in topics:  # a topic may share another topic's regex ("match_of": its name)
+        src = by_name[t["match_of"]] if "match_of" in t else t
+        t.setdefault("match", src["match"] if "match" in src else "(?!)")
+        t.setdefault("density", src.get("density", t["match"]))
     hit = [t for t in topics if re.search(r"\b(?:" + t["match"] + ")", q, re.I)]
     mapped = []
     for t in hit:
@@ -128,9 +136,15 @@ def route(q):
                 continue
             if p in {r["path"] for r in mapped}:
                 continue
-            cands = [r for r in rows if r["path"] == p]
-            if cands:
-                mapped.append(max(cands, key=lambda r: (scores[r["id"]], -r["line_start"])))
+            cands = sorted((r for r in rows if r["path"] == p), key=lambda r: (-scores[r["id"]], r["line_start"]))
+            if t.get("top"):  # a long unheaded page (a blog capture): the sections densest in the topic's own words
+                rx = re.compile(r"\b(?:" + t["density"] + ")", re.I)
+                dens = {r["id"]: len(rx.findall(" ".join(texts[r["id"]]))) for r in cands}
+                cands = sorted(cands, key=lambda r: (-dens[r["id"]], -scores[r["id"]], r["line_start"]))
+                cands = [r for r in cands if dens[r["id"]] > 0]
+            for r in cands[:t.get("top", 1)]:
+                if r["id"] not in {m["id"] for m in mapped}:
+                    mapped.append(r)
     picked = mapped + [r for r in picked if r["id"] not in {m["id"] for m in mapped}][:max(0, 8 - len(mapped))]
     picked = picked[:10]
     if sem:  # meaning complements the keyword list: append only, never reorder or drop
@@ -145,7 +159,8 @@ def route(q):
     n_keyword = len(picked) - (len(added) if sem else 0)
     constraint = bool(CONSTRAINT.search(q))
     secs = [dict(id=r["id"], path=r["path"], heading=r["heading"], kind=r["kind"], tokens=r["tokens"],
-                 depth="READ FULL" if constraint or (k < n_keyword and r["tokens"] < FULL_UNDER) else "EXTRACT")
+                 depth="READ FULL" if constraint or (k < n_keyword and r["tokens"] < FULL_UNDER) else "EXTRACT",
+                 by="keyword" if k < n_keyword else "meaning")
             for k, r in enumerate(picked)]  # a section matched only by meaning is a pointer, not a mandatory read
     named = {p for w, p in DEFS.items() if re.search(rf"\b{w}s?\b", q, re.I)}
     defs = []
@@ -153,17 +168,36 @@ def route(q):
         r = next((x for x in rows if x["path"] == p), None)
         if not r or r["id"] in {x["id"] for x in secs[:n_keyword]}:
             continue
-        defs.append(dict(id=r["id"], path=p, heading=r["heading"], kind=r["kind"], tokens=r["tokens"], depth="READ FULL"))
+        defs.append(dict(id=r["id"], path=p, heading=r["heading"], kind=r["kind"], tokens=r["tokens"], depth="READ FULL", by="keyword"))
     secs = [x for k, x in enumerate(secs) if k < n_keyword or x["id"] not in {d["id"] for d in defs}]
-    return {"question": q, "topics": [t["name"] for t in hit], "constraint": constraint, "sections": secs, "definitions": defs,
-            "semantic": sem_why}
+    for x in secs + defs:  # which model a section needs, and whether TypeSafe calls it not production-ready
+        a = applicability.lookup(x["path"], x["heading"])
+        base = model or applicability.ALIASES["jev-latest"]  # NEEDS marks a model newer than the one in use (jev-latest when none is named)
+        x["needs"], x["status"], x["note"] = (a["needs"] if not applicability.allowed(a, base) else None), a["status"], a["note"]
+    if model:  # a section the model can't run is still listed, after every section that applies
+        secs = sorted(secs, key=lambda x: not applicability.allowed(x, model))
+        defs = sorted(defs, key=lambda x: not applicability.allowed(x, model))
+    return {"question": q, "model": model, "topics": [t["name"] for t in hit], "constraint": constraint, "sections": secs, "definitions": defs,
+            "semantic": sem_why, "n_keyword": n_keyword}
 
 
 def main():
-    args = [a for a in sys.argv[1:] if a != "--json"]
+    args, model = [a for a in sys.argv[1:] if a != "--json"], None
+    if "--model" in args:
+        i = args.index("--model")
+        model = args[i + 1] if i + 1 < len(args) and not args[i + 1].startswith("--") else None
+        args = args[:i] + args[i + (2 if model else 1):]
+        if model is None:
+            print("warning: --model needs a value such as jev-1.13.0; routing with no model", file=sys.stderr)
+        else:
+            model = applicability.checked(model)
     if not args:
-        sys.exit('usage: route.py [--json] "<question>"')
-    res = route(" ".join(args))
+        sys.exit('usage: route.py [--json] [--model <jev-model>] "<question>"')
+    res = route(" ".join(args), model=model)
+    usage_log.write("route", question=res["question"], constraint=res["constraint"], topics=res["topics"], semantic=res["semantic"], cwd=os.getcwd(),
+                    sections=[{"id": s["id"], "depth": s["depth"], "kind": s["kind"], "by": s["by"]}
+                              for s in res["sections"]],
+                    definitions=[{"id": d["id"], "depth": d["depth"], "kind": d["kind"]} for d in res["definitions"]])
     if "refresh.sh" in res["semantic"] or "unavailable" in res["semantic"]:  # something to fix
         print(f"semantic routing {res['semantic']}", file=sys.stderr)
     if "--json" in sys.argv:
@@ -171,15 +205,28 @@ def main():
     if not res["sections"] and not res["definitions"]:
         print(f"no section found; refresh the library ({REFRESH}) or read the indexes")
         print(semantic_line(res)); return
-    label = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference", "other": "other"}
+    label = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference", "vendor": "vendor claim", "other": "other"}
     print(f"Question: {res['question']}" + ("  [limits a design: read in full]" if res["constraint"] else ""))
     if res["topics"]:
         print("Topics matched: " + "; ".join(res["topics"]))
-    for s in res["sections"] + res["definitions"]:
-        print(f"{s['depth']:9} | {label[s['kind']]:16} | {s['path']}#{s['heading']} | {s['tokens']} tok\n"
+    items = res["sections"] + res["definitions"]
+    if res["model"]:  # sections the model can't run come last, after the definitions too
+        items = sorted(items, key=lambda x: not applicability.allowed(x, res["model"]))
+        print(f"Model: {res['model']}")
+    for s in items:
+        print(f"{s['depth']:9} | {label[s['kind']]:16} | {s['path']}#{s['heading']} | {s['tokens']} tok{marks(s)}\n"
               f"          python3 {SCRIPTS}/read.py '{s['id']}'")
     print("READ FULL items: read every one with read.py before any claim. EXTRACT items: claims from them are unverified until read in full.")
     print(semantic_line(res))
+
+
+def marks(s):
+    out = f" | NEEDS {s['needs']}" if s.get("needs") else ""
+    if s.get("status") == "experimental":
+        out += " | EXPERIMENTAL: " + (s.get("note") or "TypeSafe says not production-ready")
+    elif s.get("status") == "part-experimental":
+        out += " | PART EXPERIMENTAL: " + (s.get("note") or "TypeSafe says image support is not production-ready")
+    return out
 
 
 def semantic_line(res):

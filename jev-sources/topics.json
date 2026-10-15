@@ -2,6 +2,59 @@
  "_note": "Topic -> pages, seeded from jev-mode/jevaluate/fix-catalog.md (rubric facts F0-F23) and Jev Cookbook Index.md. match is a case-insensitive regex on the question.",
  "topics": [
   {
+   "name": "speed, cost and accuracy claims: launch post (vendor claims, TypeSafe's blog)",
+   "match": "(\\b(faster|slower|cheaper|latency|speed|cost)\\b.*(\\bthan\\b|\\bvs\\.?|\\bversus\\b|compared (to|with)|\\bllms?\\b|\\bgpt\\b|\\bclaude\\b|frontier))|(\\b(vs\\.?|versus|than|compared (to|with))\\s+(an?\\s+)?(gpt|claude|llms?|frontier))|frontier|benchmark|\\b\\d+x (faster|cheaper)|how much (faster|cheaper)|\\b(jev|typesafe|system one)\\b.{0,60}\\b(fast|faster|slow|cheap|cheaper|expensive|latency|speed|milliseconds|cost)|\\b(fast|faster|latency|speed|milliseconds|cost)\\b.{0,60}\\b(jev|typesafe|system one)\\b",
+   "top": 5,
+   "paths": [
+    "blog/introducing-system-one-models-and-jev.txt"
+   ],
+   "density": "faster|latency|speed|ms\\b|milliseconds|cheaper|cost|frontier|benchmark|\\d+x|orders of magnitude"
+  },
+  {
+   "name": "speed, cost and accuracy claims: Jev 1.14 post (vendor claims, TypeSafe's blog)",
+   "top": 2,
+   "paths": [
+    "blog/jev-1-14.txt"
+   ],
+   "match_of": "speed, cost and accuracy claims: launch post (vendor claims, TypeSafe's blog)"
+  },
+  {
+   "name": "images: turning on and errors",
+   "match": "(?=.*(image|picture|photo|png|jpe?g|webp|screenshot))(?=.*(\\b400\\b|\\b413\\b|error|reject|switch|turn(ed)? on|enable|flip|header))",
+   "paths": [
+    "docs/images.md#Turning on images",
+    "docs/images.md#Errors"
+   ]
+  },
+  {
+   "name": "images: uploading",
+   "match": "upload|local (file|jpe?g|png|image|photo)|from disk|file path",
+   "paths": [
+    "docs/images.md#Uploading images"
+   ]
+  },
+  {
+   "name": "images: placement",
+   "match": "(?=.*(image|picture|photo|png|jpe?g|webp|screenshot))(?=.*(where (in|do|can|should)[^?]*(put|place)|placement|shared (by|across|between)))",
+   "paths": [
+    "docs/images.md#Image placement"
+   ]
+  },
+  {
+   "name": "images: limits",
+   "match": "(?=.*(image|picture|photo|png|jpe?g|webp|screenshot))(?=.*(file types?|formats?|dimensions|bytes?\\b|byte size|how (big|large)|max(imum)? size|limits?\\b))",
+   "paths": [
+    "docs/images.md#Limits"
+   ]
+  },
+  {
+   "name": "box: reading the answer",
+   "match": "crop|location answer|box answer|read(ing)? (a |the )?box|what does the (location|box)",
+   "paths": [
+    "docs/primitives__box.md#Reading a Box"
+   ]
+  },
+  {
    "name": "dependent questions / chains (added 2026-10-05)",
    "match": "chain|chained|sequential|second request|two requests|depends on|dependent|call pattern|next question|follow.?up (call|request)|previous (step|answer|question|call)|earlier (answer|step|call)|first answer|one after (the )?other|same request|separate requests?|multi.?step|step by step|needs? the (answer|result|output)|before (asking|the next)|in (sequence|order)",
    "paths": [
@@ -21,7 +74,8 @@
     "docs/primitives.md",
     "patterns/fan-out.md",
     "cookbooks/parallel_questions.md",
-    "cookbooks/rerank_typesafe.md"
+    "cookbooks/rerank_typesafe.md",
+    "docs/primitives.md#How many questions you can ask"
    ]
   },
   {
@@ -108,17 +162,22 @@
   },
   {
    "name": "model version",
-   "match": "pin(ned|ning)?\\b|version|model id|upgrade|jev-1",
+   "match": "pin(ned|ning)?\\b|version|model id|upgrade|jev-1|jev-?1\\.14|jev-preview|jev-latest|alias|deprecat",
    "paths": [
-    "docs/models.md"
+    "docs/models.md",
+    "docs/models.md#Current models",
+    "docs/models.md#Aliases"
    ]
   },
   {
    "name": "size limits",
-   "match": "tokens|64k|32k|too (long|large)|size limit|large state|truncat",
+   "match": "tokens|64k|32k|too (long|large)|size limit|large state|truncat|per.?request|per.?question|context (length|limit|window)|long context|262k",
    "paths": [
     "docs/models.md",
-    "docs/model-jaggedness__jev-1.13.md"
+    "docs/model-jaggedness__jev-1.13.md",
+    "docs/models.md#Context length",
+    "docs/models.md#Long context",
+    "docs/primitives.md#How many questions you can ask"
    ]
   },
   {
@@ -173,6 +232,38 @@
    "paths": [
     "docs/confidence.md",
     "cookbooks/autoresearch_feature_discovery.md"
+   ]
+  },
+  {
+   "name": "images",
+   "match": "image|picture|photo|png|jpe?g|webp|screenshot|multimodal|vision|pixels?|frames?|video|assets?",
+   "paths": [
+    "docs/images.md",
+    "docs/primitives__box.md"
+   ]
+  },
+  {
+   "name": "box / locating things",
+   "match": "bounding box|\\bbox(es)?\\b|coordinates|where (is|in the image)|locate",
+   "paths": [
+    "docs/primitives__box.md",
+    "docs/images.md#Turning on images"
+   ]
+  },
+  {
+   "name": "danger zone / experimental",
+   "match": "danger.?zone|typesafe-danger|dreamer|experimental (feature|flag)s?|not (ready )?for production|production.?ready",
+   "paths": [
+    "docs/images.md#Turning on images",
+    "docs/models.md#Long context"
+   ]
+  },
+  {
+   "name": "rate limits",
+   "match": "rate.?limit|429|too many requests|requests per (second|minute)|throttl",
+   "paths": [
+    "docs/models.md#Rate limits",
+    "docs/api.md#Handling rate limits"
    ]
   }
  ]

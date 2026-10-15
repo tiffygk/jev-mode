@@ -1,5 +1,6 @@
 import json, os, sys, importlib
-import numpy as np, pytest
+import pytest
+np = pytest.importorskip("numpy")
 CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(CODE, "scripts"))
 

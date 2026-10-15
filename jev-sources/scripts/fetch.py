@@ -1,53 +1,60 @@
 #!/usr/bin/env python3
-"""Download every page TypeSafe lists in llms.txt into the data folder: docs/, cookbooks/, patterns/.
-A page that fails (404, rate limit) is named and skipped; the run carries on. Exit 1 if any failed."""
-import datetime, os, re, sys, time, urllib.error, urllib.request
+"""Download every page TypeSafe lists (sitemap and llms.txt) into the data folder: docs/, cookbooks/, patterns/. Also every blog post in typesafe.ai's sitemap, into blog/.
+A page that fails (404, rate limit) or has moved is named and skipped; the run carries on. Exit 1 if any failed or is gone.
+A blog post with nothing below its title (a video post) is named as skipped and does not fail the run.
+A page whose text changed is archived first (archive/<run time>/changed/), and the changed and removed sections go
+through the same record and checks as check_new.py: section_changes.json, STALE_CITATIONS.md, the routing retest."""
+import datetime, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import CODE, DATA
-
-BASE = "https://docs.typesafe.ai/"
+import pages, blog, check_new
 
 
-def get(url, tries=3):
-    for n in range(tries):
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "jev-sources"})
-            return urllib.request.urlopen(req, timeout=30).read().decode("utf-8")
-        except urllib.error.HTTPError as e:
-            if e.code != 429 or n == tries - 1:
-                raise
-            time.sleep(2 * (n + 1))
-
-
-def dest(slug):
-    for kind in ("cookbooks", "patterns"):
-        if slug.startswith(kind + "/"):
-            return os.path.join(DATA, kind, slug[len(kind) + 1:] + ".md")
-    return os.path.join(DATA, "docs", slug.replace("/", "__") + ".md")
-
-
-def main():
+def main(fetch=None):
+    fetch = fetch or pages.get
     try:
-        slugs = sorted(set(re.findall(r"https://docs\.typesafe\.ai/([^)\s]+?)\.md", get(BASE + "llms.txt"))))
-    except Exception as e:
-        sys.exit(f"fetch: could not read llms.txt ({e})")
-    extra = [u.strip()[len(BASE):-3] for u in open(os.path.join(CODE, "scripts", "urls.txt")) if u.strip().startswith(BASE)]
-    slugs += [s for s in extra if s not in slugs]
-    stamp = datetime.date.today().isoformat()
-    failed = []
+        found, _ = pages.live_pages(fetch)
+    except RuntimeError as e:
+        sys.exit(f"fetch: {e}")
+    slugs = sorted(found)
+    now = datetime.datetime.now(pages.UTC)
+    lib = pages.library()
+    ok, failed, changed, added = 0, [], [], []
     for slug in slugs:
         try:
-            text = get(BASE + slug + ".md")
+            text = fetch(pages.BASE + slug + ".md")
+            if slug in lib and pages.digest(pages.body(lib[slug])) != pages.digest(text):
+                pages.archive(lib[slug], "changed", now)
+                changed.append(slug)
+            elif slug not in lib:
+                added.append(slug)
+            pages.write_page(slug, text)
+            ok += 1
+        except pages.Gone as e:
+            moved = f" -> {e.moved_to}" if e.moved_to else ""
+            print(f"gone: {slug}{moved}")
+            failed.append(slug)
         except Exception as e:
-            failed.append(f"{slug} ({e})")
-            continue
-        path = dest(slug)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(f"<!-- saved {stamp} from {BASE}{slug}.md -->\n\n{text}")
-    print(f"fetched {len(slugs) - len(failed)} of {len(slugs)} pages into {DATA}")
-    for x in failed:
-        print(f"fetch failed: {x}")
+            print(f"fetch failed: {slug} ({e})")
+            failed.append(slug)
+    try:
+        posts = blog.list_posts(fetch)
+    except Exception as e:  # the docs are already saved; the blog list is a separate site
+        print(f"blog list couldn't be read ({e}); no blog posts fetched")
+        posts = []
+    had = {p for p in posts if os.path.exists(blog.dest(p))}  # only posts not saved before count as added
+    saved, bad = blog.fetch_posts(posts, fetch)
+    skipped = [p for p, why in bad if why == blog.EMPTY]
+    for p, why in bad:
+        print(f"skipped: blog/{p} ({why})" if why == blog.EMPTY else f"gone: blog/{p}" if why == "gone" else f"blog/{p}: {why}")
+    ok += len(saved)
+    slugs += [f"blog/{p}" for p in posts if p not in skipped]
+    failed += [f"blog/{p}" for p, why in bad if why != blog.EMPTY]
+    print(f"fetched {ok} of {len(slugs)} pages into {pages.DATA}")
+    if changed:  # first installs and unchanged refreshes have nothing to compare, so nothing to check
+        res = {"changed": changed, "added": added + [f"blog/{p}" for p in saved if p not in had], "removed": [], "moved": {},
+               "removed_sections": [], "added_sections": []}
+        for line in check_new.record_changes(res, now):
+            print(line)
     return 1 if failed else 0
 
 

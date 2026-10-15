@@ -61,9 +61,9 @@
     },
     {
       "name": "jev-sources",
-      "source": "./jev-sources",
+      "source": "./",
       "strict": false,
-      "description": "Finds the TypeSafe docs, patterns and cookbook sections that answer a Jev question, by keyword and by meaning, and tells Claude to read them before any claim.",
+      "description": "Finds the TypeSafe docs, patterns, cookbook and blog sections that answer a Jev question, by keyword and by meaning, and tells your coding agent (Claude or Codex) to read them before any claim.",
       "author": {
         "name": "tiffygk",
         "url": "https://github.com/tiffygk"
@@ -80,8 +80,42 @@
       ],
       "category": "development",
       "skills": [
-        "./"
-      ]
+        "./jev-sources"
+      ],
+      "hooks": {
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-prompt-reminder.py\""
+              }
+            ]
+          }
+        ],
+        "PreToolUse": [
+          {
+            "matcher": "Agent",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-dispatch-check.py\""
+              }
+            ]
+          }
+        ],
+        "PostToolUse": [
+          {
+            "matcher": "Bash",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-ledger.py\""
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
