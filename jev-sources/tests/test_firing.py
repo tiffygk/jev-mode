@@ -194,6 +194,17 @@ def test_report_with_routes_and_no_read_log(tmp_path):
     assert "READ FULL sections routed but never read: 1" in out and "    docs/a#1" in out
 
 
+def test_report_counts_read_full_definitions(tmp_path):
+    route = dict(_route("2026-10-14T10:10:00Z", "q", [("docs/a#1", "READ FULL")]),
+                 definitions=[{"id": "docs/d#1", "depth": "READ FULL", "kind": "reference"},
+                              {"id": "docs/d#2", "depth": "EXTRACT", "kind": "reference"}])
+    _write(tmp_path, "reminder.jsonl", [_rem("2026-10-14T10:00:00Z", "s1", True, "jev_word", ["jev"])])
+    _write(tmp_path, "route.jsonl", [route])
+    _write(tmp_path, "read.jsonl", [{"ts": "2026-10-14T10:11:00Z", "id": "docs/a#1", "extract": False, "tokens": 9}])
+    out = _report(tmp_path)
+    assert "READ FULL sections routed but never read: 1" in out and "    docs/d#1" in out and "docs/d#2" not in out
+
+
 def test_report_cwd_join_with_jev_py_lines(tmp_path):
     # jev.py's route lines have no cwd and come one per phrasing with the same ts.
     _write(tmp_path, "reminder.jsonl", [_rem("2026-10-14T10:00:00Z", "s1", True, "jev_word", ["jev"], cwd="/a")])

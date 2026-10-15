@@ -82,8 +82,8 @@ def _routed_full(ref):
 
 
 def _read_full_ids(routes):
-    """Ids a route call marked READ FULL (route.jsonl: sections is a list of {id, depth, ...})."""
-    return {s["id"] for r in routes for s in (r.get("sections") or [])
+    """Ids a route call marked READ FULL (route.jsonl: sections and definitions are lists of {id, depth, ...})."""
+    return {s["id"] for r in routes for s in (r.get("sections") or []) + (r.get("definitions") or [])
             if isinstance(s, dict) and s.get("depth") == "READ FULL" and s.get("id")}
 
 
