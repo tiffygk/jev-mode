@@ -15,3 +15,23 @@ Two hooks keep Claude reading sources on Jev work. The Claude Code plugin instal
 - `jev-dispatch-check.py` refuses a subagent brief about Jev that lacks the `JEV-SOURCES:` line, and prints the line to add. A brief that makes no claim about Jev can carry `NO-JEV-CLAIMS: <why>` on its own line instead; each opt-out is logged.
 
 Each hook logs what it did to `~/.claude/hooks/<name>.log` (or `$JEV_HOOK_LOG_DIR`).
+
+## Logs and settings
+
+The reminder logs every decision, fire or skip, to `<data>/logs/reminder.jsonl`: the session, the rule, the matched words and the first 120 characters of the message. The dispatch check logs each decision to `<data>/logs/dispatch.jsonl`. `<data>` is `$JEV_SOURCES_DATA`, else `~/.claude/jev-sources-data`. The logs stay on your machine.
+
+- `JEV_LOG=off` turns these logs off.
+- `JEV_FIRE_RULE=<rule>` runs another rule from `hooks/firing.py`, for testing. An unknown name falls back to the default.
+- `python3 scripts/firing_report.py [--since YYYY-MM-DD]` reports prompts, fires and reasons per day.
+
+## In Codex
+
+Codex runs the same reminder from `~/.codex/hooks.json`. Use absolute paths:
+
+```json
+{"hooks": {"UserPromptSubmit": [
+  {"hooks": [{"type": "command", "command": "/usr/bin/python3 /path/to/jev-sources/hooks/jev-prompt-reminder.py", "timeout": 30}]}
+]}}
+```
+
+Codex runs a new hook only after you review and trust it in Codex. The dispatch check has no Codex version.

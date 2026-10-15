@@ -56,6 +56,8 @@ Instructions didn't hold:
 - A reviewer agent reported a cookbook's "one call per passage" layout as a Jev rule. Now a prompt hook reminds Claude to route and read when a message mentions Jev.
 - Subagents answered Jev questions from memory. Now a dispatch hook refuses a Jev brief without the `JEV-SOURCES:` line.
 
+The reminder's rule was tuned on labeled real prompts. `scripts/firing_report.py` shows how often it fires now.
+
 ## Where the rules come from
 
 This skill adds no rules of its own; it pulls up TypeSafe's text, quoted with page and heading. [jevaluate](../jevaluate/) rates designs against [`shared/jev-rules.md`](../shared/jev-rules.md), which names each rule's source, TypeSafe's or its own. For example, a cookbook that sends one request per candidate is one build TypeSafe shows; a reference rule decides whether yours must.
