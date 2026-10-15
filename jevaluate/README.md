@@ -42,9 +42,9 @@ The rater picks the verdict, never an average; code refuses one above these rule
 
 ## Code keeps raters on track
 
-In round 1, a rater recorded a partial read as a full one, and a rating with 10 of 24 round-1 facts unknown passed as a 4. Now scripts run the steps:
+In round 1, a rater recorded a partial read as a full one, and a rating with 10 of 24 facts unknown passed as a 4. Now scripts run the steps:
 
-- `step.py` serves the rubric one part at a time, in the order above, with only the rows that apply to this project.
+- `step.py` serves the rubric one part at a time, in the order above, with only the rows that apply.
 - Raters can't skip ahead: routing changed after the facts is refused, the previous rating appears only after the facts and scores, and a transcript scan flags a rater that opens the rubric or past ratings.
 - `library.py check` refuses a rating that breaks a rule and names the line to redo; `add` fills in the kind, the top stakes and every "not applicable".
 
@@ -60,6 +60,7 @@ Needs Claude Code or Codex, git, Python 3.8+ and the GitHub CLI (`gh`, logged in
 
 ```
 git clone https://github.com/tiffygk/jev-mode
+mkdir -p ~/.claude/skills
 cp -r jev-mode/jevaluate jev-mode/shared ~/.claude/skills/
 ```
 
