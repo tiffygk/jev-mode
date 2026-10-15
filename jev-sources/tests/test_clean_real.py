@@ -1,4 +1,8 @@
-"""Checks the cleaner against the real saved library. Runs only with JEV_CLEAN_REAL=1 and the backup library present."""
+"""Checks the cleaner against the real saved library. Runs only with JEV_CLEAN_REAL=1 and the backup library present.
+
+The lost-prose check exempts removed widget lines that read as code; the llms-full cross-check has no such exemption.
+Repeated plain Markdown headings ("Parameters", "Returns", changelog releases) are allowed: read.py resolves them by
+numeric id. Only headings the cleaner converted from HTML headings must be unique within a page."""
 import glob, importlib, os, re, shutil, sys
 import pytest
 
@@ -121,13 +125,21 @@ def test_no_long_lines_or_html_headings(trees):
         assert not re.search(r"<h[1-6]\b", "\n".join(outside)), rel
 
 
-def test_sdk_pages_have_unique_headings(trees, monkeypatch):
+def test_converted_html_headings_are_unique_within_a_page(trees, monkeypatch):
+    converted = {}
+    for rel, raw in trees["raw"].items():
+        names = set()
+        for m in clean.HTML_HEAD.finditer(raw):
+            if clean.ID_ATTR.search(m.group(2)):  # dotted id: the heading is named by it
+                names.add(clean._head(m).lstrip("#").strip())
+        converted[rel] = names
     seen = {}
     for row in sections_of(os.path.join(trees["base"], "clean"), monkeypatch):
-        if os.path.basename(row["path"]).startswith("sdk__"):
+        if row["heading"] in converted.get(row["path"], ()):
             seen.setdefault((row["path"], row["heading"]), []).append(row["id"])
+    print("converted headings checked=%d" % len(seen))
     dup = {k: v for k, v in seen.items() if len(v) > 1}
-    assert not dup, dup
+    assert seen and not dup, dup
 
 
 def test_llms_full_prose_is_in_the_cleaned_pages(trees):
