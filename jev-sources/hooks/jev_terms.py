@@ -1,7 +1,8 @@
 """Shared patterns for the jev-sources hooks. The claim patterns (CLAIM, DESIGN, RELAY, WEAK, source_read)
 serve an optional reply checker that is not shipped here."""
 import re
-from datetime import datetime
+from datetime import datetime, timezone
+import json
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))  # this install's jev-sources folder; realpath, since hooks are often symlinked into ~/.claude/hooks
@@ -79,6 +80,27 @@ def log(name, line):
         with open(os.path.join(os.path.expanduser(os.environ.get("JEV_HOOK_LOG_DIR") or "~/.claude/hooks"), f"{name}.log"), "a", encoding="utf-8") as f:
             f.write(f"{datetime.now().isoformat(timespec='seconds')} {line}\n")
     except OSError:
+        pass
+
+
+def data_dir():
+    return os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
+
+
+def log_event(name, **fields):
+    """Append one JSON line to <data>/logs/<name>.jsonl. Skipped when JEV_LOG=off or there is no session id (test runs
+    and hand-piped JSON); never raises."""
+    if os.environ.get("JEV_LOG") == "off":
+        return
+    if fields.get("session") is None and not os.environ.get("JEV_HOOK_LOG_TESTS"):
+        return
+    try:
+        d = os.path.join(data_dir(), "logs")
+        os.makedirs(d, exist_ok=True)
+        rec = {"ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **fields}
+        with open(os.path.join(d, name + ".jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception:
         pass
 
 
