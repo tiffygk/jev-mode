@@ -292,3 +292,31 @@ def test_a_version_bump_with_equal_saved_times_is_still_silent(env, tmp_path, mo
     assert res["changed"] == [] and not os.path.exists(cn.CHANGES)
     assert os.path.getmtime(stale) == 1000
     assert not (tmp_path / "archive").exists()
+
+
+def run_build(tmp_path):
+    e = dict(os.environ, JEV_SOURCES_DATA=str(tmp_path), JEV_LOG="off", HF_HUB_OFFLINE="1")
+    r = subprocess.run([sys.executable, os.path.join(CODE, "scripts", "build_index.py")], capture_output=True, text=True, env=e)
+    assert r.returncode == 0, r.stderr
+    return r.stdout
+
+
+def test_build_index_leaves_a_half_written_page_for_the_next_check(env, tmp_path):
+    pg, _ = env
+    half_written(pg, "models", RAW, RAW + "A paragraph that landed while the crash was pending.\n")
+    before = open(pg.dest("models"), "rb").read()
+    out = run_build(tmp_path)
+    assert open(pg.dest("models"), "rb").read() == before
+    assert glob_changed(tmp_path) == [] and not (tmp_path / "archive").exists()
+    assert "1 page(s) half-written; the next check re-cleans and reports them" in out
+
+
+def test_a_check_after_build_index_still_reports_the_half_written_page(env, tmp_path):
+    pg, cn = env
+    new = RAW + "A paragraph that landed while the crash was pending.\n"
+    half_written(pg, "models", RAW, new)
+    run_build(tmp_path)
+    res = cn.run(site(pg, {"models": new}, {"models": "2026-10-14T20:00:00Z"}, ["models"], []), now=T14, rebuild=False)
+    assert res["changed"] == ["models"]
+    assert "models" in json.load(open(cn.CHANGES))["changed"]
+    assert "pending" in pg.body(pg.dest("models"))

@@ -308,7 +308,7 @@ def needs_raw():
         return []
 
 
-def prepare(locked=False, now=None):
+def prepare(locked=False, now=None, half_written=True):
     """Brings every library page to the current layout and returns the slugs it rewrote.
     No raw copy, old-style header: the page file is the raw copy, kept byte for byte, then cleaned.
     No raw copy, cleaner header (or no header): never treated as raw; listed in needs_raw.json for a refetch.
@@ -316,7 +316,9 @@ def prepare(locked=False, now=None):
     'cleaner failed <VERSION>': skipped, that version already failed on the page.
     Raw copy saved at a different time than the cleaned one (a crash between write_page's two writes): the raw copy is
     docs text the index never saw, so the old cleaned copy is first copied to archive/<run>/changed/, the page is re-cleaned
-    whatever its cleaner version, and its slug is listed in HALF_WRITTEN (callers report it as changed)."""
+    whatever its cleaner version, and its slug is listed in HALF_WRITTEN (callers report it as changed).
+    half_written=False (build_index): such a page is left exactly as it is, so the next check still sees the old index as the
+    'before'; prepare prints how many it left."""
     HALF_WRITTEN.clear()
     own = False
     if not locked:
@@ -325,7 +327,7 @@ def prepare(locked=False, now=None):
             return []
         own = True
     try:
-        done, needs = [], []
+        done, needs, deferred = [], [], 0
         for slug, path in library().items():
             try:
                 raw_path = raw_dest(slug)
@@ -340,6 +342,9 @@ def prepare(locked=False, now=None):
                 else:
                     t_raw, t_clean = saved_at(raw_path), saved_at(path)
                     if t_raw is not None and t_clean is not None and t_raw != t_clean:
+                        if not half_written:
+                            deferred += 1
+                            continue
                         run = os.path.join(DATA, "archive", (now or datetime.datetime.now(UTC)).strftime("%Y-%m-%dT%H%M%SZ"), "changed")
                         keep = os.path.join(run, os.path.relpath(path, DATA))
                         os.makedirs(os.path.dirname(keep), exist_ok=True)
@@ -363,6 +368,8 @@ def prepare(locked=False, now=None):
             _atomic_write(NEEDS_RAW, json.dumps(sorted(needs)))
         if done:
             print(f"re-cleaned {len(done)} page(s) (cleaner v{clean.VERSION})")
+        if deferred:
+            print(f"{deferred} page(s) half-written; the next check re-cleans and reports them")
         return done
     finally:
         if own:
