@@ -38,8 +38,13 @@ def _sid_hash(sid):
     return hashlib.sha1(str(sid).encode("utf-8")).hexdigest()[:16]
 
 
+def _safe(x):
+    """Log text as printable characters only, so a control character in a log can't reach the terminal."""
+    return "".join(c if c.isprintable() else "?" for c in str(x))
+
+
 def _top(counter, n=8):
-    return ", ".join(f"{k}={v}" for k, v in counter.most_common(n)) or "none"
+    return ", ".join(f"{_safe(k)}={v}" for k, v in counter.most_common(n)) or "none"
 
 
 def _ledger(logs):
@@ -158,9 +163,9 @@ def report(data, since=None):
         out += ["", "Join: by cwd + 15-minute window (no session ledger)"]
         needless, missed = _join_by_cwd(fires, routes)
     out.append(f"Fires with no source call afterwards: {len(needless)} (likely needless)")
-    out += [f"    {r.get('ts')}  {r.get('prompt')!r}" for r in needless]
+    out += [f"    {_safe(r.get('ts'))}  {r.get('prompt')!r}" for r in needless]
     out.append(f"Source calls with no fire before them: {len(missed)} (likely missed)")
-    out += [f"    {ts}  {what}" for ts, what in missed]
+    out += [f"    {_safe(ts)}  {_safe(what)}" for ts, what in missed]
     # READ FULL sections a route call returned that nothing read: from the ledger when there is one, else route/read logs
     if led:
         returned = {_routed_full(ref) for rows in led.values() for r in rows if r.get("event") == "routed" for ref in _ref_ids(r)}
@@ -171,7 +176,7 @@ def report(data, since=None):
         was_read = _read_in_full_ids(reads)
     unread = sorted(returned - was_read)
     out.append(f"READ FULL sections routed but never read: {len(unread)}")
-    out += [f"    {ref}" for ref in unread]
+    out += [f"    {_safe(ref)}" for ref in unread]
     return "\n".join(out) + "\n"
 
 

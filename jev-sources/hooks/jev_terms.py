@@ -87,18 +87,23 @@ def data_dir():
     return os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
 
 
+FIELD_CAP = 300
+
+
 def log_event(name, **fields):
-    """Append one JSON line to <data>/logs/<name>.jsonl. Skipped when JEV_LOG=off or there is no session id (test runs
-    and hand-piped JSON); never raises."""
+    """Append one JSON line to <data>/logs/<name>.jsonl, readable by the owner only. Text fields are cut to FIELD_CAP
+    characters. Skipped when JEV_LOG=off or there is no session id (test runs and hand-piped JSON); never raises."""
     if os.environ.get("JEV_LOG") == "off":
         return
     if fields.get("session") is None and not os.environ.get("JEV_HOOK_LOG_TESTS"):
         return
     try:
         d = os.path.join(data_dir(), "logs")
-        os.makedirs(d, exist_ok=True)
+        os.makedirs(d, mode=0o700, exist_ok=True)
+        fields = {k: v[:FIELD_CAP] if isinstance(v, str) else v for k, v in fields.items()}
         rec = {"ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **fields}
-        with open(os.path.join(d, name + ".jsonl"), "a", encoding="utf-8") as f:
+        fd = os.open(os.path.join(d, name + ".jsonl"), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec) + "\n")
     except Exception:
         pass

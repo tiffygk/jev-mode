@@ -263,3 +263,34 @@ def test_fault_in_the_rule_never_errors_the_prompt(tmp_path):
     r = subprocess.run([sys.executable, str(d / "jev-prompt-reminder.py")], input=json.dumps({"prompt": "is a Noul right here?"}),
                        capture_output=True, text=True, env=e)
     assert r.returncode == 0 and r.stdout == "" and "Traceback" not in r.stderr
+
+def test_logs_and_state_are_owner_only_and_fields_capped(tmp_path):
+    import stat
+    kw = dict(JEV_LOG="on", JEV_SOURCES_DATA=str(tmp_path))
+    assert run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?", "session_id": "s" * 5000, "cwd": "/w" * 5000}, **kw)
+    logs = tmp_path / "logs"
+    for p in (logs, logs / "reminder.jsonl", logs / "reminder_state", next((logs / "reminder_state").iterdir())):
+        assert stat.S_IMODE(os.stat(p).st_mode) & 0o077 == 0, p
+    (x,) = _lines(tmp_path, "reminder")
+    assert len(x["session"]) == 300 and len(x["cwd"]) == 300
+
+def test_state_prune_skips_an_entry_it_cannot_remove(tmp_path, monkeypatch):
+    sys.path.insert(0, H)
+    import reminder_state
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(tmp_path))
+    d = tmp_path / "logs" / "reminder_state"; d.mkdir(parents=True)
+    (d / "a-stuck").mkdir()  # os.remove fails on a folder
+    old = d / "b-old.json"; old.write_text("{}")
+    for p in (d / "a-stuck", old):
+        os.utime(p, (0, 0))
+    monkeypatch.setattr(reminder_state.os, "listdir", lambda _: ["a-stuck", "b-old.json"])  # the stuck one first
+    reminder_state.prune()
+    assert not old.exists() and (d / "a-stuck").exists()
+
+def test_state_save_leaves_no_temp_file_when_replace_fails(tmp_path, monkeypatch):
+    sys.path.insert(0, H)
+    import reminder_state
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(tmp_path))
+    os.makedirs(reminder_state._path("s1"))  # a folder where the state file goes: os.replace fails
+    reminder_state.save("s1", {"n": 1, "fires": []})
+    assert sorted(os.listdir(reminder_state._dir())) == [os.path.basename(reminder_state._path("s1"))]

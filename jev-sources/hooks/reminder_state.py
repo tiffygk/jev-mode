@@ -29,23 +29,31 @@ def save(sid, st):
     if sid is None:
         return
     try:
-        os.makedirs(_dir(), exist_ok=True)
+        os.makedirs(os.path.dirname(_dir()), mode=0o700, exist_ok=True)  # makedirs gives the mode to the last folder only
+        os.makedirs(_dir(), mode=0o700, exist_ok=True)
         st = {"n": st["n"], "fires": st["fires"][-50:]}
         path = _path(sid)
         tmp = path + ".%d.tmp" % os.getpid()
-        with open(tmp, "w", encoding="utf-8") as f:
+        with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w", encoding="utf-8") as f:
             json.dump(st, f)
         os.replace(tmp, path)
     except Exception:
-        pass
+        try:
+            os.remove(tmp)
+        except Exception:
+            pass
 
 
 def prune(days=7):
+    cutoff = time.time() - days * 86400
     try:
-        cutoff = time.time() - days * 86400
-        for name in os.listdir(_dir()):
+        names = os.listdir(_dir())
+    except Exception:
+        return
+    for name in names:  # one entry that can't be removed doesn't stop the rest
+        try:
             p = os.path.join(_dir(), name)
             if os.path.getmtime(p) < cutoff:
                 os.remove(p)
-    except Exception:
-        pass
+        except Exception:
+            pass

@@ -205,6 +205,14 @@ def test_report_counts_read_full_definitions(tmp_path):
     assert "READ FULL sections routed but never read: 1" in out and "    docs/d#1" in out and "docs/d#2" not in out
 
 
+def test_report_prints_log_text_without_control_characters(tmp_path):
+    _write(tmp_path, "reminder.jsonl", [_rem("2026-10-14T10:00:00Z", "s1", False, "no_jev_word", ["a\x1b[2Jb"])])
+    _write(tmp_path, "route.jsonl", [_route("2026-10-14T10:10:00Z", "q\x1b]0;x\x07", [("docs/\x1b[31ma#1", "READ FULL")])])
+    out = _report(tmp_path)
+    assert "\x1b" not in out and "\x07" not in out
+    assert "a?[2Jb=1" in out and "    docs/?[31ma#1" in out
+
+
 def test_report_cwd_join_with_jev_py_lines(tmp_path):
     # jev.py's route lines have no cwd and come one per phrasing with the same ts.
     _write(tmp_path, "reminder.jsonl", [_rem("2026-10-14T10:00:00Z", "s1", True, "jev_word", ["jev"], cwd="/a")])
