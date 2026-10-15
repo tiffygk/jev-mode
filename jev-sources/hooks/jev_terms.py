@@ -99,11 +99,14 @@ def log_event(name, **fields):
     if fields.get("session") is None and not os.environ.get("JEV_HOOK_LOG_TESTS"):
         return
     try:
+        os.makedirs(data_dir(), mode=0o700, exist_ok=True)  # makedirs gives the mode to the last folder only
         d = os.path.join(data_dir(), "logs")
         os.makedirs(d, mode=0o700, exist_ok=True)
+        os.chmod(d, 0o700)  # a folder made before this version keeps its old mode otherwise
         fields = {k: v[:FIELD_CAP] if isinstance(v, str) else v for k, v in fields.items()}
         rec = {"ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **fields}
         fd = os.open(os.path.join(d, name + ".jsonl"), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        os.fchmod(fd, 0o600)  # the open mode applies only when the file is created
         with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec) + "\n")
     except Exception:

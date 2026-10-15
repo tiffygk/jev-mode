@@ -274,6 +274,18 @@ def test_logs_and_state_are_owner_only_and_fields_capped(tmp_path):
     (x,) = _lines(tmp_path, "reminder")
     assert len(x["session"]) == 300 and len(x["cwd"]) == 300
 
+def test_logs_made_by_an_older_version_are_locked_on_the_next_write(tmp_path):
+    import stat
+    data = tmp_path / "data"  # not there yet: the hook makes it owner-only
+    logs = data / "logs"
+    kw = dict(JEV_LOG="on", JEV_SOURCES_DATA=str(data))
+    assert run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?", "session_id": "s1", "cwd": "/w"}, **kw)
+    assert stat.S_IMODE(os.stat(data).st_mode) & 0o077 == 0
+    os.chmod(logs, 0o755); os.chmod(logs / "reminder.jsonl", 0o644)  # as an older version left them
+    assert run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?", "session_id": "s1", "cwd": "/w"}, **kw)
+    for p in (logs, logs / "reminder.jsonl"):
+        assert stat.S_IMODE(os.stat(p).st_mode) & 0o077 == 0, p
+
 def test_state_prune_skips_an_entry_it_cannot_remove(tmp_path, monkeypatch):
     sys.path.insert(0, H)
     import reminder_state
