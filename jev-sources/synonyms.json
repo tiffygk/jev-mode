@@ -18,7 +18,7 @@
   "injection": ["adversarial", "steer", "instruction", "untrusted", "guardrails"],
   "adversarial": ["injection", "steering"],
   "pin": ["version", "model id", "models", "upgrade"],
-  "version": ["models", "pin", "jev-1.13"],
+  "version": ["models", "pin", "jev-1.13", "jev-1.14", "jev-preview"],
   "dataset": ["rows", "inverted", "fan-out", "parallel", "many records", "criteria in the state"],
   "rows": ["dataset", "records", "parallel"],
   "rerank": ["re-ranking", "bm25", "candidates", "passages"],
@@ -28,8 +28,16 @@
   "score": ["levels", "scale", "degree"],
   "choice": ["options", "select", "one of"],
   "calibration": ["confidence", "probability", "accuracy"],
-  "size": ["tokens", "limit", "64k", "32k", "large state"],
-  "limit": ["tokens", "64k", "32k", "cap"],
+  "size": ["tokens", "limit", "64k", "32k", "large state", "per-request context", "per-question context", "long context"],
+  "limit": ["tokens", "64k", "32k", "cap", "per-request context", "per-question context", "long context"],
   "measure": ["evaluation", "accuracy", "labels", "precision"],
-  "eval": ["evaluation", "labels", "accuracy"]
+  "eval": ["evaluation", "labels", "accuracy"],
+  "image": ["images", "multimodal", "assets", "pixels"],
+  "box": ["bounding box", "coordinates", "images"],
+  "picture": ["image", "images"],
+  "photo": ["image", "images"],
+  "screenshot": ["image", "images"],
+  "jpeg": ["image", "images"],
+  "jpg": ["image", "images"],
+  "png": ["image", "images"]
 }

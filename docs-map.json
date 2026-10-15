@@ -92,6 +92,27 @@
    "why": "the Jev Sources README and skill describe routing"
   },
   {
+   "name": "jev-sources hooks",
+   "sources": [
+    "jev-sources/hooks/*"
+   ],
+   "docs": [
+    "jev-sources/hooks/install-hooks.md",
+    "jev-sources/README.md"
+   ],
+   "why": "the hook install guide and the Jev Sources README say what each hook does and how to add it"
+  },
+  {
+   "name": "repo scripts",
+   "sources": [
+    "scripts/*"
+   ],
+   "docs": [
+    "CONTRIBUTING.md"
+   ],
+   "why": "CONTRIBUTING.md says what each repo check does and when it runs"
+  },
+  {
    "name": "jev-lens",
    "sources": [
     "jev-lens/scripts/*",

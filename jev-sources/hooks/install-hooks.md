@@ -1,6 +1,6 @@
 # Installing the hooks (optional)
 
-Two hooks keep Claude reading sources on Jev work. The Claude Code plugin install adds them automatically; don't also add them to `settings.json`, or both fire. For a copy install, add them to `~/.claude/settings.json` under `"hooks"`:
+Three hooks go with the skill: a reminder and a dispatch check that keep Claude reading sources on Jev work, and a ledger (below). The Claude Code plugin install adds all three automatically; don't also add them to `settings.json`, or both fire. For a copy install, add the first two to `~/.claude/settings.json` under `"hooks"`:
 
 ```json
 "UserPromptSubmit": [
@@ -15,6 +15,14 @@ Two hooks keep Claude reading sources on Jev work. The Claude Code plugin instal
 - `jev-dispatch-check.py` refuses a subagent brief about Jev that lacks the `JEV-SOURCES:` line, and prints the line to add. A brief that makes no claim about Jev can carry `NO-JEV-CLAIMS: <why>` on its own line instead; each opt-out is logged.
 
 Each hook logs what it did to `~/.claude/hooks/<name>.log` (or `$JEV_HOOK_LOG_DIR`).
+
+A third hook, `jev-ledger.py`, keeps a record of which sections were routed and read. After each Bash command that runs `route.py`, `read.py` or `jev.py`, it appends one line to `<data>/logs/ledger/<hash of the session id>.jsonl`, with the time, session, folder, the event (`routed` or `read`) and the `path#heading` of each section. It stays on this machine, sends nothing, prints nothing and never blocks; `JEV_LOG=off` turns it off. The plugin install adds it. For a copy install, add it by hand to `~/.claude/settings.json` under `"hooks"`:
+
+```json
+"PostToolUse": [
+  {"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/.claude/skills/jev-sources/hooks/jev-ledger.py"}]}
+]
+```
 
 ## Logs and settings
 

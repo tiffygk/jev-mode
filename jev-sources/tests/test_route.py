@@ -2,6 +2,8 @@ import json, os, subprocess, sys
 import pytest
 CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
+needs_lib = pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "sections.jsonl")),
+                               reason="no fetched library (sections.jsonl) in JEV_SOURCES_DATA")
 
 def route(q):
     out = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "--json", q],
@@ -21,12 +23,14 @@ CASES = [
     ("call pattern pill one call chain route for a Jev node", ["docs/primitives.md", "cookbooks/hierarchical_classification.md"]),
 ]
 
+@needs_lib
 @pytest.mark.parametrize("q,want", CASES)
 def test_known_question_finds_its_sources(q, want):
     paths = {s["path"] for s in route(q)["sections"] + route(q)["definitions"]}
     missing = [w for w in want if w not in paths]
     assert not missing, (q, missing, sorted(paths))
 
+@needs_lib
 @pytest.mark.parametrize("q", ["is this Jev step a chain or one call", "call pattern pill one call chain route for a Jev node",
                                "should this be a sequential second request",
                                # paraphrases that missed on 2026-10-05 (the router is lexical, not semantic)
@@ -37,37 +41,45 @@ def test_chain_wording_finds_the_dependency_rule(q):
     heads = {s["heading"] for s in route(q)["sections"]}
     assert "When one question depends on another" in heads, (q, sorted(heads))
 
+@needs_lib
 def test_constraint_question_gets_full_reads():
     r = route("must it be one request per candidate?")
     assert r["sections"] and all(s["depth"] == "READ FULL" for s in r["sections"])
 
+@needs_lib
 def test_definitions_added_for_named_primitive():
     r = route("is a noul right for this check")
     assert any(d["path"] == "docs/primitives__noul.md" for d in r["definitions"])
 
+@needs_lib
 def test_no_match_says_so():
     out = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "zzqx flurb"], capture_output=True, text=True).stdout
     assert "no section found" in out
 
+@needs_lib
 def test_read_prints_header_and_file_caveats():
     sid = next(s["id"] for s in route("re-ranking passages with typesafe")["sections"] if s["path"] == "cookbooks/rerank_typesafe.md")
     out = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", sid], capture_output=True, text=True, check=True).stdout
     assert out.startswith("SOURCE: cookbooks/rerank_typesafe.md#") and "KIND: cookbook example" in out
     assert "for clarity" in out
 
+@needs_lib
 def test_singular_candidate_routes_to_rerank():
     ids = [s["id"] for s in route("a cookbook does one request per candidate; must we?")["sections"]]
     assert any(i.startswith("cookbooks/rerank_typesafe") for i in ids), ids
 
+@needs_lib
 def test_topic_words_need_word_start():
     assert route("does Jev handle accounts and updates well")["topics"] == []
 
+@needs_lib
 def test_incident_questions_list_noul_structured_instructions():
     for q in ["30 passages as 30 Nouls in one request with the query as state",
               "the rerank cookbook does one request per candidate, must we?"]:
         heads = [s["path"] + "#" + s["heading"] for s in route(q)["sections"]]
         assert "docs/primitives__noul.md#Structured instructions" in heads, (q, heads)
 
+@needs_lib
 def test_paraphrases_route():
     cases = {"send all thirty candidate documents to Jev in a single API hit": "docs/concepts__state.md",
              "can Jev subtract two timestamps to work out someone's age": "cookbooks/date_extraction_cookbook.md",
@@ -77,11 +89,13 @@ def test_paraphrases_route():
         r = route(q)
         assert p in [s["path"] for s in r["sections"] + r["definitions"]], q
 
+@needs_lib
 def test_no_duplicate_ids():
     r = route("what is state in Jev")
     ids = [s["id"] for s in r["sections"] + r["definitions"]]
     assert len(ids) == len(set(ids))
 
+@needs_lib
 def test_malformed_topics_message(tmp_path):
     import shutil
     lib = tmp_path / "jev-sources"
@@ -99,15 +113,15 @@ def test_fresh_install_says_refresh(tmp_path):
 
 def test_fetch_names_failed_pages(tmp_path, monkeypatch):
     sys.path.insert(0, f"{CODE}/scripts")
-    import fetch
-    monkeypatch.setattr(fetch, "DATA", str(tmp_path))
+    import fetch, pages
+    monkeypatch.setattr(pages, "DATA", str(tmp_path))
     def fake(url, tries=3):
         if url.endswith("llms.txt"):
             return "[a](https://docs.typesafe.ai/concepts/state.md) [b](https://docs.typesafe.ai/cookbooks/gone.md)"
         if "gone" in url or "cookbooks/" in url:
-            raise OSError("HTTP Error 404")
+            raise pages.Gone(url)
         return "# State"
-    monkeypatch.setattr(fetch, "get", fake)
+    monkeypatch.setattr(pages, "get", fake)
     assert fetch.main() == 1
     assert (tmp_path / "docs" / "concepts__state.md").exists()
 
@@ -116,6 +130,7 @@ def test_messages_name_this_install(tmp_path):
                        env={**os.environ, "JEV_SOURCES_DATA": str(tmp_path / "empty")})
     assert f"bash {CODE}/refresh.sh --fetch" in r.stdout + r.stderr and "~/.claude/skills" not in r.stdout + r.stderr
 
+@needs_lib
 @pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "index.json")) and not os.path.isdir(DATA), reason="library not fetched")
 def test_route_prints_runnable_read_commands():
     out = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "can I put 30 passages in one call?"], capture_output=True, text=True).stdout
@@ -124,25 +139,30 @@ def test_route_prints_runnable_read_commands():
 
 PARA = json.load(open(os.path.join(CODE, "tests", "paraphrases.json")))
 
+@needs_lib
 def test_paraphrase_set_finds_its_section():
     hits = sum(any(s["heading"] == p["heading"] for s in route(p["q"])["sections"]) for p in PARA)
     # bar lowered from 17 to 16 after measurement: 16/20 exact, baseline 14/20 on keywords alone
     assert hits >= int(0.80 * len(PARA)), f"{hits}/{len(PARA)}"
 
+@needs_lib
 def test_same_question_same_route():
     q = "does this step need the answer from the previous step"
     assert route(q) == route(q)
 
+@needs_lib
 def test_no_match_still_says_so_with_semantic():
     out = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "zzqx flurb"], capture_output=True, text=True).stdout
     assert "no section found" in out
     assert "semantic: on" not in out  # meaning is not used when no word matches
 
+@needs_lib
 def test_short_question_keeps_definitions():
     r = route("noul?")
     assert any(d["path"] == "docs/primitives__noul.md" for d in r["definitions"]) or \
            any(s["path"] == "docs/primitives__noul.md" for s in r["sections"])
 
+@needs_lib
 def test_fallback_matches_bm25_only(monkeypatch):
     env = dict(os.environ, JEV_SEMANTIC="off")
     q = "can I put 30 passages in one call"
@@ -166,6 +186,7 @@ PREFIX_QS = ["can I put 30 passages in one call", "how do I pick a threshold", "
              "score a dataset of rows", "python client retry", "too many categories for one choice",
              "Will adding more checks to one request slow down the response noticeably?"]
 
+@needs_lib
 @pytest.mark.parametrize("q", PREFIX_QS)
 def test_semantic_only_appends_to_keyword_routes(q):
     off, on = _inproc(q, True), _inproc(q, False)
@@ -173,3 +194,15 @@ def test_semantic_only_appends_to_keyword_routes(q):
     assert on["sections"][:n] == off["sections"] and on["definitions"] == off["definitions"]
     if not on["constraint"]:  # a constraint question reads everything in full, as before
         assert all(s["depth"] == "EXTRACT" for s in on["sections"][n:])  # meaning-matched sections are not mandatory reads
+
+@pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "sections.jsonl")), reason="no library")
+def test_topic_paths_resolve():
+    """2026-10-14: a topic pointing at a page or heading TypeSafe renamed routes nowhere, silently."""
+    rows = [json.loads(l) for l in open(os.path.join(DATA, "sections.jsonl"), encoding="utf-8")]
+    have = {(r["path"], r["heading"]) for r in rows}
+    paths = {r["path"] for r in rows}
+    for t in json.load(open(os.path.join(CODE, "topics.json")))["topics"]:
+        for p in t["paths"]:
+            path, _, head = p.partition("#")
+            assert path in paths, f"{t['name']}: {path} is not in the library"
+            assert not head or (path, head) in have, f"{t['name']}: {p} is not a section"

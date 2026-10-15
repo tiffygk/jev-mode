@@ -4,7 +4,7 @@
  {"q": "I have a list of conditions to check on one input. Should I send them all in a single call or one call each?", "heading": "Good practice: ask more than one question per call"},
  {"q": "Will adding more checks to one request slow down the response noticeably?", "heading": "Good practice: ask more than one question per call"},
  {"q": "How much does the model cost, and are output tokens billed?", "heading": "Current models"},
- {"q": "What happens if I exceed my requests-per-minute allowance, and how big can my input be?", "heading": "Current models"},
+ {"q": "What happens if I exceed my requests-per-minute allowance, and how big can my input be?", "heading": "Rate limits"},
  {"q": "How does the system express how sure it is about an answer, and is that the same thing as the raw likelihood of each outcome?", "heading": "Confidence"},
  {"q": "Is there a single 0-to-1 number I can compare against a cutoff to decide whether to trust a result, and which answer kinds lack it?", "heading": "Confidence"},
  {"q": "How do I decide between a pick-one-from-a-list question, a spectrum rating, and a yes/no check?", "heading": "Choose a question type"},

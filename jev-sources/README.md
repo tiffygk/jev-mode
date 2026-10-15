@@ -1,94 +1,103 @@
 # Jev Sources
 
-Jev Sources finds the sections of TypeSafe's own docs, patterns and cookbooks that answer a Jev question, by keyword and by meaning, and tells Claude to read them in full before any claim.
+Hate when your coding harness hallucinates Jev functionality or implements Jev from memory? Want to avoid a research agent getting called every session? Jev Sources puts the relevant TypeSafe documentation sections in your coding harness's context when you develop with Jev.
 
-| Situation | Use |
-|---|---|
-| Asking whether a design works with Jev | Route the question, read the sections it lists |
-| Asking in your own words | Route it as asked; sections also match by meaning |
-| Reviewing a Jev design | Quote each rule with page and heading |
-| Briefing a subagent, or passing on its finding | Paste the `JEV-SOURCES:` line into the brief; read its cited section first |
+It answers Jev questions from TypeSafe's official docs, cookbooks, patterns and blog posts. It never calls Jev: your coding agent's Claude or Codex model does the reading, so no TypeSafe key is needed. It finds sections by keyword and by meaning (a small offline model), reads the key ones in full and labels each, so rules and examples aren't confused.
 
-## Who it's for
-
-- Developers designing with Jev who want TypeSafe's answers.
-- Teams whose agents review Jev designs and need checkable findings.
+For developers and agent teams checking Jev designs.
 
 ## Sample
 
-> **route.py** on "can I put 30 passages in one call?"
-> ### 11 sections to read in full, reference rules first
+> **jev.py** on "can I put 30 passages in one call?", trimmed
+> ### Reference rules read first
 >
-> - `docs/primitives__noul.md#Structured instructions`
-> - `docs/primitives__noul.md#Good practice: ask more than one question per call`
-> - ...9 more
+> - `CITE AS: docs/primitives.md#How many questions you can ask (reference rule)` "There is no limit on the number of questions in a request. What limits a request is its size: ..."
+> - `CITE AS: cookbooks/parallel_questions.md#Parallel questions (cookbook example)`
 >
-> **Next:** `read.py` every READ FULL item before any claim.
+> **Next:** the model quotes the reference rule.
 
-## Results
+## Labels
 
-| Label | Means | Set by |
+`jev.py` labels every section it finds, telling the model how to use it.
+
+| Label | The model | Set when |
 |---|---|---|
-| **READ&nbsp;FULL** | Read it before any claim | A design-limiting question, a short section, or a named primitive |
-| **EXTRACT** | A pointer; claims from it are unverified | Long or meaning-only sections, unless the question limits a design |
-| **Reference&nbsp;rule** | What the API allows | A TypeSafe docs page |
-| **Pattern** | A design TypeSafe recommends | A TypeSafe patterns page |
-| **Cookbook&nbsp;example** | A working build TypeSafe published | A TypeSafe cookbook |
-| **No&nbsp;section&nbsp;found** | Nothing to quote; rephrase or refresh | Nothing matched |
+| **READ&nbsp;FULL** | Reads it all before any claim | Short, or the question limits a design |
+| **EXTRACT** | Gets a pointer; claims from it are unverified | Long, or matched by meaning only |
+| **NEEDS** | Names the model the section needs; reads it last when you named an older one | The page needs a newer model than yours (or than jev-latest), per a kept list of TypeSafe's stated limits |
+| **EXPERIMENTAL** | Quotes TypeSafe's line that it isn't production-ready | TypeSafe calls it experimental (same list) |
 
 ## How it works
 
-1. Download every page TypeSafe lists in `llms.txt` with `refresh.sh --fetch`, which indexes each section by word and by meaning.
-2. Route a question with `route.py`: it ranks sections by topics and words, then adds up to two by meaning.
-3. Read a section in full with `read.py`, which adds any scope note elsewhere in its file.
-4. Claude answers with a verbatim quote, the path and heading, and the label.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="images/how-it-works-dark.svg">
+  <img alt="A Jev question flows from the reminder hook through jev.py, the keyword route, the meaning route and the labels to the sections read in full and a quoted claim." src="images/how-it-works.svg">
+</picture>
 
-Pages and indexes persist in `~/.claude/jev-sources-data/`.
+1. A hook sees a Jev message and tells the model to run `jev.py`. At most every two days it also starts a background check, so the library keeps up with TypeSafe's dated changes.
+2. `jev.py` routes your words and the docs' words: keywords rank sections, boosting reference rules, and the local model adds up to two. It reads the READ FULL ones, reference rules first, up to a size cap.
+3. The model quotes each section with its provenance (source and label), or says "the docs don't say".
 
-### Matching by meaning
+| Step | Who enforces it |
+|---|---|
+| Routing, labels, reading order, cap | Code, once the model runs `jev.py` |
+| Reminder; refusing a Jev brief without its source line | Hooks, once installed |
+| Running `jev.py`, the quote, its provenance | The model, following `SKILL.md` |
 
-Keyword results come first, unchanged. A small local model (`minishlab/potion-base-8M`) then adds sections worded differently from your question, offline; a question routes in about 0.3 s on an Apple Silicon Mac. On 20 questions written without the docs' words, 16 found their exact section, against 14 on keywords alone; the same 20 were used to tune it. `JEV_SEMANTIC=off` turns it off; the output's last line says which.
+The check fetches new and re-dated pages, archives old copies and, after a change, reruns the routing tests and lists stale citations. Data stays in `~/.claude/jev-sources-data/`; `JEV_LOG=off` stops the question log.
 
-## Why the hooks
+## What it reads
 
-Instructions didn't hold:
-
-- A reviewer agent reported a cookbook's "one call per passage" layout as a Jev rule. Now a prompt hook reminds Claude to route and read when a message mentions Jev.
-- Subagents answered Jev questions from memory. Now a dispatch hook refuses a Jev brief without the `JEV-SOURCES:` line.
-
-The reminder's rule was tuned on labeled real prompts. `scripts/firing_report.py` shows how often it fires now.
+It reads TypeSafe's docs (including Models and the API and SDK reference), patterns, cookbooks and blog posts (labeled vendor claims). The refresh finds them through the sitemaps, the docs' `llms.txt` and `scripts/urls.txt`. `SOURCES.md` in the data folder lists every page your copy holds and when it was saved. Updated for Jev 1.14, including image input and Box questions, both experimental per TypeSafe.
 
 ## Where the rules come from
 
-This skill adds no rules of its own; it pulls up TypeSafe's text, quoted with page and heading. [jevaluate](../jevaluate/) rates designs against [`shared/jev-rules.md`](../shared/jev-rules.md), which names each rule's source, TypeSafe's or its own. For example, a cookbook that sends one request per candidate is one build TypeSafe shows; a reference rule decides whether yours must.
+Jev Sources adds no rules. It quotes TypeSafe and labels each page's kind: reference pages say what the API allows; cookbooks show one working build. So a cookbook that sends one request per item shows one way to build it; a reference page or the cookbook's scope note says whether you must. Rating a design is a separate skill, [Jevaluate](../jevaluate/).
+
+## How accurate it is
+
+Tests rerun after each docs change. Scores are in-sample (routes were tuned on these questions; no held-out set), so expect lower recall on new questions.
+
+| Test | Result |
+|---|---|
+| 20 questions in everyday words | 16 find their section (14 on keywords alone) |
+| 20 release-check questions | All 20 read in full (11 on keywords before new routes) |
+| 3 questions naming an older model | All labeled right |
+
+The table measures what `jev.py` finds once the model runs it. Whether the model runs it at all depends on the reminder hook. If the reminder misses a Jev question, the model may answer without the docs. The reminder's rule was tuned on labeled real prompts. `scripts/firing_report.py` shows how often it fires now.
 
 ## Install and use
 
-Needs Claude Code, git and Python 3.9+. The first refresh installs model2vec with pip for matching by meaning; if that fails, routing uses keywords only.
+Needs Claude Code or Codex, git and Python 3.8+. Meaning matching needs model2vec, installed by the first refresh.
 
-As a Claude Code plugin, with the hooks:
+Claude Code plugin, with hooks:
 
 ```
 claude plugin marketplace add tiffygk/jev-mode
 claude plugin install jev-sources@jev-mode
 ```
 
-Then ask Claude to refresh Jev Sources once.
+Codex plugin:
 
-By copy:
+```
+codex plugin marketplace add tiffygk/jev-mode
+codex plugin add jev-sources@jev-mode
+```
+
+Then ask your agent to refresh. By copy (Codex: `~/.agents/skills/` throughout):
 
 ```
 git clone https://github.com/tiffygk/jev-mode
 cp -r jev-mode/jev-sources ~/.claude/skills/
 bash ~/.claude/skills/jev-sources/refresh.sh --fetch
-python3 ~/.claude/skills/jev-sources/scripts/route.py "can I put 30 passages in one call?"
+python3 ~/.claude/skills/jev-sources/scripts/jev.py "can I put 30 passages in one call?"
 ```
 
-The first fetch downloads about 130 pages. Copy installs add the hooks by hand: [`hooks/install-hooks.md`](hooks/install-hooks.md).
+Copy installs add hooks by hand: [`hooks/install-hooks.md`](hooks/install-hooks.md).
 
 ## Limits
 
-It doesn't call Jev, so it needs no TypeSafe key. You download TypeSafe's pages yourself; a failed page is named and skipped. A question can still miss; route it again in other words. Not affiliated with TypeSafe.
+A page TypeSafe edits without updating its sitemap date stays stale until a full refresh (`refresh.sh --fetch`). A question worded unlike the docs can miss its section. Not affiliated with TypeSafe.
 
 ## License
 
