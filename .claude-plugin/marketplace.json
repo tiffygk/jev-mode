@@ -39,7 +39,7 @@
       "name": "jev-lens",
       "source": "./",
       "strict": false,
-      "description": "Turns images into a neutral JSON state that Jev can read, one shared schema across the set.",
+      "description": "Legacy: turns images into a neutral JSON state, for Jev requests that can't send TypeSafe's images header.",
       "author": {
         "name": "tiffygk",
         "url": "https://github.com/tiffygk"
