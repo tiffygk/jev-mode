@@ -10,11 +10,12 @@ SCRIPTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "script
 sys.path.insert(0, SCRIPTS)
 import clean
 
-BACKUP = os.path.expanduser("~/.claude/backups/jev-sources-data-2026-10-15-pre-clean")
+# The source library is never written (it is read only on purpose); pages are copied into a temp dir before use.
+BACKUP = os.path.expanduser(os.environ.get("JEV_CLEAN_SOURCE") or "~/.claude/backups/jev-sources-data-2026-10-15-pristine")
 KINDS = ("docs", "cookbooks", "patterns")
 real = pytest.mark.skipif(
     os.environ.get("JEV_CLEAN_REAL") != "1" or not os.path.isdir(os.path.join(BACKUP, "docs")),
-    reason="set JEV_CLEAN_REAL=1 with the backup library present")
+    reason="set JEV_CLEAN_REAL=1 with the source library (JEV_CLEAN_SOURCE) present")
 
 TAGS = re.compile(r'<[^>\n]+>|\{"|"\}|[*_`#>\[\]]')
 
