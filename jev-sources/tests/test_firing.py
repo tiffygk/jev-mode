@@ -71,7 +71,7 @@ def test_step_walks_a_session():
     assert fire and words == ["jev"]
 
 
-# firing_report.py, on small invented logs in the shapes route.py, read.py and the ledger write.
+# firing_report.py, on small invented logs in the shapes route.py, read.py, jev.py and the jev-ledger hook write.
 import hashlib, json
 SCRIPTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts")
 
@@ -120,25 +120,48 @@ def _route(ts, question, sections, cwd="/w"):
             "sections": [{"id": i, "depth": d, "kind": "reference", "by": "topic"} for i, d in sections]}
 
 
+def _jev_route(ts, question, sections):  # jev.py: one line per phrasing, no cwd
+    return {"ts": ts, "question": question, "model": None, "via": "jev.py", "semantic": "off",
+            "sections": [{"id": i, "depth": d, "kind": "reference", "by": "topic"} for i, d in sections]}
+
+
+def _led(tmp_path, session, rows):
+    d = tmp_path / "logs" / "ledger"; d.mkdir(parents=True, exist_ok=True)
+    name = hashlib.sha1(session.encode()).hexdigest()[:16] + ".jsonl"
+    (d / name).write_text("".join(json.dumps(dict(r, session=session, cwd="/w")) + "\n" for r in rows))
+
+
 def test_report_joins_by_session_ledger(tmp_path):
     h = lambda s: hashlib.sha1(s.encode()).hexdigest()[:16]
     _write(tmp_path, "reminder.jsonl", REMINDERS)
     _write(tmp_path, "route.jsonl", [_route("2026-10-14T10:02:00Z", "q1", [("docs/a#1", "READ FULL")]),
                                      _route("2026-10-15T09:30:00Z", "q-missed", [("docs/c#3", "READ FULL")])])
-    _write(tmp_path, "read.jsonl", [{"ts": "2026-10-14T10:03:00Z", "id": "docs/a#1", "extract": None, "tokens": 10}])
-    led = tmp_path / "logs" / "ledger"; led.mkdir()
-    (led / (h("s1") + ".jsonl")).write_text("".join(json.dumps(r) + "\n" for r in [
-        {"ts": "2026-10-14T10:02:00Z", "session": "s1", "cwd": "/w", "event": "routed", "refs": ["a.md#One", "b.md#Two"]},
-        {"ts": "2026-10-14T10:03:00Z", "session": "s1", "cwd": "/w", "event": "read", "refs": ["a.md#One"]}]))
-    (led / (h("s3") + ".jsonl")).write_text(json.dumps(
-        {"ts": "2026-10-15T09:30:00Z", "session": "s3", "cwd": "/w", "event": "routed", "refs": ["c.md#Three"]}) + "\n")
+    _write(tmp_path, "read.jsonl", [{"ts": "2026-10-14T10:03:00Z", "id": "docs/a#1", "extract": False, "tokens": 10}])
+    # The hook marks each routed ref with its depth; read refs carry none.
+    _led(tmp_path, "s1", [
+        {"ts": "2026-10-14T10:02:00Z", "event": "routed", "refs": ["a.md#One (READ FULL)", "b.md#Two (READ FULL)", "x.md#Ex (EXTRACT)"]},
+        {"ts": "2026-10-14T10:03:00Z", "event": "read", "refs": ["a.md#One"]}])
+    _led(tmp_path, "s3", [{"ts": "2026-10-15T09:30:00Z", "event": "routed", "refs": ["c.md#Three (READ FULL)"]}])
     out = _report(tmp_path)
     assert "Join: by session (ledger)" in out
-    assert "Fires with no route call afterwards: 1" in out   # s2 fired at 11:00, never routed
+    assert "Fires with no source call afterwards: 1" in out   # s2 fired at 11:00, never routed
     assert "2026-10-14T11:00:00Z" in out
-    assert "Route calls with no fire before them: 1" in out  # s3 routed with no fire
+    assert "Source calls with no fire before them: 1" in out  # s3 routed with no fire
     assert "2026-10-15T09:30:00Z" in out
-    assert "b.md#Two" in out and "c.md#Three" in out and "a.md#One" not in out.split("READ FULL")[-1]
+    unread = out.split("READ FULL sections routed but never read: ")[1]
+    assert unread.startswith("2\n") and "    b.md#Two\n" in unread and "    c.md#Three\n" in unread
+    assert "a.md#One" not in unread and "x.md#Ex" not in unread and "(READ FULL)" not in unread
+
+
+def test_report_session_that_used_only_jev_py(tmp_path):
+    # jev.py routes and reads in one call; the hook logs only a "read" event for it.
+    _write(tmp_path, "reminder.jsonl", [_rem("2026-10-14T10:00:00Z", "s1", True, "jev_word", ["jev"])])
+    _write(tmp_path, "route.jsonl", [_jev_route("2026-10-14T10:01:00Z", "q", [("docs/a#1", "READ FULL")])])
+    _led(tmp_path, "s1", [{"ts": "2026-10-14T10:01:00Z", "event": "read", "refs": ["a.md#One"]}])
+    out = _report(tmp_path)
+    assert "Fires with no source call afterwards: 0" in out
+    assert "Source calls with no fire before them: 0" in out
+    assert "READ FULL sections routed but never read: 0" in out
 
 
 def test_report_falls_back_to_cwd_and_window(tmp_path):
@@ -149,14 +172,14 @@ def test_report_falls_back_to_cwd_and_window(tmp_path):
         _route("2026-10-14T10:10:00Z", "in window", [("docs/a#1", "READ FULL"), ("docs/b#2", "EXTRACT")], cwd="/a"),  # 10 min after the /a fire: matched
         _route("2026-10-14T12:20:00Z", "too late", [("docs/c#3", "READ FULL")], cwd="/b")])                          # 20 min after: not matched
     _write(tmp_path, "read.jsonl", [
-        {"ts": "2026-10-14T10:11:00Z", "id": "docs/a#1", "extract": ["batch"], "tokens": 5},   # an extract is not a full read
-        {"ts": "2026-10-14T10:12:00Z", "id": "docs/b#2", "extract": None, "tokens": 50}])      # read in full, but never READ FULL
+        {"ts": "2026-10-14T10:11:00Z", "id": "docs/a#1", "extract": True, "tokens": 5},    # an extract is not a full read
+        {"ts": "2026-10-14T10:12:00Z", "id": "docs/b#2", "extract": False, "tokens": 50}])  # read in full, but never READ FULL
     out = _report(tmp_path)
     assert "Join: by cwd + 15-minute window (no session ledger)" in out
-    assert "Fires with no route call afterwards: 1" in out
+    assert "Fires with no source call afterwards: 1" in out
     assert "2026-10-14T12:00:00Z" in out
-    assert "Route calls with no fire before them: 1" in out
-    assert "too late" in out and "in window" not in out.split("Route calls with no fire")[1]
+    assert "Source calls with no fire before them: 1" in out
+    assert "too late" in out and "in window" not in out.split("Source calls with no fire")[1]
     assert "READ FULL sections routed but never read: 2" in out
     assert "    docs/a#1" in out and "    docs/c#3" in out and "    docs/b#2" not in out
 
@@ -167,8 +190,23 @@ def test_report_with_routes_and_no_read_log(tmp_path):
     _write(tmp_path, "route.jsonl", [_route("2026-10-14T10:10:00Z", "q", [("docs/a#1", "READ FULL"), ("docs/b#2", "EXTRACT")], cwd="/a")])
     out = _report(tmp_path)
     assert "Join: by cwd + 15-minute window" in out
-    assert "Fires with no route call afterwards: 1" in out
+    assert "Fires with no source call afterwards: 1" in out
     assert "READ FULL sections routed but never read: 1" in out and "    docs/a#1" in out
+
+
+def test_report_cwd_join_with_jev_py_lines(tmp_path):
+    # jev.py's route lines have no cwd and come one per phrasing with the same ts.
+    _write(tmp_path, "reminder.jsonl", [_rem("2026-10-14T10:00:00Z", "s1", True, "jev_word", ["jev"], cwd="/a")])
+    _write(tmp_path, "route.jsonl", [
+        _jev_route("2026-10-14T10:05:00Z", "q one way", [("docs/a#1", "READ FULL")]),   # after the fire: matched
+        _jev_route("2026-10-14T10:05:00Z", "q another way", [("docs/a#1", "READ FULL")]),
+        _jev_route("2026-10-14T13:00:00Z", "later, no fire", [("docs/b#2", "READ FULL")]),
+        _jev_route("2026-10-14T13:00:00Z", "later, rephrased", [("docs/b#2", "READ FULL")])])
+    _write(tmp_path, "read.jsonl", [{"ts": "2026-10-14T10:05:00Z", "id": "docs/a#1", "extract": False, "tokens": 9, "via": "jev.py"}])
+    out = _report(tmp_path)
+    assert "Fires with no source call afterwards: 0" in out
+    assert "Source calls with no fire before them: 1" in out and "later, no fire" in out
+    assert "READ FULL sections routed but never read: 1" in out and "    docs/b#2" in out
 
 
 # Bars: the picked rule's recall (69/77 = 0.8961) and specificity (197/321 = 0.6137) on blind-labeled real prompts

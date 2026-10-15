@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Report on the prompt reminder's decisions: per day, prompts seen, fires, fire rate, reasons and top words. When the
-route log or a session ledger exists (written by route.py and read.py) it also lists likely needless fires, likely missed fires,
+route log (route.py, jev.py) or a session ledger (the jev-ledger hook) exists it also lists likely needless fires, likely missed fires,
 and READ FULL sections that were routed but never read.
 
 Usage: firing_report.py [--since YYYY-MM-DD]. Reads <data>/logs/ ($JEV_SOURCES_DATA or ~/.claude/jev-sources-data)."""
@@ -69,9 +69,16 @@ def _day_table(rem):
 
 
 def _ref_ids(r):
-    """Section ids in a ledger row: refs is a list of "path#heading"."""
+    """Section ids in a ledger row: refs is a list of "path#heading"; a routed ref ends in " (READ FULL)" or " (EXTRACT)"."""
     v = r.get("refs")
-    return [v] if isinstance(v, str) else list(v or [])
+    return [v] if isinstance(v, str) else [x for x in (v or []) if isinstance(x, str)]
+
+
+def _routed_full(ref):
+    """The "path#heading" of a routed READ FULL ref, or None for an EXTRACT."""
+    if ref.endswith(" (EXTRACT)"):
+        return None
+    return ref[:-len(" (READ FULL)")] if ref.endswith(" (READ FULL)") else ref
 
 
 def _read_full_ids(routes):
@@ -81,16 +88,17 @@ def _read_full_ids(routes):
 
 
 def _read_in_full_ids(reads):
-    """Ids read.py read in full (read.jsonl: extract is a list of words, or null for a full read)."""
+    """Ids read in full (read.jsonl, from read.py and jev.py: extract is true for an extract, false for a full read)."""
     return {r["id"] for r in reads if r.get("id") and not r.get("extract")}
 
 
 def _join_by_session(fires, routes, led):
-    """Return (fires without a later route, routes without an earlier fire), joined on the hashed session id."""
+    """Return (fires without a later source call, source calls without an earlier fire), joined on the hashed session
+    id. A source call is a ledger row: "routed" from route.py, "read" from read.py or jev.py (jev.py writes only "read")."""
     routed = defaultdict(list)
     for h, rows in led.items():
         for r in rows:
-            if r.get("event") == "routed" and _t(r.get("ts")):
+            if r.get("event") in ("routed", "read") and _t(r.get("ts")):
                 routed[h].append(_t(r["ts"]))
     fire_ts = defaultdict(list)
     for r in fires:
@@ -104,16 +112,28 @@ def _join_by_session(fires, routes, led):
     return needless, missed
 
 
+def _same_place(route, fire):
+    """jev.py's route lines carry no cwd; those match on the time window alone."""
+    return "cwd" not in route or route.get("cwd") == fire.get("cwd")
+
+
 def _join_by_cwd(fires, routes):
     needless = []
     for r in fires:
         t = _t(r.get("ts"))
-        if not any(x.get("cwd") == r.get("cwd") and _t(x.get("ts")) and t <= _t(x["ts"]) <= t + WINDOW for x in routes):
+        if not any(_same_place(x, r) and t <= _t(x["ts"]) <= t + WINDOW for x in routes):
             needless.append(r)
+    calls, seen = [], set()
+    for x in routes:  # jev.py writes one route line per phrasing, all with the same ts: one call
+        if x.get("via") == "jev.py":
+            if x.get("ts") in seen:
+                continue
+            seen.add(x.get("ts"))
+        calls.append(x)
     missed = []
-    for x in routes:
-        t = _t(x.get("ts"))
-        if t and not any(r.get("cwd") == x.get("cwd") and _t(r.get("ts")) and t - WINDOW <= _t(r["ts"]) <= t for r in fires):
+    for x in calls:
+        t = _t(x["ts"])
+        if not any(_same_place(x, r) and t - WINDOW <= _t(r["ts"]) <= t for r in fires):
             missed.append((str(x.get("ts")), x.get("question") or x.get("cwd")))
     return needless, missed
 
@@ -137,13 +157,14 @@ def report(data, since=None):
     else:
         out += ["", "Join: by cwd + 15-minute window (no session ledger)"]
         needless, missed = _join_by_cwd(fires, routes)
-    out.append(f"Fires with no route call afterwards: {len(needless)} (likely needless)")
+    out.append(f"Fires with no source call afterwards: {len(needless)} (likely needless)")
     out += [f"    {r.get('ts')}  {r.get('prompt')!r}" for r in needless]
-    out.append(f"Route calls with no fire before them: {len(missed)} (likely missed)")
+    out.append(f"Source calls with no fire before them: {len(missed)} (likely missed)")
     out += [f"    {ts}  {what}" for ts, what in missed]
     # READ FULL sections a route call returned that nothing read: from the ledger when there is one, else route/read logs
     if led:
-        returned = {ref for rows in led.values() for r in rows if r.get("event") == "routed" for ref in _ref_ids(r)}
+        returned = {_routed_full(ref) for rows in led.values() for r in rows if r.get("event") == "routed" for ref in _ref_ids(r)}
+        returned.discard(None)
         was_read = {ref for rows in led.values() for r in rows if r.get("event") == "read" for ref in _ref_ids(r)}
     else:
         returned = _read_full_ids(routes)
