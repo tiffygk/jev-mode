@@ -22,7 +22,7 @@ How the Jevaluate skills work together, with diagrams: the [system page](https:/
 
 This repo is a plugin marketplace for Claude Code and Codex. It has three plugins:
 
-- `jevaluate`: the Jevaluate and Jevaluate Harness skills
+- `jevaluate`: the Jevaluate, Jevaluate Privately and Jevaluate Harness skills
 - `jev-lens`: the Jev Lens skill
 - `jev-sources`: the Jev Sources skill and its hooks
 
@@ -52,7 +52,9 @@ To install without the plugin system, copy a skill's folder into `~/.claude/skil
 
 ```
 git clone https://github.com/tiffygk/jev-mode
+mkdir -p ~/.claude/skills
 cp -r jev-mode/jevaluate ~/.claude/skills/
+cp -r jev-mode/jevaluate-private ~/.claude/skills/
 cp -r jev-mode/jev-lens ~/.claude/skills/
 cp -r jev-mode/jevaluate-harness ~/.claude/skills/
 cp -r jev-mode/jevaluate-eval ~/.claude/skills/

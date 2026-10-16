@@ -70,6 +70,7 @@ Needs Claude Code with the `claude` CLI logged in and Python 3.8+. The Sol grade
 
 ```
 git clone https://github.com/tiffygk/jev-mode
+mkdir -p ~/.claude/skills
 cp -r jev-mode/{jevaluate,jevaluate-eval,shared} ~/.claude/skills/
 ```
 

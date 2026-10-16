@@ -64,7 +64,7 @@ Tests rerun after each docs change. Scores are in-sample (routes were tuned on t
 | 20 release-check questions | All 20 read in full (11 on keywords before new routes) |
 | 3 questions naming an older model | All labeled right |
 
-The table measures what `jev.py` finds once the model runs it. Whether the model runs it at all depends on the reminder hook. If the reminder misses a Jev question, the model may answer without the docs. The reminder's rule was tuned on labeled real prompts. `scripts/firing_report.py` shows how often it fires now.
+The table measures what `jev.py` finds once the model runs it. Whether the model runs it depends on the reminder hook. If the reminder misses a Jev question, the model may answer without the docs. The reminder's rule was tuned on labeled real prompts. `scripts/firing_report.py` shows how often it fires now.
 
 ## Install and use
 
@@ -88,6 +88,7 @@ Then ask your agent to refresh. By copy (Codex: `~/.agents/skills/` throughout):
 
 ```
 git clone https://github.com/tiffygk/jev-mode
+mkdir -p ~/.claude/skills
 cp -r jev-mode/jev-sources ~/.claude/skills/
 bash ~/.claude/skills/jev-sources/refresh.sh --fetch
 python3 ~/.claude/skills/jev-sources/scripts/jev.py "can I put 30 passages in one call?"

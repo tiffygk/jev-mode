@@ -4,7 +4,7 @@ Usage: python3 scripts/docs_check.py [--base REF] [--head REF] [--body TEXT]
   --base  what the change is compared with (default origin/main); --head the change (default HEAD)
   --body  the PR description, searched for waivers along with the commit messages in base..head
 A waiver line: "Docs checked: <doc> unchanged because <reason>". Also flags counts and rubric versions written into
-hand-written README prose (they go stale), and retired names outside the files listed for them (retired-names.json).
+hand-written README prose (they go stale), a skill folder missing from the root README's copy-install list, and retired names outside the files listed for them (retired-names.json).
 Rules: docs-map.json. Why: CONTRIBUTING.md. Exits 1 with one line per problem.
 """
 import argparse, fnmatch, json, pathlib, re, subprocess, sys
@@ -76,6 +76,15 @@ def retired_problems(cfg, files):
     return out
 
 
+def install_problems(root=None):
+    """Every top-level folder with a SKILL.md needs its own `cp -r jev-mode/<folder>` line in the root README."""
+    root = root or ROOT
+    readme = (root / "README.md").read_text()
+    return [f"README.md: install list has no `cp -r jev-mode/{d.name}` line; a hand install would miss the {d.name} skill"
+            for d in sorted(root.iterdir()) if (d / "SKILL.md").is_file()
+            and not re.search(rf"^cp -r jev-mode/{re.escape(d.name)}\s", readme, re.M)]
+
+
 def tracked_text(root=None):
     root = root or ROOT
     out = {}
@@ -96,7 +105,7 @@ def main(argv=None):
     added = set(git("diff", "--name-only", "--diff-filter=A", rng).split())
     text = a.body + "\n" + git("log", "--format=%B", f"{a.base}..{a.head}")
     waived = {m.group(1) for m in WAIVER.finditer(text)}
-    problems = map_problems(cfg["rules"], changed, added, waived, cfg.get("ignore", ())) + count_problems(cfg["count_lint"], ROOT)
+    problems = map_problems(cfg["rules"], changed, added, waived, cfg.get("ignore", ())) + count_problems(cfg["count_lint"], ROOT) + install_problems(ROOT)
     retired = ROOT / "retired-names.json"
     if retired.exists(): problems += retired_problems(dict(json.loads(retired.read_text()), self="retired-names.json"), tracked_text(ROOT))
     for p in problems: print("docs check: " + p, file=sys.stderr)
