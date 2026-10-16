@@ -508,6 +508,18 @@ def test_check_quote_with_a_page_only_citation_finds_the_section(qlib, sid):
     assert r.returncode == 1 and r.stdout.strip() == "QUOTE NOT FOUND | docs/limits2.md"
 
 
+def test_check_quote_cuts_a_very_long_heading_and_gives_its_id(tmp_path):
+    data = tmp_path / "data"
+    (data / "docs").mkdir(parents=True)
+    (data / "docs" / "long.md").write_text("# Long\n\n## " + "Word " * 60 + "\n\nA short body line.\n")
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    r = read_cli(env, "docs/long.md", "--check-quote", "A short body line.")
+    assert r.returncode == 0 and "... [docs/long#1] | line " in r.stdout
+    assert len(r.stdout.split(" | ")[1]) < 160
+
+
 def test_reading_a_page_only_id_still_refuses(qlib):
     r = read_cli(qlib, "docs/limits2.md")
     assert r.returncode == 1 and "no section" in r.stderr + r.stdout

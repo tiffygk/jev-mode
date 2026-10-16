@@ -224,10 +224,15 @@ def render(sid, extract_terms=None):
     return "\n".join(out)
 
 
+HEAD_MAX = 120  # the longest real heading is 75 characters; a longer one is cut and cited by its numeric id
+
+
 def _ref(r):
-    """path#heading, plus the numeric id when the page repeats that heading."""
+    """path#heading, plus the numeric id when the page repeats that heading or the heading is cut at HEAD_MAX."""
     several = len([x for x in _index() if x["path"] == r["path"] and x["heading"] == r["heading"]]) > 1
-    return f"{r['path']}#{r['heading']}" + (f" [{r['id']}]" if several else "")
+    cut = len(r["heading"]) > HEAD_MAX
+    head = r["heading"][:HEAD_MAX] + "..." if cut else r["heading"]
+    return f"{r['path']}#{head}" + (f" [{r['id']}]" if several or cut else "")
 
 
 def main():
