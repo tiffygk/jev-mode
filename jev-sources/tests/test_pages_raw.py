@@ -88,8 +88,42 @@ def test_a_cleaned_page_with_no_raw_copy_is_never_copied_to_raw(env, tmp_path):
     calls = []
     res = cn.run(site(pg, {"models": RAW}, {"models": "2026-10-01T00:00:00Z"}, ["models"], calls), now=T14, rebuild=False)
     assert any(c.endswith("models.md") for c in calls)  # fetched whatever the sitemap date
-    assert pg.raw_text(p) == RAW and res["changed"] == []
+    assert pg.raw_text(p) == RAW and res["changed"] == ["models"]  # the cleaned text differs from the old copy: a change
     assert len(archived(tmp_path, RUN14, "replaced")) == 1  # the unverified copy is kept, not deleted
+
+
+def test_a_refetched_page_with_no_raw_copy_and_the_same_text_is_no_change(env, tmp_path):
+    pg, cn = env
+    p = pg.dest("models")
+    os.makedirs(os.path.dirname(p))
+    cleaned = clean_mod().clean(RAW)
+    open(p, "w", encoding="utf-8").write("<!-- saved 2026-10-13T12:00:00Z from https://docs.typesafe.ai/models.md | cleaner 1 -->\n\n" + cleaned)
+    res = cn.run(site(pg, {"models": RAW}, {"models": "2026-10-01T00:00:00Z"}, ["models"], []), now=T14, rebuild=False)
+    assert res["changed"] == [] and res["reraw"] == ["models"] and not os.path.exists(cn.CHANGES)
+    assert pg.raw_text(p) == RAW
+
+
+LIMITS_OLD = "# Models\n\nIntro.\n\n## Limits\n\nA request holds up to 50 images.\n\n## Other\n\nSecond.\n"
+LIMITS_NEW = "# Models\n\nIntro.\n\nA second new paragraph. A third.\n\n## Limits\n\nA request holds up to 50 images.\n\n## Other\n\nSecond.\n"
+
+
+def run_read(tmp_path, *args):
+    e = dict(os.environ, JEV_SOURCES_DATA=str(tmp_path), JEV_LOG="off", HF_HUB_OFFLINE="1")
+    return subprocess.run([sys.executable, os.path.join(CODE, "scripts", "read.py")] + list(args), capture_output=True, text=True, env=e)
+
+
+def test_a_refetched_page_with_no_raw_copy_is_reindexed_and_reported(env, tmp_path):
+    pg, cn = env
+    p = pg.dest("models")
+    os.makedirs(os.path.dirname(p))
+    open(p, "w", encoding="utf-8").write("<!-- saved 2026-10-13T12:00:00Z from https://docs.typesafe.ai/models.md | cleaner 1 -->\n\n" + LIMITS_OLD)
+    run_build(tmp_path)
+    assert not os.path.exists(pg.raw_dest("models"))
+    res = cn.run(site(pg, {"models": LIMITS_NEW}, {"models": "2026-10-14T20:00:00Z"}, ["models"], []), now=T14, rebuild=True)
+    assert res["changed"] == ["models"] and "models" in res["notice"]
+    assert "models" in json.load(open(cn.CHANGES))["changed"]
+    r = run_read(tmp_path, "docs/models.md#Limits")
+    assert r.returncode == 0 and "A request holds up to 50 images." in r.stdout and "second new paragraph" not in r.stdout
 
 
 def test_a_cleaner_version_bump_recleans_without_a_docs_change(env, tmp_path, monkeypatch):
@@ -320,3 +354,17 @@ def test_a_check_after_build_index_still_reports_the_half_written_page(env, tmp_
     assert res["changed"] == ["models"]
     assert "models" in json.load(open(cn.CHANGES))["changed"]
     assert "pending" in pg.body(pg.dest("models"))
+
+
+def test_fetch_main_reports_a_page_with_no_raw_copy_whose_text_differs(env, tmp_path, monkeypatch):
+    pg, cn = env
+    import fetch
+    monkeypatch.setattr("blog.list_posts", lambda f: [])
+    p = pg.dest("models")
+    os.makedirs(os.path.dirname(p))
+    open(p, "w", encoding="utf-8").write("<!-- saved 2026-10-13T12:00:00Z from https://docs.typesafe.ai/models.md | cleaner 1 -->\n\ncleaned only")
+    seen = []
+    monkeypatch.setattr(cn, "record_changes", lambda res, now, rebuild=True: seen.append(list(res["changed"])) or [])
+    f = site(pg, {"models": RAW}, {"models": None}, ["models"], [])
+    assert fetch.main(f) == 0
+    assert seen == [["models"]]

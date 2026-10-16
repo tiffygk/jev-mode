@@ -39,6 +39,8 @@ def _main(fetch):
             text = fetch(pages.BASE + slug + ".md")
             raw = pages.raw_text(lib[slug]) if slug in lib else None
             if slug in lib and raw is None:  # no raw copy to compare: the unverified copy is kept in the archive
+                if pages.differs_from_cleaned(lib[slug], text) and slug not in changed:
+                    changed.append(slug)
                 pages.archive(lib[slug], "replaced", now)
             elif slug in lib and pages.digest(raw) != pages.digest(text):
                 if slug not in changed:  # prepare already archived a half-written page's old copy

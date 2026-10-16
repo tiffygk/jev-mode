@@ -123,8 +123,11 @@ def run(fetch=None, now=None, rebuild=True):
         if s in lib:
             raw = pages.raw_text(lib[s])
             if raw is None:  # no raw copy to compare: this download becomes it; the unverified copy is kept in the archive
+                differs = pages.differs_from_cleaned(lib[s], text)
                 pages.archive(lib[s], "replaced", now)
                 res["reraw"].append(s)
+                if differs and s not in res["changed"]:  # new words the index never saw: a change, reported and indexed
+                    res["changed"].append(s)
             elif pages.digest(raw) == pages.digest(text):
                 pages.touch(lib[s], now)
                 res["redated"].append(s)

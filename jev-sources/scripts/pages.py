@@ -238,6 +238,15 @@ def _cleaned(text, slug):
         return text, f"cleaner failed {clean.VERSION}"
 
 
+def differs_from_cleaned(path, text):
+    """True when `text`, cleaned, is not the body of the cleaned copy at `path` (a page with no raw copy to compare)."""
+    try:
+        new = clean.clean(text)
+    except Exception:
+        new = text
+    return digest(new) != digest(body(path))
+
+
 def _write_cleaned(slug, saved, url, text):
     out, tag = _cleaned(text, slug)
     _atomic_write(dest(slug), f"<!-- saved {saved} from {url} | {tag} -->\n\n{out}")
