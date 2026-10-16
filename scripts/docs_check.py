@@ -82,7 +82,7 @@ def install_problems(root=None):
     readme = (root / "README.md").read_text()
     return [f"README.md: install list has no `cp -r jev-mode/{d.name}` line; a hand install would miss the {d.name} skill"
             for d in sorted(root.iterdir()) if (d / "SKILL.md").is_file()
-            and not re.search(rf"cp -r jev-mode/{re.escape(d.name)}\s", readme)]
+            and not re.search(rf"^cp -r jev-mode/{re.escape(d.name)}\s", readme, re.M)]
 
 
 def tracked_text(root=None):

@@ -122,7 +122,7 @@ def test_skill_missing_from_install_list_flagged(tmp_path):
     for name in ("listed", "unlisted", "listed-too"):
         (tmp_path / name).mkdir(); (tmp_path / name / "SKILL.md").write_text("x")
     (tmp_path / "shared").mkdir()
-    (tmp_path / "README.md").write_text("cp -r jev-mode/listed ~/.claude/skills/\ncp -r jev-mode/listed-too ~/.claude/skills/\n")
+    (tmp_path / "README.md").write_text("cp -r jev-mode/listed ~/.claude/skills/\ncp -r jev-mode/listed-too ~/.claude/skills/\n# cp -r jev-mode/unlisted ~/.claude/skills/\n")
     p = dc.install_problems(tmp_path)
     assert len(p) == 1 and "jev-mode/unlisted" in p[0]
 
