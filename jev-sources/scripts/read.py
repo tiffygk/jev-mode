@@ -4,7 +4,8 @@
   python3 scripts/read.py 'cookbooks/rerank_typesafe#7'
   python3 scripts/read.py 'cookbooks/rerank_typesafe.md#Setup (cookbook example)'   a CITE AS line works too
   ... --extract "<terms>"   12 lines around each hit, capped at 1,500 tokens (marked as an extract)
-  ... --check-quote "<quote>"   is the quote in that section? Prints one QUOTE FOUND / QUOTE NOT FOUND line, never the text
+  ... --check-quote "<quote>"   is the quote in that section? Prints one QUOTE FOUND / QUOTE NOT FOUND line, never the text;
+                                a NOT FOUND line names another section of the same page that holds the quote, if one does
 
 The first line is the citation to quote: SOURCE: <path>#<heading> | KIND | READ.
 A section with a model or readiness limit gets a second line: APPLIES: needs <model> or newer | experimental (<source>).
@@ -121,37 +122,71 @@ def _find(text, lines, owner, cols, want, start):
     return best
 
 
+def _in_row(r, parts):
+    """(line_no, line) where the quote's parts start in section r, all found in order; None if they are not."""
+    if not os.path.exists(os.path.join(ROOT, r["path"])):
+        sys.exit(f"missing source {r['path']}; run {REFRESH}")
+    lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+    flat, owner, cols = [], [], []
+    for i, ln in enumerate(lines):
+        sq, c = _kept(ln)
+        flat.append(sq)
+        owner += [i] * len(sq)
+        cols += c
+    text, start, spans = "".join(flat), 0, []
+    for want in parts:
+        span = _find(text, lines, owner, cols, want, start)
+        if span is None:
+            return None
+        spans.append(span)
+        start = span[1] + 1
+    if not spans:
+        return None
+    i = owner[spans[0][0]]
+    return r["line_start"] + i, lines[i]
+
+
+def _page_rows(sid):
+    """Every section of the page a page-only id names (docs/models.md or docs/models); [] for any other id."""
+    sid = sid.strip()
+    if "#" in sid:
+        return []
+    path = sid if sid.endswith((".md", ".txt")) else sid + ".md"
+    return [x for x in _index() if x["path"] == path]
+
+
 def check_quote(sid, quote):
     """(found, row, line_no, line): is the quote in the section sid names? When a heading repeats, every same-named
-    section is checked and row is the one that holds it. Matching ignores whitespace, *, _ and ` (and a backslash
-    before them), quote marks and sentence punctuation at the quote's ends, and the case of its first letter; it
-    is otherwise case-sensitive, and the quote may span lines. An elision (..., … or [...]) splits the quote into
-    parts that must all be found, in order. A part must not start or end inside a run of letters or digits
-    ("up to 5" is not in "up to 50"). line_no is the file line the quote starts on.
+    section is checked and row is the one that holds it; a page-only id (docs/models.md) checks every section of
+    that page. Matching ignores whitespace, *, _ and ` (and a backslash before them), quote marks and sentence
+    punctuation at the quote's ends, and the case of its first letter; it is otherwise case-sensitive, and the
+    quote may span lines. An elision (..., … or [...]) splits the quote into parts that must all be found, in
+    order. A part must not start or end inside a run of letters or digits ("up to 5" is not in "up to 50").
+    line_no is the file line the quote starts on.
     When it is not found, row is the first section checked and line_no and line are None."""
     parts = quote_parts(quote)
-    rows = _rows(sid)
+    rows = _page_rows(sid) or _rows(sid)
     for r in rows:
-        if not os.path.exists(os.path.join(ROOT, r["path"])):
-            sys.exit(f"missing source {r['path']}; run {REFRESH}")
-        lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
-        flat, owner, cols = [], [], []
-        for i, ln in enumerate(lines):
-            sq, c = _kept(ln)
-            flat.append(sq)
-            owner += [i] * len(sq)
-            cols += c
-        text, start, spans = "".join(flat), 0, []
-        for want in parts:
-            span = _find(text, lines, owner, cols, want, start)
-            if span is None:
-                break
-            spans.append(span)
-            start = span[1] + 1
-        if parts and len(spans) == len(parts):
-            i = owner[spans[0][0]]
-            return True, r, r["line_start"] + i, lines[i]
+        at = _in_row(r, parts)
+        if at:
+            return True, r, at[0], at[1]
     return False, rows[0], None, None
+
+
+def elsewhere_on_page(sid, quote):
+    """(row, line_no, line) for the first other section of the cited page that holds the quote, or None. Run after
+    check_quote finds nothing, so a quote cited under the wrong heading can be re-cited, not called unverified."""
+    if _page_rows(sid):
+        return None  # a page-only id already checked the whole page
+    cited = _rows(sid)
+    ids = {x["id"] for x in cited}
+    parts = quote_parts(quote)
+    for r in _index():
+        if r["path"] == cited[0]["path"] and r["id"] not in ids:
+            at = _in_row(r, parts)
+            if at:
+                return r, at[0], at[1]
+    return None
 
 
 def render(sid, extract_terms=None):
@@ -189,6 +224,12 @@ def render(sid, extract_terms=None):
     return "\n".join(out)
 
 
+def _ref(r):
+    """path#heading, plus the numeric id when the page repeats that heading."""
+    several = len([x for x in _index() if x["path"] == r["path"] and x["heading"] == r["heading"]]) > 1
+    return f"{r['path']}#{r['heading']}" + (f" [{r['id']}]" if several else "")
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit("usage: read.py <section id> [--extract terms | --check-quote \"<quote>\" | --check-quote -]")
@@ -200,13 +241,18 @@ def main():
             print("usage: read.py <section id> --check-quote \"<quote>\" (the quote is empty)", file=sys.stderr)
             return 2
         found, r, line_no, line = check_quote(sid, quote)
-        several = len([x for x in _index() if x["path"] == r["path"] and x["heading"] == r["heading"]]) > 1
-        ref = f"{r['path']}#{r['heading']}" + (f" [{r['id']}]" if several else "")
+        page_only = bool(_page_rows(sid))
         usage_log.write("check_quote", id=r["id"], found=found)
         if found:
-            print(f"QUOTE FOUND | {ref} | line {line_no}: {line.strip()[:200]}")
+            print(f"QUOTE FOUND | {_ref(r)} | line {line_no}: {line.strip()[:200]}")
             return 0
-        print(f"QUOTE NOT FOUND | {ref}")
+        other = elsewhere_on_page(sid, quote)
+        if other:
+            o, o_line_no, o_line = other
+            print(f"QUOTE NOT FOUND | {_ref(r)} | found on this page under {_ref(o)}, line {o_line_no}: "
+                  f"{o_line.strip()[:200]} | cite that section")
+            return 1
+        print(f"QUOTE NOT FOUND | {r['path'] if page_only else _ref(r)}")
         return 1
     terms = sys.argv[sys.argv.index("--extract") + 1:] if "--extract" in sys.argv else None
     text = render(sid, terms)
