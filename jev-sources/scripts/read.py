@@ -82,13 +82,47 @@ def _kept(line):
     return "".join(keep), cols
 
 
+_ELISION = re.compile(r"\s*\[?(?:\.\.\.|…)\]?\s*")
+_EDGE = "\"'“”‘’.,;:!? \t\r\n"
+
+
+def quote_parts(quote):
+    """The quote's parts between elisions (..., … or [...]), squashed, each without the quote marks and the
+    sentence punctuation a writer adds or drops at a quote's ends. [] means the quote is empty."""
+    parts = (_squash(p.strip(_EDGE)) for p in _ELISION.split(quote))
+    return [p for p in parts if p]
+
+
+def _find(text, lines, owner, cols, want, start):
+    """The (first, last) index of want in text at or after start, not starting or ending inside a run of letters
+    or digits; the first letter may differ in case. None if absent."""
+    best = None
+    for w in {want, want[0].swapcase() + want[1:]}:
+        pos = start - 1
+        while True:
+            pos = text.find(w, pos + 1)
+            if pos < 0:
+                break
+            first, last = pos, pos + len(w) - 1
+            before = lines[owner[first]][cols[first] - 1] if cols[first] > 0 else " "
+            after = lines[owner[last]][cols[last] + 1] if cols[last] + 1 < len(lines[owner[last]]) else " "
+            if (w[0].isalnum() and before.isalnum()) or (w[-1].isalnum() and after.isalnum()):
+                continue
+            if best is None or first < best[0]:
+                best = (first, last)
+            break
+    return best
+
+
 def check_quote(sid, quote):
     """(found, row, line_no, line): is the quote in the section sid names? When a heading repeats, every same-named
     section is checked and row is the one that holds it. Matching ignores whitespace, *, _ and ` (and a backslash
-    before them) and is case-sensitive; the quote may span lines. It must not start or end inside a run of letters
-    or digits ("up to 5" is not in "up to 50"). line_no is the file line the quote starts on.
+    before them), quote marks and sentence punctuation at the quote's ends, and the case of its first letter; it
+    is otherwise case-sensitive, and the quote may span lines. An elision (..., … or [...]) splits the quote into
+    parts that must all be found, in order. A part must not start or end inside a run of letters or digits
+    ("up to 5" is not in "up to 50"). line_no is the file line the quote starts on.
     When it is not found, row is the first section checked and line_no and line are None."""
-    want = _squash(quote)
+    parts = quote_parts(quote)
     rows = _rows(sid)
     for r in rows:
         if not os.path.exists(os.path.join(ROOT, r["path"])):
@@ -100,17 +134,15 @@ def check_quote(sid, quote):
             flat.append(sq)
             owner += [i] * len(sq)
             cols += c
-        text, pos = "".join(flat), -1
-        while want:
-            pos = text.find(want, pos + 1)
-            if pos < 0:
+        text, start, spans = "".join(flat), 0, []
+        for want in parts:
+            span = _find(text, lines, owner, cols, want, start)
+            if span is None:
                 break
-            first, last = pos, pos + len(want) - 1
-            before = lines[owner[first]][cols[first] - 1] if cols[first] > 0 else " "
-            after = lines[owner[last]][cols[last] + 1] if cols[last] + 1 < len(lines[owner[last]]) else " "
-            if (want[0].isalnum() and before.isalnum()) or (want[-1].isalnum() and after.isalnum()):
-                continue
-            i = owner[first]
+            spans.append(span)
+            start = span[1] + 1
+        if parts and len(spans) == len(parts):
+            i = owner[spans[0][0]]
             return True, r, r["line_start"] + i, lines[i]
     return False, rows[0], None, None
 
@@ -157,7 +189,7 @@ def main():
     if "--check-quote" in sys.argv:
         i = sys.argv.index("--check-quote")
         quote = sys.stdin.read() if sys.argv[i + 1:] == ["-"] else " ".join(sys.argv[i + 1:])  # "-": the quote comes on stdin
-        if not _squash(quote):
+        if not quote_parts(quote):
             print("usage: read.py <section id> --check-quote \"<quote>\" (the quote is empty)", file=sys.stderr)
             return 2
         found, r, line_no, line = check_quote(sid, quote)

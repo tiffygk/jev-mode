@@ -394,8 +394,9 @@ def test_check_quote_with_a_changed_word_exits_1(rlib):
     assert r.returncode == 1 and r.stdout.startswith("QUOTE NOT FOUND | docs/primitives__box.md#Response structure")
 
 
-def test_check_quote_is_case_sensitive(rlib):
-    assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "the box returns four numbers.").returncode == 1
+def test_check_quote_is_case_sensitive_after_its_first_letter(rlib):
+    assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "The Box returns four numbers.").returncode == 1
+    assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "the box returns four numbers.").returncode == 0
 
 
 def test_check_quote_with_an_empty_quote_exits_2(rlib):
@@ -448,6 +449,30 @@ def qlib(tmp_path):
                                          ("request holds up to 50 imag", 1), ("up to 50 images", 0), ("50 images.", 0)])
 def test_check_quote_does_not_match_inside_a_word_or_number(qlib, quote, code):
     assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", quote).returncode == code, quote
+
+
+@pytest.mark.parametrize("quote,code", [
+    ("A request holds up to 50 images", 0),           # end punctuation dropped
+    ("a request holds up to 50 images.", 0),          # first letter lowered to fit the writer's sentence
+    ('"A request holds up to 50 images."', 0),        # quote marks kept around it
+    ("Run `pip install typesafe` first.", 0),         # cut mid-sentence and given a period (the page has a comma)
+    ("Run `pip install typesafe` first:", 0),
+    ("A request holds ... 50 images.", 0),            # an elision
+    ("A request holds … 50 images.", 0),
+    ("A request holds [...] 50 images.", 0),
+    ("A request holds up to 50 images. ... Run `pip install typesafe` first", 0),
+    ("A request holds ... 60 images.", 1),            # every part must be on the page
+    ("50 images ... A request holds", 1),             # in the page's order
+    ("A request holds ... up to 5", 1),               # each part keeps the word-boundary rule
+    ("A request holds up to 50 Images.", 1),          # case still counts after the first letter
+])
+def test_check_quote_allows_the_changes_quoting_makes_at_the_ends_and_elisions(qlib, quote, code):
+    assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", quote).returncode == code, quote
+
+
+def test_check_quote_of_only_an_elision_or_punctuation_exits_2(qlib):
+    for q in ("...", " . ", "…"):
+        assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", q).returncode == 2, q
 
 
 def test_check_quote_reads_the_quote_from_stdin_with_backticks_and_quotes(qlib):
