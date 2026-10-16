@@ -71,3 +71,67 @@ def test_cleaning_twice_changes_nothing():
 
 def test_code_shaped_counts_only_lines_outside_fences():
     assert clean.code_shaped(WIDGET.split("\n") + FENCED.split("\n")) == 3
+
+
+# --- export blocks end where their brackets close (gate must-fix 1) ---------------------------------------
+LATER_WIDGET = 'export const Card = () => (\n<div className="card"/>\n);'
+
+
+def test_one_line_export_without_semicolon_drops_alone_and_keeps_prose():
+    page = 'Intro.\n\nexport const Spacer = () => <div className="h-4" />\n\nUse Box questions when you need coordinates.\n\n' + LATER_WIDGET + '\n\nAfter.'
+    out = clean.clean(page)
+    assert "Spacer" not in out and "Card" not in out
+    assert "Use Box questions when you need coordinates." in out and "Intro." in out and "After." in out
+
+
+def test_unclosed_export_keeps_prose_before_a_later_closed_widget():
+    page = 'Intro.\n\nexport function Broken() {\n\nUse Box questions when you need coordinates.\n\n' + LATER_WIDGET + '\n\nAfter.'
+    out = clean.clean(page)
+    assert "Use Box questions when you need coordinates." in out and "After." in out and "export function Broken" in out
+    assert "Card" not in out
+
+
+def test_nested_brackets_end_the_block_only_at_depth_zero():
+    page = 'export function W() {\n  if (a) {\n    go();\n  }\n}\n\nProse after.'
+    assert clean.clean(page).strip() == "Prose after."
+    inner_end = 'export function W() {\n  const a = {\n  };\n\nKept prose.\n}\n\nMore.'
+    out = clean.clean(inner_end)
+    assert "Kept prose." not in out and "More." in out
+
+
+def test_a_heading_stops_an_unclosed_block_even_when_a_stray_closer_follows():
+    page = 'export function Broken() {\n\n## Next heading\n\nReal prose here.\n}\n\nTail.'
+    out = clean.clean(page)
+    assert "## Next heading" in out and "Real prose here." in out and "Tail." in out
+
+
+def test_a_fence_stops_an_unclosed_block_even_when_a_stray_closer_follows():
+    page = 'export function Broken() {\n\nProse before the fence.\n\n```js\nfunction keep() {\n}\n```\n}\n\nTail.'
+    out = clean.clean(page)
+    assert "Prose before the fence." in out and "```js\nfunction keep() {\n}\n```" in out and "Tail." in out
+
+
+# --- linear time on hostile pages (security M1) ------------------------------------------------------------
+import time
+
+
+def _under_two_seconds(text):
+    t = time.time()
+    clean.clean(text)
+    assert time.time() - t < 2
+
+
+def test_repeated_unclosed_signature_tags_clean_fast():
+    _under_two_seconds("<SdkSignature>\n" * 20000 + "Prose.")
+
+
+def test_repeated_unclosed_html_headings_clean_fast():
+    _under_two_seconds("<h1 x>\n" * 20000 + "Prose.")
+
+
+def test_repeated_unclosed_exports_clean_fast():
+    _under_two_seconds("export function a() {\n" * 5000 + "Prose.")
+
+
+def test_repeated_unterminated_heading_openers_clean_fast():
+    _under_two_seconds("<h1 " * 5000 + "Prose.")
