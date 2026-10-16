@@ -19,7 +19,7 @@ Plans, specs, handoffs and working notes never go in this repo, not even in an i
 
 ## Before an eval run or a merge
 
-Run `git fetch upstream && git log <branch>..upstream/main -- jevaluate/ jevaluate-harness/`. If another branch changed the rubric or the harness, rebase first. Otherwise the eval's answer key and the rubric can disagree.
+Run `git fetch origin && git log <branch>..origin/main -- jevaluate/ jevaluate-harness/` (in a fork, use `upstream`, as `CONTRIBUTING.md` sets it up). If another branch changed the rubric or the harness, rebase first. Otherwise the eval's answer key and the rubric can disagree.
 
 ## Before a push
 
