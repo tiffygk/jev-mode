@@ -106,7 +106,7 @@ def main():
         print('FINDING: <one sentence> | CITE AS: <path#heading (label)> | QUOTE: "<exact words>"')
     else:
         for s in b["not_read"]:
-            print(f"NOT YET READ (over the cap): {rd} '{s['id']}'  # {s['path']}#{s['heading']}")
+            print(f"NOT YET READ (over the cap): {rd} {shlex.quote(s['id'])}  # {s['path']}#{s['heading']}")
     for s in b["extract"]:
         print(f"EXTRACT (claims from it are unverified until read in full): {rd} '{s['id']}'")
     print(f"semantic: {b['semantic']}")

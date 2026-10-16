@@ -1,6 +1,6 @@
 """jev.py: one call that routes a question in two phrasings and reads every READ FULL section in order, up to a cap.
 Order, dedup and cap tests patch route.route and read.render; the rest run on an invented library in tmp_path."""
-import json, os, subprocess, sys
+import json, os, shlex, subprocess, sys
 import pytest
 
 CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -121,7 +121,7 @@ def test_cli_prints_a_read_command_for_each_unread_section(J, monkeypatch, capsy
     monkeypatch.setattr(sys, "argv", ["jev.py", "q", "--cap", "1000"])
     J.main()
     out = capsys.readouterr().out
-    assert f"python3 {os.path.join(CODE, 'scripts', 'read.py')} 'b'" in out
+    assert f"python3 {os.path.join(CODE, 'scripts', 'read.py')} {shlex.quote('b')}  #" in out
     assert "NOT YET READ" in out and "EXTRACT" in out and "semantic: on" in out
 
 
