@@ -33,4 +33,4 @@ Before pushing, run the full test suite (`python3 -m pytest`) and fix any failur
 
 ## Writing in this repo
 
-State each rule plainly, with no person's name attached. No em-dashes. Each skill gets a one-page README of 750 words at most (jev-sources: 890).
+State each rule plainly, with no person's name attached. No em-dashes. Each skill gets a one-page README of 750 words at most (jev-sources: 1,130).
