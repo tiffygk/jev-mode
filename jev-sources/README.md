@@ -66,9 +66,9 @@ Jev Sources adds no rules. It quotes TypeSafe and labels each page's kind: refer
 | SDK questions, written blind | 24 | 🔴 Hard | printed in full within the cap | 42% (10 of 24; 24% to 61%); previous version 38% |
 
 How to read it:
-- 68 questions in all: the rows above plus 3 naming an older model. Another 24 SDK questions were used only to choose between router versions.
+- 68 questions in all: the rows above plus 3 naming an older model.
 - **n** is the number of questions in the row, its sample size. Every question searches all 1,213 sections in the library, 765 of them SDK reference entries.
-- 🟢 **Easy** questions cover the docs in general, and the routing was tuned on them. 🔴 **Hard** questions each ask about one function, field or error in the SDK reference, where many entries have similar names. An agent that never saw this tool wrote them, and they were scored once.
+- 🟢 **Easy** questions cover the docs in general, and the routing was tuned on them. 🔴 **Hard** questions each ask about one function, field or error in the SDK reference, where many entries have similar names. An agent that never saw this tool wrote 48 of them. Half chose between four versions of the matching step; the 24 in the table scored the winner once.
 - **Listed** means the section is anywhere in the list `jev.py` returns. **Printed in full** is stricter: the model gets the whole section within the size cap.
 - **Found** is recall: the share of questions whose section was found. The range is the 95% Wilson interval, wide because the rows are small.
 - On the hard questions, the new version found one more than the previous version, too few to show a real improvement (exact McNemar p = 1.0). All 3 questions naming an older model got the right label.
