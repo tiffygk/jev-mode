@@ -9,16 +9,21 @@ MODEL_ID = "minishlab/potion-base-8M"   # measured in Task 1: 256-d, ~0.26 s col
 VEC, META = os.path.join(DATA, "embeddings.npy"), os.path.join(DATA, "embeddings.json")
 os.environ.setdefault("HF_HOME", os.path.join(DATA, "models"))
 ALLOW_DOWNLOAD = False  # build_index.py sets True: index time may download the model once
-_model = None
+_model, _model_of = None, None
+
+
+def model_id():
+    return MODEL_ID
 
 
 def _load_model():
-    global _model
-    if _model is None:
+    global _model, _model_of
+    mid = model_id()
+    if _model is None or _model_of != mid:
         if not ALLOW_DOWNLOAD:
             os.environ["HF_HUB_OFFLINE"] = "1"  # query time never touches the network
         from model2vec import StaticModel
-        _model = StaticModel.from_pretrained(MODEL_ID)
+        _model, _model_of = StaticModel.from_pretrained(mid), mid
     return _model
 
 
@@ -55,8 +60,8 @@ def prose(lines):
 
 
 def section_text(row, lines):
-    body = prose(lines[row["line_start"] - 1:row["line_end"]])
-    return row["heading"] + "\n" + body[:20000]
+    seg = lines[row["line_start"] - 1:row["line_end"]]
+    return row["heading"] + "\n" + prose(seg)[:20000]
 
 
 def chunks(text, size=80):
@@ -98,7 +103,7 @@ def build(rows, texts):
     v = _embed(parts)
     np.save(VEC, v)
     with open(META, "w") as fh:
-        json.dump({"model": MODEL_ID, "dim": int(v.shape[1]), "ids": [r["id"] for r in rows], "owners": owners,
+        json.dump({"model": model_id(), "dim": int(v.shape[1]), "ids": [r["id"] for r in rows], "owners": owners,
                    "keys": {r["id"]: _key(r) for r in rows}}, fh)
 
 
@@ -109,7 +114,7 @@ def scores(q, rows):
         v = np.load(VEC)
     except (FileNotFoundError, ValueError, OSError):
         return None, "no semantic index; run refresh.sh"
-    if meta.get("model") != MODEL_ID:
+    if meta.get("model") != model_id():
         return None, f"index built with model {meta.get('model')}; run refresh.sh"
     ids, owners = meta.get("ids", []), meta.get("owners", [])
     pos = {i: k for k, i in enumerate(ids)}

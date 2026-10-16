@@ -49,7 +49,8 @@ def test_constraint_question_gets_full_reads():
 @needs_lib
 def test_definitions_added_for_named_primitive():
     r = route("is a noul right for this check")
-    assert any(d["path"] == "docs/primitives__noul.md" for d in r["definitions"])
+    got = r["definitions"] + [s for s in r["sections"] if s["depth"] == "READ FULL" and s["by"] == "keyword"]
+    assert any(d["path"] == "docs/primitives__noul.md" for d in got)
 
 @needs_lib
 def test_no_match_says_so():
@@ -115,6 +116,8 @@ def test_fetch_names_failed_pages(tmp_path, monkeypatch):
     sys.path.insert(0, f"{CODE}/scripts")
     import fetch, pages
     monkeypatch.setattr(pages, "DATA", str(tmp_path))
+    monkeypatch.setattr(pages, "LOCK", str(tmp_path / "check.lock"))  # bound at import: without this the lock lands in the configured library
+    monkeypatch.setattr(pages, "NEEDS_RAW", str(tmp_path / "needs_raw.json"))
     def fake(url, tries=3):
         if url.endswith("llms.txt"):
             return "[a](https://docs.typesafe.ai/concepts/state.md) [b](https://docs.typesafe.ai/cookbooks/gone.md)"
@@ -206,3 +209,308 @@ def test_topic_paths_resolve():
             path, _, head = p.partition("#")
             assert path in paths, f"{t['name']}: {path} is not in the library"
             assert not head or (path, head) in have, f"{t['name']}: {p} is not a section"
+
+
+# --- router: identifier parts, parent headings and the SDK weight, on an invented library ---
+
+@pytest.fixture
+def trial(tmp_path, monkeypatch):
+    """An invented library: a reference page, an SDK page and a nested-heading SDK page. Route in-process."""
+    pytest.importorskip("numpy")
+    data = tmp_path / "data"
+    (data / "docs").mkdir(parents=True)
+    pages = {
+        "docs/a.md": "# Responses\n\nA response holds the request header and the answers.\n",
+        "docs/sdk__b.md": "## typesafe_sdk.SystemOneResponse\n\n### request_id\n\nalpha beta gamma\n",
+        "docs/c.md": "# Limits\n\nlimits apply per request\n",
+    }
+    for p, body in pages.items():
+        (data / p).write_text(body)
+    rows = [dict(id="docs/a#0", path="docs/a.md", heading="Responses", level=1, line_start=1, line_end=3, kind="reference", tokens=40),
+            dict(id="docs/sdk__b#0", path="docs/sdk__b.md", heading="typesafe_sdk.SystemOneResponse", level=2, line_start=1, line_end=2, kind="sdk", tokens=30),
+            dict(id="docs/sdk__b#1", path="docs/sdk__b.md", heading="request_id", level=3, line_start=3, line_end=5, kind="sdk", tokens=30),
+            dict(id="docs/c#0", path="docs/c.md", heading="Limits", level=1, line_start=1, line_end=3, kind="reference", tokens=100)]
+    (data / "sections.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(data))
+    monkeypatch.delenv("JEV_SEMANTIC", raising=False)
+    sys.path.insert(0, os.path.join(CODE, "scripts"))
+    import route as R
+    return R
+
+
+def test_split_adds_identifier_parts_and_keeps_the_originals(trial, monkeypatch):
+    t = trial.toks("TypeSafeRateLimitError request_id")
+    assert {"rate", "limit", "error", "request", "id", "typesaferatelimiterror"} <= set(t)
+
+
+def test_path_puts_parent_headings_into_a_sections_keyword_text(trial, monkeypatch):
+    rows, texts = trial.load()
+    assert "systemoneresponse" in texts["docs/sdk__b#1"].inherited
+    assert "response" in texts["docs/sdk__b#1"].inherited
+
+
+def _lib(trial, tmp_path, monkeypatch, pages):
+    """Rebuild the invented library from {path: markdown}; one section per heading, found by line."""
+    data = tmp_path / "lib"
+    (data / "docs").mkdir(parents=True)
+    rows = []
+    for p, body in pages.items():
+        (data / p).write_text(body)
+        lines = body.split("\n")
+        heads = [i for i, l in enumerate(lines) if l.startswith("#")]
+        for n, i in enumerate(heads):
+            end = (heads[n + 1] if n + 1 < len(heads) else len(lines))
+            h = lines[i].lstrip("#")
+            rows.append(dict(id="%s#%d" % (p[:-3], n), path=p, heading=h.strip(), level=len(lines[i]) - len(h),
+                             line_start=i + 1, line_end=end, kind="reference", tokens=50))
+    (data / "sections.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(data))
+    monkeypatch.setattr(trial, "ROOT", str(data))
+    return trial
+
+
+def test_split_does_not_penalise_a_section_for_its_identifiers_length(trial, tmp_path, monkeypatch):
+    """Identifier parts are second spellings of words already there: they must not make a code-heavy section
+    'longer' than a prose section with the same words and the same one mention of the query word."""
+    pages = {"docs/x.md": "# X\n\npicture data_base64 same_dog has_collar asset_ids\n",
+             "docs/y.md": "# Y\n\npicture one two three four five six seven eight\n",
+             "docs/z.md": "# Z\n\nnothing about it here at all just filler words padding the page\n"}
+    R = _lib(trial, tmp_path, monkeypatch, pages)
+    rows, texts = R.load()
+    base, extra = R.expand("picture")
+    sc = R.bm25(rows, texts, base, extra)
+    assert abs(sc["docs/x#0"] - sc["docs/y#0"]) < 1e-9
+
+
+def test_path_adds_only_the_parent_words_a_section_lacks(trial, tmp_path, monkeypatch):
+    """A child that already says a word gets no second copy of it from the parent heading, so it cannot
+    outscore the parent section that names the topic; a word it lacks still comes in once."""
+    pages = {"docs/p.md": "# Guide\n\n## Sending pictures in a request\n\nintro text\n\n### Rules\n\nthe request rule: request once, request twice\n"}
+    R = _lib(trial, tmp_path, monkeypatch, pages)
+    rows, texts = R.load()
+    child = texts["docs/p#2"]
+    assert child.count("request") == 3  # its own three, no fourth from the parent heading
+    assert child.count("sending") == 0 and child.inherited.count("sending") == 1
+    assert "request" not in child.inherited
+
+
+def test_path_credit_is_weaker_than_the_section_saying_the_word_and_ignores_its_length(trial, tmp_path, monkeypatch):
+    """A parent-heading word is weaker evidence than the section's own mention, and a tiny section does not
+    turn it into a strong one."""
+    pages = {"docs/p.md": "# Guide\n\n## Pictures\n\n### Tiny\n\nx\n\n### Own\n\npictures x\n",
+             "docs/q.md": "# Other\n\nfiller words so the library has a few more tokens in it\n"}
+    R = _lib(trial, tmp_path, monkeypatch, pages)
+    rows, texts = R.load()
+    base, extra = R.expand("pictures")
+    sc = R.bm25(rows, texts, base, extra)
+    assert 0 < sc["docs/p#2"] < sc["docs/p#3"]  # Tiny (inherits 'pictures') below Own (says it)
+    assert sc["docs/p#2"] < sc["docs/p#1"]  # and below the parent section that is named for it
+
+
+def test_sdkw_weighs_sdk_sections_by_the_question(trial, monkeypatch):
+    assert trial.sdk_weight("Which exception does the client raise?") == 1.0
+    assert trial.sdk_weight("Which exception is raised on a timeout?") == 1.0
+    assert trial.sdk_weight("What does request_id hold?") == 1.0
+    assert trial.sdk_weight("How do Noul questions work?") == 0.35
+
+
+# ---- read.py: CITE AS forms and the quote check, on an invented library ----------------------------------------
+
+H = "<!-- saved 2026-10-15T09:00:00Z from https://docs.typesafe.ai/x.md | cleaner 1 -->\n\n"
+READ_PAGES = {
+    "docs/primitives__box.md": H + "# Box\n\nIntro line.\n\n## Response structure\n\nThe box returns four numbers.\n\n"
+                               "## Primitives (Questions)\n\nA question has one primitive.\n",
+    "cookbooks/setup_twice.md": H + "# Walkthrough\n\n## Setup\n\nInstall the client first.\n\n## Setup\n\n"
+                                 "Pass the **request\\_id** back with   every call.\n",
+}
+
+
+@pytest.fixture
+def rlib(tmp_path):
+    data = tmp_path / "data"
+    for p, text in READ_PAGES.items():
+        (data / p).parent.mkdir(parents=True, exist_ok=True)
+        (data / p).write_text(text)
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    rows = [json.loads(l) for l in open(data / "sections.jsonl")]
+    return env, rows
+
+
+def read_cli(env, *args):
+    return subprocess.run([sys.executable, f"{CODE}/scripts/read.py", *args], capture_output=True, text=True, env=env)
+
+
+@pytest.mark.parametrize("sid", ["docs/primitives__box.md#Response structure", "docs/primitives__box#Response structure",
+                                 "docs/primitives__box.md#Response structure (reference rule)"])
+def test_read_accepts_the_cite_as_forms(rlib, sid):
+    r = read_cli(rlib[0], sid)
+    assert r.returncode == 0 and "The box returns four numbers." in r.stdout, r.stderr
+    assert r.stdout.startswith("SOURCE: docs/primitives__box.md#Response structure")
+
+
+def test_a_heading_ending_in_a_parenthesis_that_is_not_a_label_keeps_it(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box.md#Primitives (Questions)")
+    assert r.returncode == 0 and "A question has one primitive." in r.stdout
+
+
+def test_an_unknown_heading_exits_1_with_no_section(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box.md#Nothing here")
+    assert r.returncode == 1 and "no section" in r.stderr + r.stdout
+
+
+def test_a_repeated_heading_exits_1_and_names_both_numeric_ids(rlib):
+    env, rows = rlib
+    ids = [x["id"] for x in rows if x["heading"] == "Setup"]
+    assert len(ids) == 2
+    r = read_cli(env, "cookbooks/setup_twice.md#Setup")
+    assert r.returncode == 1 and all(i in r.stderr + r.stdout for i in ids)
+    assert "several sections named 'Setup'" in r.stderr + r.stdout
+
+
+def test_a_numeric_id_still_reads(rlib):
+    env, rows = rlib
+    sid = next(x["id"] for x in rows if x["heading"] == "Response structure")
+    assert "four numbers" in read_cli(env, sid).stdout
+
+
+def test_check_quote_finds_an_exact_sentence(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "The box returns four numbers.")
+    assert r.returncode == 0
+    assert r.stdout.startswith("QUOTE FOUND | docs/primitives__box.md#Response structure | line ")
+    assert ": The box returns four numbers." in r.stdout
+
+
+def test_check_quote_ignores_spacing_bold_and_escaped_underscores(rlib):
+    env, rows = rlib
+    second = [x["id"] for x in rows if x["heading"] == "Setup"][1]
+    for q in ("Pass the request_id back with every call.", "Pass the **request_id** back  with every call.", "Pass the request\\_id back with every call."):
+        assert read_cli(env, second, "--check-quote", q).returncode == 0, q
+
+
+def test_check_quote_with_a_changed_word_exits_1(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "The box returns five numbers.")
+    assert r.returncode == 1 and r.stdout.startswith("QUOTE NOT FOUND | docs/primitives__box.md#Response structure")
+
+
+def test_check_quote_is_case_sensitive_after_its_first_letter(rlib):
+    assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "The Box returns four numbers.").returncode == 1
+    assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "the box returns four numbers.").returncode == 0
+
+
+def test_check_quote_with_an_empty_quote_exits_2(rlib):
+    for q in ("", "  **  "):
+        assert read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", q).returncode == 2
+
+
+def test_check_quote_in_a_repeated_heading_finds_the_second_and_prints_its_id(rlib):
+    env, rows = rlib
+    second = [x["id"] for x in rows if x["heading"] == "Setup"][1]
+    r = read_cli(env, "cookbooks/setup_twice.md#Setup", "--check-quote", "Pass the request_id back")
+    assert r.returncode == 0 and second in r.stdout and "QUOTE FOUND" in r.stdout
+
+
+def test_check_quote_never_prints_the_section_text(rlib):
+    r = read_cli(rlib[0], "docs/primitives__box#Response structure", "--check-quote", "four numbers")
+    assert "The box returns four numbers." in r.stdout  # the matching line only
+    assert "Intro line." not in r.stdout and "SOURCE:" not in r.stdout
+    assert len(r.stdout.splitlines()) == 1
+
+
+def test_check_quote_function_returns_the_row_and_line(rlib, monkeypatch):
+    env, rows = rlib
+    monkeypatch.setenv("JEV_SOURCES_DATA", env["JEV_SOURCES_DATA"])
+    monkeypatch.syspath_prepend(f"{CODE}/scripts")
+    for n in ("paths", "read", "usage_log", "applicability"):
+        sys.modules.pop(n, None)
+    import read
+    found, row, line_no, line = read.check_quote("docs/primitives__box#Response structure", "four numbers")
+    assert found and row["heading"] == "Response structure" and line == "The box returns four numbers."
+    assert line_no == row["line_start"] + 2
+
+
+QUOTE_PAGES = {"docs/limits.md": "# Limits\n\n## Images\n\nA request holds up to 50 images.\nRun `pip install typesafe` first, then say \"go\".\nThe limit is 0.5 MB per image and 1,000 per day.\n"}
+
+
+@pytest.fixture
+def qlib(tmp_path):
+    data = tmp_path / "data"
+    for p, text in QUOTE_PAGES.items():
+        (data / p).parent.mkdir(parents=True, exist_ok=True)
+        (data / p).write_text(text)
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    return env
+
+
+@pytest.mark.parametrize("quote,code", [("A request holds up to 50 images.", 0), ("holds up to 50", 0), ("up to 5", 1), ("olds up to 50", 1),
+                                         ("request holds up to 50 imag", 1), ("up to 50 images", 0), ("50 images.", 0)])
+def test_check_quote_does_not_match_inside_a_word_or_number(qlib, quote, code):
+    assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", quote).returncode == code, quote
+
+
+@pytest.mark.parametrize("quote,code", [
+    ("A request holds up to 50 images", 0),           # end punctuation dropped
+    ("a request holds up to 50 images.", 0),          # first letter lowered to fit the writer's sentence
+    ('"A request holds up to 50 images."', 0),        # quote marks kept around it
+    ("Run `pip install typesafe` first.", 0),         # cut mid-sentence and given a period (the page has a comma)
+    ("Run `pip install typesafe` first:", 0),
+    ("A request holds ... 50 images.", 0),            # an elision
+    ("A request holds … 50 images.", 0),
+    ("A request holds [...] 50 images.", 0),
+    ("A request holds up to 50 images. ... Run `pip install typesafe` first", 0),
+    ("A request holds ... 60 images.", 1),            # every part must be on the page
+    ("50 images ... A request holds", 1),             # in the page's order
+    ("A request holds ... up to 5", 1),               # each part keeps the word-boundary rule
+    ("A request holds up to 50 Images.", 1),          # case still counts after the first letter
+    ("The limit is 0.", 1),                           # a dropped end period can't hide the rest of a number
+    ("The limit is 0.5 MB per image.", 0),
+    (".5 MB per image", 1),                           # nor can a dropped leading one
+    ("per image and 1", 1),
+    ("per image and 1,000 per day.", 0),
+])
+def test_check_quote_allows_the_changes_quoting_makes_at_the_ends_and_elisions(qlib, quote, code):
+    assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", quote).returncode == code, quote
+
+
+def test_check_quote_is_fast_on_a_long_run_of_spaces(qlib):
+    import time
+    q = "A" + " " * 40000 + "request holds up to 50 images."
+    t = time.time()
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input=q,
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 0 and time.time() - t < 3
+
+
+def test_check_quote_of_only_an_elision_or_punctuation_exits_2(qlib):
+    for q in ("...", " . ", "…"):
+        assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", q).returncode == 2, q
+
+
+def test_check_quote_reads_the_quote_from_stdin_with_backticks_and_quotes(qlib):
+    q = 'Run `pip install typesafe` first, then say "go".\n'
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input=q,
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 0 and r.stdout.startswith("QUOTE FOUND | docs/limits.md#Images"), r.stderr
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input="Run `pip install other` first.",
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 1 and "QUOTE NOT FOUND" in r.stdout
+
+
+def test_check_quote_with_an_empty_stdin_exits_2(qlib):
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input="\n",
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 2
+
+
+def test_skill_md_gives_the_quote_check_with_a_quoted_heredoc():
+    text = open(os.path.join(CODE, "SKILL.md"), encoding="utf-8").read()
+    assert "--check-quote - <<'QUOTE'" in text and '--check-quote "' not in text
+
+
+def test_the_skill_md_heredoc_runs_a_quote_with_backticks_unharmed(qlib):
+    cmd = f"{sys.executable} {CODE}/scripts/read.py 'docs/limits.md#Images' --check-quote - <<'QUOTE'\nRun `pip install typesafe` first, then say \"go\".\nQUOTE"
+    r = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, env=qlib)
+    assert r.returncode == 0 and "QUOTE FOUND" in r.stdout, r.stderr

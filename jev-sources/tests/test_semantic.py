@@ -159,3 +159,19 @@ def test_rebuild_without_model_removes_old_vectors(tmp_path, monkeypatch):
     monkeypatch.setattr(semantic, "available", lambda: (False, "model unavailable (test)"))
     build_index.main()
     assert not (tmp_path / "embeddings.npy").exists() and not (tmp_path / "embeddings.json").exists()
+
+
+def test_model_id_is_the_base_model(sem):
+    s, d = sem
+    assert s.model_id() == "minishlab/potion-base-8M"
+
+
+def test_an_index_built_with_another_model_is_reported_stale(sem, monkeypatch):
+    s, d = sem
+    ok, why = s.available()
+    if not ok: pytest.skip(why)
+    s.build(ROWS, TEXTS)
+    meta = json.load(open(s.META)); meta["model"] = "minishlab/potion-retrieval-32M"
+    json.dump(meta, open(s.META, "w"))
+    sc, why = s.scores("anything", ROWS)
+    assert sc is None and "potion-retrieval-32M" in why and "refresh.sh" in why

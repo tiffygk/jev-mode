@@ -211,6 +211,9 @@ def test_report_prints_log_text_without_control_characters(tmp_path):
     out = _report(tmp_path)
     assert "\x1b" not in out and "\x07" not in out
     assert "a?[2Jb=1" in out and "    docs/?[31ma#1" in out
+    _write(tmp_path, "reminder.jsonl", [_rem("\x1b[2J2026-10-14", "s1", False, "no_jev_word", ["a"])])  # the date column
+    out = _report(tmp_path)
+    assert "\x1b" not in out and "?[2J2026-1  prompts=1" in out
 
 
 def test_report_cwd_join_with_jev_py_lines(tmp_path):

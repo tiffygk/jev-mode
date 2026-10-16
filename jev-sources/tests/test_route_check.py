@@ -162,3 +162,70 @@ def test_experimental_expectation_rejects_part_experimental(lib):
     _, (R, B, rc, cn) = lib
     q = {"q": "x", "heading": "Basic usage", "strict": True, "expect": "experimental"}
     assert not rc.hit(labeled("Basic usage", "docs/u.md", status="part-experimental"), q)
+
+
+# ---- strict release questions count only when delivered --------------------------------------------------------
+
+def with_id(res, sid="docs/a#0"):
+    for s in res["sections"]:
+        s["id"] = sid
+    return res
+
+
+def test_a_strict_question_whose_section_falls_past_the_cap_is_a_miss(lib):
+    _, (R, B, rc, cn) = lib
+    q = {"q": "x", "heading": "Box", "strict": True}
+    res = with_id(labeled("Box", "docs/b.md"))
+    assert rc.hit(res, q)  # no delivery information: the old rule
+    assert not rc.hit(res, q, delivered=set())
+    assert not rc.hit(res, q, delivered={"docs/other#1"})
+    assert rc.hit(res, q, delivered={"docs/a#0"})
+
+
+def test_a_loose_question_ignores_delivery(lib):
+    _, (R, B, rc, cn) = lib
+    q = {"q": "x", "heading": "Box", "strict": False}
+    assert rc.hit(with_id(labeled("Box", "docs/b.md", depth="EXTRACT")), q, delivered=set())
+
+
+def test_a_delivered_section_must_still_pass_the_expected_labels(lib):
+    _, (R, B, rc, cn) = lib
+    q = {"q": "x", "heading": "Box", "strict": True, "model": "jev-1.13.0", "expect": "needs-newer"}
+    assert not rc.hit(with_id(labeled("Box", "docs/b.md")), q, delivered={"docs/a#0"})
+    assert rc.hit(with_id(labeled("Box", "docs/b.md", needs="jev-1.14.0")), q, delivered={"docs/a#0"})
+
+
+def test_run_asks_bundle_once_per_strict_question_without_logging(lib, monkeypatch):
+    tmp, (R, B, rc, cn) = lib
+    qdir = tmp / "questions"
+    qdir.mkdir()
+    (qdir / "release_questions.json").write_text(json.dumps([{"q": "where is it", "heading": "Box", "model": "jev-1.13.0"}]))
+    (qdir / "paraphrases.json").write_text(json.dumps([{"q": "loose", "heading": "Box"}]))
+    monkeypatch.setattr(rc, "QDIR", str(qdir))
+    monkeypatch.setattr(R, "route", lambda q, model=None: with_id(labeled("Box", "docs/b.md")))
+    calls = []
+
+    def fake_bundle(qs, model=None, cap=None, log=True):
+        calls.append((qs, model, log))
+        return {"read_ids": []}
+
+    monkeypatch.setattr(rc, "bundle", fake_bundle)
+    rep = rc.run()
+    assert rep["keywords"]["strict_misses"] == ["Box <- where is it"]
+    assert all(c == (["where is it"], "jev-1.13.0", False) for c in calls) and len(calls) == 2  # one per mode
+
+
+def test_run_with_logging_on_writes_no_usage_line(lib, monkeypatch):
+    tmp, (R, B, rc, cn) = lib
+    docs = tmp / "docs"
+    docs.mkdir()
+    (docs / "a.md").write_text("# Pin a model\n\nPin the model version in every request.\n")
+    subprocess.run([sys.executable, os.path.join(CODE, "scripts", "build_index.py"), "--no-prepare"], check=True, capture_output=True)
+    qdir = tmp / "questions"
+    qdir.mkdir()
+    (qdir / "release_questions.json").write_text(json.dumps([{"q": "how do I pin the model version", "heading": "Pin a model"}]))
+    monkeypatch.setattr(rc, "QDIR", str(qdir))
+    monkeypatch.setenv("JEV_LOG", "on")
+    rep = rc.run()
+    assert rep["keywords"]["strict_misses"] == []
+    assert not (tmp / "logs").exists()

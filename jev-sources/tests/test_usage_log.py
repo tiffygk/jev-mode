@@ -92,7 +92,7 @@ def test_read_logs_section_id_and_extract(library):
 
 @pytest.mark.parametrize("script", ["route.py", "jev.py"])
 def test_route_log_includes_the_read_full_definitions(library, script):
-    subprocess.run([sys.executable, os.path.join(SCRIPTS, script), "how do I write a Noul question?"],
+    subprocess.run([sys.executable, os.path.join(SCRIPTS, script), "should this be a choice or a score"],
                    capture_output=True, text=True, env=env_for(library), check=True)
     rec = read_lines(os.path.join(str(library), "logs", "route.jsonl"))[0]
     assert rec["definitions"] and all(d["depth"] == "READ FULL" for d in rec["definitions"])

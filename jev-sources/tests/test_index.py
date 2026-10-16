@@ -7,8 +7,16 @@ IDX = os.path.join(ROOT, "sections.jsonl")
 needs_lib = pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "sections.jsonl")),
                                reason="no fetched library (sections.jsonl) in JEV_SOURCES_DATA")
 
+@pytest.fixture(autouse=True)
+def private_copy(lib_copy):
+    """build_index writes the index and migrates pages, so it runs on a copy; the configured library is never written."""
+    global ROOT, IDX
+    ROOT, IDX = lib_copy, os.path.join(lib_copy, "sections.jsonl")
+
+
 def rows():
-    subprocess.run([sys.executable, os.path.join(CODE, "scripts/build_index.py")], check=True)
+    subprocess.run([sys.executable, os.path.join(CODE, "scripts/build_index.py")], check=True,
+                   env=dict(os.environ, JEV_SOURCES_DATA=ROOT, JEV_LOG="off"))
     return [json.loads(l) for l in open(IDX)]
 
 @needs_lib

@@ -67,7 +67,7 @@ def _day_table(rem):
     for day in sorted(days):
         rs = days[day]
         fires = sum(1 for r in rs if r.get("fire"))
-        lines.append(f"{day}  prompts={len(rs)}  fires={fires}  rate={round(100 * fires / len(rs))}%")
+        lines.append(f"{_safe(day)}  prompts={len(rs)}  fires={fires}  rate={round(100 * fires / len(rs))}%")
         lines.append("    reasons: " + _top(Counter(r.get("reason") for r in rs)))
         lines.append("    top words: " + _top(Counter(w for r in rs for w in (r.get("words") or []))))
     return lines

@@ -29,7 +29,8 @@ def save(sid, st):
     if sid is None:
         return
     try:
-        os.makedirs(os.path.dirname(_dir()), mode=0o700, exist_ok=True)  # makedirs gives the mode to the last folder only
+        os.makedirs(data_dir(), mode=0o700, exist_ok=True)  # makedirs gives the mode to the last folder only
+        os.makedirs(os.path.dirname(_dir()), mode=0o700, exist_ok=True)
         os.makedirs(_dir(), mode=0o700, exist_ok=True)
         st = {"n": st["n"], "fires": st["fires"][-50:]}
         path = _path(sid)

@@ -2,10 +2,12 @@
 """Print one source section in full, with the file's scope caveats and captions.
 
   python3 scripts/read.py 'cookbooks/rerank_typesafe#7'
+  python3 scripts/read.py 'cookbooks/rerank_typesafe.md#Setup (cookbook example)'   a CITE AS line works too
   ... --extract "<terms>"   12 lines around each hit, capped at 1,500 tokens (marked as an extract)
+  ... --check-quote "<quote>"   is the quote in that section? Prints one QUOTE FOUND / QUOTE NOT FOUND line, never the text
 
 The first line is the citation to quote: SOURCE: <path>#<heading> | KIND | READ.
-A section with a model or readiness limit gets a second line: APPLIES: needs <model> | experimental (<source>).
+A section with a model or readiness limit gets a second line: APPLIES: needs <model> or newer | experimental (<source>).
 """
 import json, os, re, sys
 
@@ -20,17 +22,136 @@ EXAMPLE_NOTE = ("EXAMPLE: one build TypeSafe published. Its layout, call counts 
                 "check the scope notes below and the reference rules.")
 
 
-def _row(sid):
+def _index():
     try:
-        rows = [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
+        return [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
     except FileNotFoundError:
         sys.exit(f"library index missing; run {REFRESH}")
-    r = next((x for x in rows if x["id"] == sid), None)
-    if not r:
-        sys.exit(f"no section {sid!r}; run route.py to get ids")
+
+
+def _rows(sid):
+    """Every section a section id names. A numeric id (docs/primitives__box#2) names one. A path#heading, with or
+    without .md and with or without a trailing (label) from CITE AS, names every section of that file with that
+    heading, which is more than one where a page repeats a heading. Exits 1 when none matches."""
+    sid = sid.strip()
+    rows = _index()
+    hit = [x for x in rows if x["id"] == sid]
+    if hit:
+        return hit
+    if "#" in sid:
+        path, heading = sid.split("#", 1)
+        if not path.endswith((".md", ".txt")):
+            path += ".md"
+        heads = [heading]
+        for label in LABEL.values():  # a trailing label counts only when it is one of ours
+            if heading.endswith(f" ({label})"):
+                heads.append(heading[:-len(label) - 3])
+        for h in heads:  # the whole text first: a heading may really end in a parenthesis
+            hit = [x for x in rows if x["path"] == path and x["heading"] == h]
+            if hit:
+                return hit
+    sys.exit(f"no section {sid!r}; run route.py to get ids")
+
+
+def _row(sid):
+    hit = _rows(sid)
+    if len(hit) > 1:
+        sys.exit(f"several sections named {hit[0]['heading']!r} in {hit[0]['path']}: use one of " + ", ".join(x["id"] for x in hit))
+    r = hit[0]
     if not os.path.exists(os.path.join(ROOT, r["path"])):
         sys.exit(f"missing source {r['path']}; run {REFRESH}")
     return r
+
+
+_ESCAPED = re.compile(r"\\([*_`\s])")
+_SKIP = re.compile(r"[\s*_`]")
+
+
+def _squash(text):
+    return _SKIP.sub("", _ESCAPED.sub(r"\1", text))
+
+
+def _kept(line):
+    """(squashed line, the line column of each kept character); the squashing is _squash, with columns."""
+    keep, cols = [], []
+    for i, ch in enumerate(line):
+        if _SKIP.match(ch) or (ch == "\\" and i + 1 < len(line) and _SKIP.match(line[i + 1])):
+            continue
+        keep.append(ch)
+        cols.append(i)
+    return "".join(keep), cols
+
+
+_ELISION = re.compile(r"\[?(?:\.\.\.|…)\]?")
+_EDGE = "\"'“”‘’.,;:!? \t\r\n"
+
+
+def quote_parts(quote):
+    """The quote's parts between elisions (..., … or [...]), squashed, each without the quote marks and the
+    sentence punctuation a writer adds or drops at a quote's ends. [] means the quote is empty."""
+    parts = (_squash(p.strip(_EDGE)) for p in _ELISION.split(quote))
+    return [p for p in parts if p]
+
+
+def _joins(nxt, ch):
+    """Does the page continue the quote's end character ch? nxt is the two page characters beyond it, nearest
+    first. A letter or digit continues a word; a "." or "," then a digit continues a number ("0" in "0.5")."""
+    return nxt[0].isalnum() or (ch.isdigit() and nxt[0] in ".," and nxt[1].isdigit())
+
+
+def _find(text, lines, owner, cols, want, start):
+    """The (first, last) index of want in text at or after start, not starting or ending inside a run of letters
+    or digits or inside a number; the first letter may differ in case. None if absent."""
+    best = None
+    for w in {want, want[0].swapcase() + want[1:]}:
+        pos = start - 1
+        while True:
+            pos = text.find(w, pos + 1)
+            if pos < 0:
+                break
+            first, last = pos, pos + len(w) - 1
+            head, tail = lines[owner[first]], lines[owner[last]]
+            before = head[max(0, cols[first] - 2):cols[first]].rjust(2)
+            after = tail[cols[last] + 1:cols[last] + 3].ljust(2)
+            if (w[0].isalnum() and _joins(before[::-1], w[0])) or (w[-1].isalnum() and _joins(after, w[-1])):
+                continue
+            if best is None or first < best[0]:
+                best = (first, last)
+            break
+    return best
+
+
+def check_quote(sid, quote):
+    """(found, row, line_no, line): is the quote in the section sid names? When a heading repeats, every same-named
+    section is checked and row is the one that holds it. Matching ignores whitespace, *, _ and ` (and a backslash
+    before them), quote marks and sentence punctuation at the quote's ends, and the case of its first letter; it
+    is otherwise case-sensitive, and the quote may span lines. An elision (..., … or [...]) splits the quote into
+    parts that must all be found, in order. A part must not start or end inside a run of letters or digits
+    ("up to 5" is not in "up to 50"). line_no is the file line the quote starts on.
+    When it is not found, row is the first section checked and line_no and line are None."""
+    parts = quote_parts(quote)
+    rows = _rows(sid)
+    for r in rows:
+        if not os.path.exists(os.path.join(ROOT, r["path"])):
+            sys.exit(f"missing source {r['path']}; run {REFRESH}")
+        lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+        flat, owner, cols = [], [], []
+        for i, ln in enumerate(lines):
+            sq, c = _kept(ln)
+            flat.append(sq)
+            owner += [i] * len(sq)
+            cols += c
+        text, start, spans = "".join(flat), 0, []
+        for want in parts:
+            span = _find(text, lines, owner, cols, want, start)
+            if span is None:
+                break
+            spans.append(span)
+            start = span[1] + 1
+        if parts and len(spans) == len(parts):
+            i = owner[spans[0][0]]
+            return True, r, r["line_start"] + i, lines[i]
+    return False, rows[0], None, None
 
 
 def render(sid, extract_terms=None):
@@ -55,7 +176,7 @@ def render(sid, extract_terms=None):
         out.append(EXAMPLE_NOTE)
     ap = applicability.lookup(r["path"], r["heading"])
     if ap["needs"] or ap["status"]:
-        out.append("APPLIES: " + " | ".join(([f"needs {ap['needs']}"] if ap["needs"] else []) + ([ap["status"].replace("-", " ")] if ap["status"] else [])) + f" ({ap['source']})")
+        out.append("APPLIES: " + " | ".join(([f"needs {ap['needs']} or newer"] if ap["needs"] else []) + ([ap["status"].replace("-", " ")] if ap["status"] else [])) + f" ({ap['source']})")
     out.append(f"(lines {r['line_start']}-{r['line_end']}, ~{r['tokens']} tokens)\n")
     out.append(body)
     cav = [c for c in r["file_caveats"] if c not in "\n".join(lines)]
@@ -70,13 +191,29 @@ def render(sid, extract_terms=None):
 
 def main():
     if len(sys.argv) < 2:
-        sys.exit("usage: read.py <section id> [--extract terms]")
+        sys.exit("usage: read.py <section id> [--extract terms | --check-quote \"<quote>\" | --check-quote -]")
     sid = sys.argv[1]
+    if "--check-quote" in sys.argv:
+        i = sys.argv.index("--check-quote")
+        quote = sys.stdin.read() if sys.argv[i + 1:] == ["-"] else " ".join(sys.argv[i + 1:])  # "-": the quote comes on stdin
+        if not quote_parts(quote):
+            print("usage: read.py <section id> --check-quote \"<quote>\" (the quote is empty)", file=sys.stderr)
+            return 2
+        found, r, line_no, line = check_quote(sid, quote)
+        several = len([x for x in _index() if x["path"] == r["path"] and x["heading"] == r["heading"]]) > 1
+        ref = f"{r['path']}#{r['heading']}" + (f" [{r['id']}]" if several else "")
+        usage_log.write("check_quote", id=r["id"], found=found)
+        if found:
+            print(f"QUOTE FOUND | {ref} | line {line_no}: {line.strip()[:200]}")
+            return 0
+        print(f"QUOTE NOT FOUND | {ref}")
+        return 1
     terms = sys.argv[sys.argv.index("--extract") + 1:] if "--extract" in sys.argv else None
     text = render(sid, terms)
     print(text.split("\n", 1)[1])  # the CITE AS line is for jev.py's bundle; this command's output starts at SOURCE
     usage_log.write("read", id=sid, extract=terms is not None, tokens=_row(sid)["tokens"])
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
