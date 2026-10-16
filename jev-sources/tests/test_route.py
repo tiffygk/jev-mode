@@ -430,7 +430,7 @@ def test_check_quote_function_returns_the_row_and_line(rlib, monkeypatch):
     assert line_no == row["line_start"] + 2
 
 
-QUOTE_PAGES = {"docs/limits.md": "# Limits\n\n## Images\n\nA request holds up to 50 images.\nRun `pip install typesafe` first, then say \"go\".\nThe limit is 0.5 MB per image and 1,000 per day.\n"}
+QUOTE_PAGES = {"docs/limits.md": "# Limits\n\n## Images\n\nA request holds up to 50 images.\nRun `pip install typesafe` first, then say \"go\".\nThe limit is 0.5 MB per image and 1,000 per day.\n", "docs/limits2.md": "# Limits two\n\n## Text\n\nState is text only.\n\n## Rates\n\nTen requests a second.\n\n## Rates\n\nBursts are queued.\n"}
 
 
 @pytest.fixture
@@ -482,6 +482,60 @@ def test_check_quote_is_fast_on_a_long_run_of_spaces(qlib):
     r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input=q,
                        capture_output=True, text=True, env=qlib)
     assert r.returncode == 0 and time.time() - t < 3
+
+
+def test_check_quote_names_the_section_on_the_same_page_that_holds_it(qlib):
+    r = read_cli(qlib, "docs/limits2.md#Text", "--check-quote", "Ten requests a second.")
+    assert r.returncode == 1 and r.stdout.startswith("QUOTE NOT FOUND | docs/limits2.md#Text")
+    assert "found on this page under docs/limits2.md#Rates" in r.stdout and "cite that section" in r.stdout
+
+
+def test_check_quote_on_the_page_under_a_repeated_heading_names_its_id(qlib):
+    r = read_cli(qlib, "docs/limits2.md#Text", "--check-quote", "Bursts are queued.")
+    assert r.returncode == 1 and "docs/limits2.md#Rates [docs/limits2#3]" in r.stdout
+
+
+def test_check_quote_not_on_the_page_at_all_says_nothing_more(qlib):
+    r = read_cli(qlib, "docs/limits2.md#Text", "--check-quote", "A request holds up to 50 images.")
+    assert r.returncode == 1 and r.stdout.strip() == "QUOTE NOT FOUND | docs/limits2.md#Text"
+
+
+@pytest.mark.parametrize("sid", ["docs/limits2.md", "docs/limits2"])
+def test_check_quote_with_a_page_only_citation_finds_the_section(qlib, sid):
+    r = read_cli(qlib, sid, "--check-quote", "Ten requests a second.")
+    assert r.returncode == 0 and r.stdout.startswith("QUOTE FOUND | docs/limits2.md#Rates [docs/limits2#2] | line ")
+    r = read_cli(qlib, sid, "--check-quote", "Eleven requests a second.")
+    assert r.returncode == 1 and r.stdout.strip() == "QUOTE NOT FOUND | docs/limits2.md"
+
+
+def test_check_quote_cuts_a_very_long_heading_and_gives_its_id(tmp_path):
+    data = tmp_path / "data"
+    (data / "docs").mkdir(parents=True)
+    (data / "docs" / "long.md").write_text("# Long\n\n## " + "Word " * 60 + "\n\nA short body line.\n")
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    r = read_cli(env, "docs/long.md", "--check-quote", "A short body line.")
+    assert r.returncode == 0 and "... [docs/long#1] | line " in r.stdout
+    assert len(r.stdout.split(" | ")[1]) < 160
+
+
+def test_check_quote_never_echoes_control_characters_from_a_page(tmp_path):
+    data = tmp_path / "data"
+    (data / "docs").mkdir(parents=True)
+    (data / "docs" / "esc.md").write_text("# Esc\n\n## Text\n\nPlain words.\n\n## Rates\x1b[31m\n\nTen requests\x1b[2J\r a second.\n")
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    for sid, code in (("docs/esc.md", 0), ("docs/esc.md#Text", 1)):
+        r = read_cli(env, sid, "--check-quote", "Ten requests")
+        assert r.returncode == code and "Ten requests?" in r.stdout, r.stdout
+        assert "\x1b" not in r.stdout and "\r" not in r.stdout
+
+
+def test_reading_a_page_only_id_still_refuses(qlib):
+    r = read_cli(qlib, "docs/limits2.md")
+    assert r.returncode == 1 and "no section" in r.stderr + r.stdout
 
 
 def test_check_quote_of_only_an_elision_or_punctuation_exits_2(qlib):
