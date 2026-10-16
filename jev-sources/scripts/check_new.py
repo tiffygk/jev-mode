@@ -193,7 +193,9 @@ def run(fetch=None, now=None, rebuild=True):
 
 def main(fetch=None, locked=False):
     """locked=True when refresh_trigger already took the lock for this run (it passes --locked)."""
-    if not locked and not take_lock():
+    if locked:
+        pages.adopt_lock()
+    elif not take_lock():
         print("check_new: another check is running")
         return 0
     try:

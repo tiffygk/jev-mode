@@ -5,7 +5,7 @@ Saved pages start with '<!-- saved 2026-10-14T21:07:12Z from <url> -->'; copies 
 Every page is kept twice: raw/<kind>/<file>.md as TypeSafe served it (change detection reads this copy), and the cleaned
 copy where pages live (indexed and read). The cleaned header adds '| cleaner <version>' ('| cleaner failed <version>'
 when cleaning raised and the cleaned copy holds the raw text)."""
-import datetime, hashlib, json, os, re, shutil, sys, time, urllib.error, urllib.request
+import datetime, hashlib, json, os, re, shutil, sys, time, urllib.error, urllib.request, uuid
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import CODE, DATA
 import clean
@@ -285,26 +285,57 @@ def archive(path, reason, now=None):
     return to
 
 
+_TOKEN = None  # what this run wrote into check.lock; drop_lock removes the lock only while it still holds this
+
+
+def _lock_text():
+    try:
+        with open(LOCK, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
 def take_lock():
-    """True when this run owns the lock: created with O_EXCL, or a stale lock (over an hour old) replaced."""
+    """True when this run owns the lock: created with O_EXCL, or a stale lock (over an hour old) replaced. The lock
+    holds a per-run token; a takeover re-reads it after a pause and backs off if another run's token is there."""
+    global _TOKEN
     os.makedirs(DATA, exist_ok=True)
-    for _ in range(2):
+    token = f"{os.getpid()}-{uuid.uuid4().hex}"
+    try:
+        fd = os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
         try:
-            os.close(os.open(LOCK, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
-            return True
-        except FileExistsError:
-            try:
-                if time.time() - os.path.getmtime(LOCK) < 3600:
-                    return False
-                os.remove(LOCK)
-            except OSError:
+            if time.time() - os.path.getmtime(LOCK) < 3600:
                 return False
-    return False
+            _atomic_write(LOCK, token)  # stale: write over it
+            time.sleep(0.2)  # a second run that saw the same stale lock writes inside this pause
+        except OSError:
+            return False
+        if _lock_text() != token:
+            return False
+    else:
+        with os.fdopen(fd, "w") as f:
+            f.write(token)
+    _TOKEN = token
+    return True
+
+
+def adopt_lock():
+    """A run started with a lock another process took for it (the refresh hook passes --locked): its token is
+    whatever the lock holds now."""
+    global _TOKEN
+    _TOKEN = _lock_text()
 
 
 def drop_lock():
+    """Remove the lock only if it still holds this run's token; a newer run's lock is left alone."""
+    global _TOKEN
+    token, _TOKEN = _TOKEN, None
+    if token is None or _lock_text() != token:
+        return
     try:
-        os.remove(LOCK)  # only the run that owns the lock gets here
+        os.remove(LOCK)
     except OSError:
         pass
 

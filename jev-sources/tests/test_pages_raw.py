@@ -368,3 +368,45 @@ def test_fetch_main_reports_a_page_with_no_raw_copy_whose_text_differs(env, tmp_
     f = site(pg, {"models": RAW}, {"models": None}, ["models"], [])
     assert fetch.main(f) == 0
     assert seen == [["models"]]
+
+
+# --- the lock knows its owner (security L1) ----------------------------------------------------------------
+def make_stale(path):
+    old = time.time() - 7200
+    os.utime(path, (old, old))
+
+
+def test_drop_lock_leaves_a_lock_another_run_now_holds(env):
+    pg, _ = env
+    assert pg.take_lock()
+    open(pg.LOCK, "w").write("another-run-token")  # a newer run took over while this one was still going
+    pg.drop_lock()
+    assert open(pg.LOCK).read() == "another-run-token"
+
+
+def test_a_stale_lock_is_taken_over_and_then_dropped(env):
+    pg, _ = env
+    open(pg.LOCK, "w").write("old-run-token")
+    make_stale(pg.LOCK)
+    assert pg.take_lock()
+    assert open(pg.LOCK).read() != "old-run-token"
+    pg.drop_lock()
+    assert not os.path.exists(pg.LOCK)
+
+
+def test_a_takeover_backs_off_when_another_run_writes_its_token_meanwhile(env, monkeypatch):
+    pg, _ = env
+    open(pg.LOCK, "w").write("old-run-token")
+    make_stale(pg.LOCK)
+    monkeypatch.setattr(pg.time, "sleep", lambda s: open(pg.LOCK, "w").write("rival-token"))  # the rival writes during the pause
+    assert not pg.take_lock()
+    assert open(pg.LOCK).read() == "rival-token"
+    pg.drop_lock()  # this run never owned it
+    assert open(pg.LOCK).read() == "rival-token"
+
+
+def test_a_run_started_with_a_lock_it_was_given_drops_it(env):
+    pg, cn = env
+    open(pg.LOCK, "w").close()  # the hook's lock: empty, taken in another process
+    assert cn.main(site(pg, {}, {}, [], []), locked=True) == 0
+    assert not os.path.exists(pg.LOCK)
