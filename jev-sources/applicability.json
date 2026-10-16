@@ -106,7 +106,7 @@
    "match": "docs/sdk__python__usage__basic.md",
    "needs": null,
    "status": "part-experimental",
-   "source": "docs/sdk__python__usage__basic.md#Basic usage",
+   "source": "docs/sdk__python__usage__basic.md#Attaching Media Assets",
    "quote": "image support is only dreamer-ready"
   }
  ]

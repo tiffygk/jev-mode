@@ -3,7 +3,7 @@ import importlib, json, os, re, subprocess, sys
 import pytest
 CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(CODE, "scripts"))
-REAL = os.path.expanduser("~/.claude/jev-sources-data")
+REAL = os.environ.get("JEV_SOURCES_DATA") or os.path.expanduser("~/.claude/jev-sources-data")  # the library the suite was pointed at
 
 BOX_PAGE = ("# Box\n\nUse a Box to find where something is in an image, like a mug. A mug photo location answer.\n\n"
             "Box questions need Jev 1.14: send `jev-preview` or `jev-1.14.0` as the `model`.\n")
@@ -251,7 +251,7 @@ def test_part_experimental_line_and_applies_line(lib, tmp_path):
     sid = next(json.loads(l)["id"] for l in open(tmp_path / "sections.jsonl") if "usage__basic" in l)
     read = subprocess.run([sys.executable, os.path.join(CODE, "scripts", "read.py"), sid], capture_output=True, text=True,
                           env=dict(os.environ, JEV_LOG="off", JEV_SOURCES_DATA=str(tmp_path))).stdout.splitlines()
-    assert read[1] == "APPLIES: part experimental (docs/sdk__python__usage__basic.md#Basic usage)"
+    assert read[1] == "APPLIES: part experimental (docs/sdk__python__usage__basic.md#Attaching Media Assets)"
 
 
 def test_part_experimental_section_is_never_reordered(lib):
