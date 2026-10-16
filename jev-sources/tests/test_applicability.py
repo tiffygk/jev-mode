@@ -174,7 +174,7 @@ def test_read_prints_an_applies_line_under_the_source_line(lib, tmp_path):
     out = subprocess.run([sys.executable, os.path.join(CODE, "scripts", "read.py"), sid], capture_output=True, text=True, check=True,
                          env=dict(os.environ, JEV_LOG="off", JEV_SOURCES_DATA=str(tmp_path))).stdout.splitlines()
     assert out[0].startswith("SOURCE: docs/primitives__box.md#Box")
-    assert out[1] == "APPLIES: needs jev-1.14.0 | experimental (docs/primitives__box.md#Box)"
+    assert out[1] == "APPLIES: needs jev-1.14.0 or newer | experimental (docs/primitives__box.md#Box)"
 
 
 def test_read_of_an_unlabeled_section_has_no_applies_line(lib, tmp_path):

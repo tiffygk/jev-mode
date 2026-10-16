@@ -7,7 +7,7 @@
   ... --check-quote "<quote>"   is the quote in that section? Prints one QUOTE FOUND / QUOTE NOT FOUND line, never the text
 
 The first line is the citation to quote: SOURCE: <path>#<heading> | KIND | READ.
-A section with a model or readiness limit gets a second line: APPLIES: needs <model> | experimental (<source>).
+A section with a model or readiness limit gets a second line: APPLIES: needs <model> or newer | experimental (<source>).
 """
 import json, os, re, sys
 
@@ -176,7 +176,7 @@ def render(sid, extract_terms=None):
         out.append(EXAMPLE_NOTE)
     ap = applicability.lookup(r["path"], r["heading"])
     if ap["needs"] or ap["status"]:
-        out.append("APPLIES: " + " | ".join(([f"needs {ap['needs']}"] if ap["needs"] else []) + ([ap["status"].replace("-", " ")] if ap["status"] else [])) + f" ({ap['source']})")
+        out.append("APPLIES: " + " | ".join(([f"needs {ap['needs']} or newer"] if ap["needs"] else []) + ([ap["status"].replace("-", " ")] if ap["status"] else [])) + f" ({ap['source']})")
     out.append(f"(lines {r['line_start']}-{r['line_end']}, ~{r['tokens']} tokens)\n")
     out.append(body)
     cav = [c for c in r["file_caveats"] if c not in "\n".join(lines)]
