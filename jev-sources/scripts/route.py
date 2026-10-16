@@ -32,6 +32,7 @@ BOOST = {"reference": 1.35, "pattern": 1.3, "example": 1.0, "vendor": 0.9, "othe
 DEFS = {"noul": "docs/primitives__noul.md", "choice": "docs/primitives__choice.md",
         "score": "docs/primitives__score.md", "state": "docs/concepts__state.md",
         "confidence": "docs/confidence.md"}
+CONTEXT_WEIGHT = 0.5  # a parent-heading word counts half of one the section says itself, whatever its length
 SEM_ADD, SEM_FLOOR = 2, 0.35  # sections appended by meaning; least similarity to append one
 STOP = set("a an the of to in on for is are be it i we you can do does how what should with and or this that my our".split())
 
@@ -78,15 +79,29 @@ def parts(t):
     return [p.lower() for p in re.findall(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+", t)]
 
 
+class Toks(list):
+    """Index tokens of one section. n is its length for BM25 normalisation: the words as written, without
+    the identifier parts (second spellings of words already there). inherited holds the words of the parent
+    headings that the section does not say itself (the path flag); they are not part of the section's text."""
+    n = 0
+    inherited = ()
+
+
 def toks(s):
     if "split" not in flags():
-        return [t for t in re.findall(r"[a-z0-9][a-z0-9\-/]*", s.lower()) if t not in STOP]
-    out = []  # identifiers are also indexed as their parts (camelCase, snake_case, escaped \\_)
+        out = Toks(t for t in re.findall(r"[a-z0-9][a-z0-9\-/]*", s.lower()) if t not in STOP)
+        out.n = len(out)
+        return out
+    out = Toks()  # identifiers are also indexed as their parts (camelCase, snake_case, escaped \\_)
+    n = 0
     for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_\-/]*", s.replace("\\_", "_")):
         p = parts(t)
-        out += [x for x in re.findall(r"[a-z0-9][a-z0-9\-/]*", t.lower()) if x not in STOP]
+        words = [x for x in re.findall(r"[a-z0-9][a-z0-9\-/]*", t.lower()) if x not in STOP]
+        out += words
+        n += len(words)
         if len(p) > 1:
             out += [x for x in p if x not in STOP]
+    out.n = n
     return out
 
 
@@ -110,8 +125,9 @@ def load():
         if "path" in flags():  # parent headings join the keyword text
             c = [h for h in chain.get(r["path"], []) if h[0] < r["level"]]
             chain[r["path"]] = c + [(r["level"], r["heading"])]
-            if c:
-                texts[r["id"]] = toks(" ".join(h for _, h in c)) + texts[r["id"]]
+            if c:  # only words the section lacks: a word it already says is not said again by its parent
+                own = set(texts[r["id"]])
+                texts[r["id"]].inherited = [w for w in dict.fromkeys(toks(" ".join(h for _, h in c))) if w not in own]
     for p in sorted(missing):
         print(f"missing source {p}; run {REFRESH}", file=sys.stderr)
     return keep, texts
@@ -130,16 +146,19 @@ def expand(q):
 
 def bm25(rows, texts, base, extra, k1=1.4, b=0.75):
     N = len(rows)
-    df = Counter(t for r in rows for t in set(texts[r["id"]]))
-    avg = sum(len(texts[r["id"]]) for r in rows) / N
+    df = Counter(t for r in rows for t in set(texts[r["id"]]) | set(texts[r["id"]].inherited))
+    length = {r["id"]: texts[r["id"]].n for r in rows}
+    avg = sum(length.values()) / N
     q = Counter(base) + Counter({t: 0.4 for t in extra})  # synonyms count less than the user's words
     out = {}
     for r in rows:
-        tf = Counter(texts[r["id"]]); dl = len(texts[r["id"]]); s = 0.0
+        tf = Counter(texts[r["id"]]); dl = length[r["id"]]; s = 0.0
         for t, w in q.items():
             if tf[t]:
                 idf = math.log(1 + (N - df[t] + 0.5) / (df[t] + 0.5))
                 s += w * idf * tf[t] * (k1 + 1) / (tf[t] + k1 * (1 - b + b * dl / avg))
+            elif t in texts[r["id"]].inherited:
+                s += w * math.log(1 + (N - df[t] + 0.5) / (df[t] + 0.5)) * CONTEXT_WEIGHT
         out[r["id"]] = s
     return out
 

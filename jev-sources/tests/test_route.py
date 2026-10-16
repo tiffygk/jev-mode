@@ -251,11 +251,72 @@ def test_today_does_not_split_identifiers(trial):
 def test_path_puts_parent_headings_into_a_sections_keyword_text(trial, monkeypatch):
     monkeypatch.setenv("JEV_ROUTER", "path")
     rows, texts = trial.load()
-    assert "systemoneresponse" in texts["docs/sdk__b#1"]
+    assert "systemoneresponse" in texts["docs/sdk__b#1"].inherited
     monkeypatch.setenv("JEV_ROUTER", "split,path")
-    assert "response" in trial.load()[1]["docs/sdk__b#1"]
+    assert "response" in trial.load()[1]["docs/sdk__b#1"].inherited
     monkeypatch.setenv("JEV_ROUTER", "today")
-    assert "systemoneresponse" not in trial.load()[1]["docs/sdk__b#1"]
+    assert not trial.load()[1]["docs/sdk__b#1"].inherited
+
+
+def _lib(trial, tmp_path, monkeypatch, pages):
+    """Rebuild the invented library from {path: markdown}; one section per heading, found by line."""
+    data = tmp_path / "lib"
+    (data / "docs").mkdir(parents=True)
+    rows = []
+    for p, body in pages.items():
+        (data / p).write_text(body)
+        lines = body.split("\n")
+        heads = [i for i, l in enumerate(lines) if l.startswith("#")]
+        for n, i in enumerate(heads):
+            end = (heads[n + 1] if n + 1 < len(heads) else len(lines))
+            h = lines[i].lstrip("#")
+            rows.append(dict(id="%s#%d" % (p[:-3], n), path=p, heading=h.strip(), level=len(lines[i]) - len(h),
+                             line_start=i + 1, line_end=end, kind="reference", tokens=50))
+    (data / "sections.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(data))
+    monkeypatch.setattr(trial, "ROOT", str(data))
+    return trial
+
+
+def test_split_does_not_penalise_a_section_for_its_identifiers_length(trial, tmp_path, monkeypatch):
+    """Identifier parts are second spellings of words already there: they must not make a code-heavy section
+    'longer' than a prose section with the same words and the same one mention of the query word."""
+    pages = {"docs/x.md": "# X\n\npicture data_base64 same_dog has_collar asset_ids\n",
+             "docs/y.md": "# Y\n\npicture one two three four five six seven eight\n",
+             "docs/z.md": "# Z\n\nnothing about it here at all just filler words padding the page\n"}
+    monkeypatch.setenv("JEV_ROUTER", "split")
+    R = _lib(trial, tmp_path, monkeypatch, pages)
+    rows, texts = R.load()
+    base, extra = R.expand("picture")
+    sc = R.bm25(rows, texts, base, extra)
+    assert abs(sc["docs/x#0"] - sc["docs/y#0"]) < 1e-9
+
+
+def test_path_adds_only_the_parent_words_a_section_lacks(trial, tmp_path, monkeypatch):
+    """A child that already says a word gets no second copy of it from the parent heading, so it cannot
+    outscore the parent section that names the topic; a word it lacks still comes in once."""
+    pages = {"docs/p.md": "# Guide\n\n## Sending pictures in a request\n\nintro text\n\n### Rules\n\nthe request rule: request once, request twice\n"}
+    monkeypatch.setenv("JEV_ROUTER", "path")
+    R = _lib(trial, tmp_path, monkeypatch, pages)
+    rows, texts = R.load()
+    child = texts["docs/p#2"]
+    assert child.count("request") == 3  # its own three, no fourth from the parent heading
+    assert child.count("sending") == 0 and child.inherited.count("sending") == 1
+    assert "request" not in child.inherited
+
+
+def test_path_credit_is_weaker_than_the_section_saying_the_word_and_ignores_its_length(trial, tmp_path, monkeypatch):
+    """A parent-heading word is weaker evidence than the section's own mention, and a tiny section does not
+    turn it into a strong one."""
+    pages = {"docs/p.md": "# Guide\n\n## Pictures\n\n### Tiny\n\nx\n\n### Own\n\npictures x\n",
+             "docs/q.md": "# Other\n\nfiller words so the library has a few more tokens in it\n"}
+    monkeypatch.setenv("JEV_ROUTER", "path")
+    R = _lib(trial, tmp_path, monkeypatch, pages)
+    rows, texts = R.load()
+    base, extra = R.expand("pictures")
+    sc = R.bm25(rows, texts, base, extra)
+    assert 0 < sc["docs/p#2"] < sc["docs/p#3"]  # Tiny (inherits 'pictures') below Own (says it)
+    assert sc["docs/p#2"] < sc["docs/p#1"]  # and below the parent section that is named for it
 
 
 def test_sdkw_weighs_sdk_sections_by_the_question(trial, monkeypatch):
