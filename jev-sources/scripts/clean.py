@@ -26,7 +26,6 @@ SIG = re.compile(r"<SdkSignature>((?:(?!<SdkSignature>).)*?)</SdkSignature>", re
 SIGSTR = re.compile(r'\{"((?:[^"\\]|\\.)*)"\}')
 IMG = re.compile(r"<img\b[^>]*>")
 ALT = re.compile(r'\balt="([^"]*)"')
-END = re.compile(r"^[)}\]]+;?\s*$")
 HEADING = re.compile(r"^#{1,6}\s")
 HTML_HEAD = re.compile(r'<h([1-6])\b([^>]{0,2000})>((?:(?!<h[1-6]\b).)*?)</h\1>', re.S)  # bounded attributes, no nested opener: linear
 ID_ATTR = re.compile(r'\bid="([A-Za-z_][\w]*(?:\.[\w]+)+)"')
@@ -50,8 +49,8 @@ def _delta(ln):
 
 
 def _drop_exports(lines):
-    """Drop column-0 export blocks outside fences. A block ends on the first END line where its brackets are
-    balanced again; an export line whose brackets already balance is a block of one line. If a fence, a Markdown
+    """Drop column-0 export blocks outside fences. A block ends on the first line where its brackets are balanced
+    again, closer line or not; an export line whose brackets already balance is a block of one line. If a fence, a Markdown
     heading or the end of the page comes first, the block is kept whole (the build check will flag it).
     One pass from the bottom finds every block's last line, so the work is linear in the page."""
     f, n = fences(lines), len(lines)
@@ -59,7 +58,7 @@ def _drop_exports(lines):
     for ln in lines:
         run += _delta(ln)
         depth.append(run)
-    ends, pos, lvl = {}, [], []  # pos/lvl: END lines below the current line that can still be a first closer
+    ends, pos, lvl = {}, [], []  # pos/lvl: lines below the current line that can still be the first to balance
     for i in range(n - 1, -1, -1):
         if f[i] or HEADING.match(lines[i]):  # a stop: nothing below it can close a block above it
             pos, lvl = [], []
@@ -69,15 +68,14 @@ def _drop_exports(lines):
             if depth[i] <= before:
                 ends[i] = i
             else:
-                k = bisect.bisect_right(lvl, before) - 1  # the nearest END line that brings the depth back to `before`
+                k = bisect.bisect_right(lvl, before) - 1  # the nearest line that brings the depth back to `before`
                 if k >= 0:
                     ends[i] = pos[k]
-        if END.match(lines[i]):
-            while lvl and lvl[-1] >= depth[i]:
-                pos.pop()
-                lvl.pop()
-            pos.append(i)
-            lvl.append(depth[i])
+        while lvl and lvl[-1] >= depth[i]:
+            pos.pop()
+            lvl.pop()
+        pos.append(i)
+        lvl.append(depth[i])
     out, i = [], 0
     while i < n:
         if i in ends:

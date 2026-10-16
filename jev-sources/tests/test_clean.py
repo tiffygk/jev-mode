@@ -91,6 +91,13 @@ def test_unclosed_export_keeps_prose_before_a_later_closed_widget():
     assert "Card" not in out
 
 
+def test_block_closing_on_a_code_line_ends_there_and_keeps_prose():
+    page = 'export function W() {\n  return 1 }\n\nKeep me.\n\n' + LATER_WIDGET + '\n\nAfter.'
+    out = clean.clean(page)
+    assert "Keep me." in out and "After." in out
+    assert "export function W" not in out and "Card" not in out
+
+
 def test_nested_brackets_end_the_block_only_at_depth_zero():
     page = 'export function W() {\n  if (a) {\n    go();\n  }\n}\n\nProse after.'
     assert clean.clean(page).strip() == "Prose after."
