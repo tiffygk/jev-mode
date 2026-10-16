@@ -25,6 +25,17 @@ Add `--model <id>` when the project pins a model. The docs' words are the terms 
 
 `route.py` (pick the sections) and `read.py` (print one section) are the parts `jev.py` uses; run them directly to look at one section or one routing.
 
+## Over the cap
+
+When `jev.py` prints `READING PLAN`, the unread sections are more than the cap. Keep the sections it already printed in full; don't read them again. Start one read-only reader subagent per `BATCH`; batches may run in parallel. Each reader's brief holds, in this order:
+
+1. the `JEV-SOURCES:` line (see "Briefing a subagent on Jev"), followed by "the commands below are your reading for this goal";
+2. the plan's `GOAL:` line;
+3. that batch's `read.py` commands, copied as printed;
+4. the plan's `FINDING: ... | CITE AS: ... | QUOTE: "..."` line, with "return only lines of this form, with no page text".
+
+Where you can't start subagents, run one batch at a time, write its finding lines, and keep only those lines before the next batch. Until every batch has reported, tell the user which sections are still unread.
+
 ## What a claim looks like
 
 Each claim carries:
@@ -60,8 +71,34 @@ When a refresh notice names `STALE_CITATIONS.md`, read it. For each `changed` ro
 
 ## Relaying a subagent's Jev finding
 
-Before you pass on a finding, read its cited section yourself (`jev.py`, or `read.py '<id>'` for one section). A finding you have not read is relayed as "unverified". A finding that would override a user ruling is never relayed unverified: read it first or drop it.
+For each finding line, run:
+
+```
+python3 <skill>/scripts/read.py '<CITE AS>' --check-quote "<QUOTE>"
+```
+
+It prints one line and never the page.
+- `QUOTE FOUND`: relay the quote with its `CITE AS` path#heading and label.
+- `QUOTE NOT FOUND`: relay the finding as "unverified", or read the section (`read.py '<id>'`) and correct it from there.
+- The check covers the quote only. A finding sentence that says more than its quote is labeled "my read:" or cut.
+- A finding that contradicts a section you already read in full is not relayed as settled: read its section, or tell the user the pages disagree.
+
+A finding with no `CITE AS` and quote is relayed as "unverified". A finding that would override a user ruling is never relayed unverified: read its section first or drop it.
 
 ## Refresh
 
 With the reminder hook installed (the Claude Code plugin, or hooks added by hand), the library checks TypeSafe's pages every two days and fetches only new or re-dated pages and new posts. Without it, including in Codex, nothing refreshes on its own: run `bash <skill>/refresh.sh --fetch` on first install, and again when a source is missing or older than the question needs. That command downloads every page TypeSafe lists (the docs sitemap, llms.txt, the cookbook list and typesafe.ai's blog) and rebuilds the index. `SOURCES.md` in the data folder lists every page held and when it was saved. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`).
+
+## Enforced by
+
+| Rule | Enforced by |
+|---|---|
+| Answers rest on sections the router found and printed in full | `scripts/jev.py`, `scripts/route.py`; `tests/test_jev.py`, `tests/test_route.py` |
+| A Jev message gets a reminder to run `jev.py`; reads are recorded | `hooks/jev-prompt-reminder.py`, `hooks/jev-ledger.py`; `tests/test_hooks.py` |
+| Sections past the cap print with their `read.py` command, or as a reading plan in batches | `scripts/jev.py`; `tests/test_jev.py` |
+| Each section carries its label, and NEEDS or EXPERIMENTAL where it applies | `scripts/read.py`, `scripts/applicability.py`; `tests/test_route.py`, `tests/test_applicability.py` |
+| A Jev brief carries the `JEV-SOURCES:` line | `hooks/jev-dispatch-check.py`; `tests/test_hooks.py` |
+| A finding's quote is checked against its section | `scripts/read.py` (`--check-quote`); `tests/test_route.py` |
+| Saved pages hold no site code, and the build warns when some is left | `scripts/clean.py`, `scripts/build_index.py`; `tests/test_clean.py`, `tests/test_health.py` |
+| The library checks for new pages every two days and lists stale citations | `hooks/refresh_trigger.py`, `scripts/check_new.py`, `scripts/citations.py`; `tests/test_refresh_trigger.py`, `tests/test_check_new.py`, `tests/test_citations.py` |
+| Running `jev.py` before a claim, starting readers on a reading plan, relaying EXTRACT and unchecked findings as unverified, quoting readiness lines, cookbook layouts as examples, "the docs don't say", no widening "so" sentences, reading stale-citation rows, locked files | the model, following this file |
