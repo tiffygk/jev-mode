@@ -71,10 +71,12 @@ When a refresh notice names `STALE_CITATIONS.md`, read it. For each `changed` ro
 
 ## Relaying a subagent's Jev finding
 
-For each finding line, run:
+For each finding line, run this, with the quote on stdin through a quoted heredoc because a quote can hold backticks or quotes:
 
 ```
-python3 <skill>/scripts/read.py '<CITE AS>' --check-quote "<QUOTE>"
+python3 <skill>/scripts/read.py '<CITE AS>' --check-quote - <<'QUOTE'
+<QUOTE>
+QUOTE
 ```
 
 It prints one line and never the page.

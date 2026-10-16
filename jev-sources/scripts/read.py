@@ -71,10 +71,22 @@ def _squash(text):
     return _SKIP.sub("", _ESCAPED.sub(r"\1", text))
 
 
+def _kept(line):
+    """(squashed line, the line column of each kept character); the squashing is _squash, with columns."""
+    keep, cols = [], []
+    for i, ch in enumerate(line):
+        if _SKIP.match(ch) or (ch == "\\" and i + 1 < len(line) and _SKIP.match(line[i + 1])):
+            continue
+        keep.append(ch)
+        cols.append(i)
+    return "".join(keep), cols
+
+
 def check_quote(sid, quote):
     """(found, row, line_no, line): is the quote in the section sid names? When a heading repeats, every same-named
     section is checked and row is the one that holds it. Matching ignores whitespace, *, _ and ` (and a backslash
-    before them) and is case-sensitive; the quote may span lines. line_no is the file line the quote starts on.
+    before them) and is case-sensitive; the quote may span lines. It must not start or end inside a run of letters
+    or digits ("up to 5" is not in "up to 50"). line_no is the file line the quote starts on.
     When it is not found, row is the first section checked and line_no and line are None."""
     want = _squash(quote)
     rows = _rows(sid)
@@ -82,14 +94,23 @@ def check_quote(sid, quote):
         if not os.path.exists(os.path.join(ROOT, r["path"])):
             sys.exit(f"missing source {r['path']}; run {REFRESH}")
         lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
-        flat, owner = [], []
+        flat, owner, cols = [], [], []
         for i, ln in enumerate(lines):
-            sq = _squash(ln)
+            sq, c = _kept(ln)
             flat.append(sq)
             owner += [i] * len(sq)
-        pos = "".join(flat).find(want) if want else -1
-        if pos >= 0:
-            i = owner[pos]
+            cols += c
+        text, pos = "".join(flat), -1
+        while want:
+            pos = text.find(want, pos + 1)
+            if pos < 0:
+                break
+            first, last = pos, pos + len(want) - 1
+            before = lines[owner[first]][cols[first] - 1] if cols[first] > 0 else " "
+            after = lines[owner[last]][cols[last] + 1] if cols[last] + 1 < len(lines[owner[last]]) else " "
+            if (want[0].isalnum() and before.isalnum()) or (want[-1].isalnum() and after.isalnum()):
+                continue
+            i = owner[first]
             return True, r, r["line_start"] + i, lines[i]
     return False, rows[0], None, None
 
@@ -131,11 +152,11 @@ def render(sid, extract_terms=None):
 
 def main():
     if len(sys.argv) < 2:
-        sys.exit("usage: read.py <section id> [--extract terms | --check-quote \"<quote>\"]")
+        sys.exit("usage: read.py <section id> [--extract terms | --check-quote \"<quote>\" | --check-quote -]")
     sid = sys.argv[1]
     if "--check-quote" in sys.argv:
         i = sys.argv.index("--check-quote")
-        quote = " ".join(sys.argv[i + 1:])
+        quote = sys.stdin.read() if sys.argv[i + 1:] == ["-"] else " ".join(sys.argv[i + 1:])  # "-": the quote comes on stdin
         if not _squash(quote):
             print("usage: read.py <section id> --check-quote \"<quote>\" (the quote is empty)", file=sys.stderr)
             return 2

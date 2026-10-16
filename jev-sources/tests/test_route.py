@@ -427,3 +427,51 @@ def test_check_quote_function_returns_the_row_and_line(rlib, monkeypatch):
     found, row, line_no, line = read.check_quote("docs/primitives__box#Response structure", "four numbers")
     assert found and row["heading"] == "Response structure" and line == "The box returns four numbers."
     assert line_no == row["line_start"] + 2
+
+
+QUOTE_PAGES = {"docs/limits.md": "# Limits\n\n## Images\n\nA request holds up to 50 images.\nRun `pip install typesafe` first, then say \"go\".\n"}
+
+
+@pytest.fixture
+def qlib(tmp_path):
+    data = tmp_path / "data"
+    for p, text in QUOTE_PAGES.items():
+        (data / p).parent.mkdir(parents=True, exist_ok=True)
+        (data / p).write_text(text)
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    return env
+
+
+@pytest.mark.parametrize("quote,code", [("A request holds up to 50 images.", 0), ("holds up to 50", 0), ("up to 5", 1), ("olds up to 50", 1),
+                                         ("request holds up to 50 imag", 1), ("up to 50 images", 0), ("50 images.", 0)])
+def test_check_quote_does_not_match_inside_a_word_or_number(qlib, quote, code):
+    assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", quote).returncode == code, quote
+
+
+def test_check_quote_reads_the_quote_from_stdin_with_backticks_and_quotes(qlib):
+    q = 'Run `pip install typesafe` first, then say "go".\n'
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input=q,
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 0 and r.stdout.startswith("QUOTE FOUND | docs/limits.md#Images"), r.stderr
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input="Run `pip install other` first.",
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 1 and "QUOTE NOT FOUND" in r.stdout
+
+
+def test_check_quote_with_an_empty_stdin_exits_2(qlib):
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input="\n",
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 2
+
+
+def test_skill_md_gives_the_quote_check_with_a_quoted_heredoc():
+    text = open(os.path.join(CODE, "SKILL.md"), encoding="utf-8").read()
+    assert "--check-quote - <<'QUOTE'" in text and '--check-quote "' not in text
+
+
+def test_the_skill_md_heredoc_runs_a_quote_with_backticks_unharmed(qlib):
+    cmd = f"{sys.executable} {CODE}/scripts/read.py 'docs/limits.md#Images' --check-quote - <<'QUOTE'\nRun `pip install typesafe` first, then say \"go\".\nQUOTE"
+    r = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, env=qlib)
+    assert r.returncode == 0 and "QUOTE FOUND" in r.stdout, r.stderr
