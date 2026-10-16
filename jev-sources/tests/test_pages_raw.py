@@ -272,7 +272,7 @@ def test_fetch_main_compares_raw_and_takes_the_lock(env, tmp_path, monkeypatch):
     assert fetch.main(f) == 1  # a check is running
     os.remove(pg.LOCK)
     new = site(pg, {"models": RAW + "more\n"}, {"models": None}, ["models"], [])
-    monkeypatch.setattr(cn, "record_changes", lambda res, now, rebuild=True: [])
+    monkeypatch.setattr(cn, "record_changes", lambda res, now, rebuild=True, before=None: [])
     assert fetch.main(new) == 0
     assert len(glob_changed(tmp_path)) == 2
 
@@ -364,7 +364,7 @@ def test_fetch_main_reports_a_page_with_no_raw_copy_whose_text_differs(env, tmp_
     os.makedirs(os.path.dirname(p))
     open(p, "w", encoding="utf-8").write("<!-- saved 2026-10-13T12:00:00Z from https://docs.typesafe.ai/models.md | cleaner 1 -->\n\ncleaned only")
     seen = []
-    monkeypatch.setattr(cn, "record_changes", lambda res, now, rebuild=True: seen.append(list(res["changed"])) or [])
+    monkeypatch.setattr(cn, "record_changes", lambda res, now, rebuild=True, before=None: seen.append(list(res["changed"])) or [])
     f = site(pg, {"models": RAW}, {"models": None}, ["models"], [])
     assert fetch.main(f) == 0
     assert seen == [["models"]]
@@ -410,3 +410,70 @@ def test_a_run_started_with_a_lock_it_was_given_drops_it(env):
     open(pg.LOCK, "w").close()  # the hook's lock: empty, taken in another process
     assert cn.main(site(pg, {}, {}, [], []), locked=True) == 0
     assert not os.path.exists(pg.LOCK)
+
+
+# --- a failed index build is never silent (gate should-fix 5) -------------------------------------------------
+def break_build(monkeypatch, mod):
+    real = subprocess.run
+
+    def fake(args, *a, **kw):
+        if any("build_index" in str(x) for x in args):
+            return subprocess.CompletedProcess(args, 3, "", "boom: out of disk\n")
+        return real(args, *a, **kw)
+    monkeypatch.setattr(mod.subprocess, "run", fake)
+
+
+def test_a_failed_rebuild_after_a_change_prints_a_notice_and_fails_the_run(env, tmp_path, monkeypatch, capsys):
+    pg, cn = env
+    pg.write_page("models", RAW, T13)
+    break_build(monkeypatch, cn)
+    res = cn.run(site(pg, {"models": RAW + "New.\n"}, {"models": "2026-10-14T20:00:00Z"}, ["models"], []), now=T14)
+    assert res["build_failed"] and "NOTICE: build_index.py failed (exit 3)" in res["notice"] and "out of disk" in res["notice"]
+    assert cn.main(site(pg, {"models": RAW + "Newer.\n"}, {"models": "2026-10-14T22:00:00Z"}, ["models"], [])) == 1
+    assert "NOTICE: build_index.py failed" in capsys.readouterr().out
+    assert "build_index.py failed" in cn.state_read()["last_error"]
+
+
+def test_a_failed_rebuild_after_a_recleaning_prints_a_notice_and_fails_the_run(env, monkeypatch):
+    pg, cn = env
+    pg.write_page("models", RAW, T13)
+    monkeypatch.setattr(clean_mod(), "VERSION", 2)
+    break_build(monkeypatch, cn)
+    res = cn.run(site(pg, {"models": RAW}, {"models": "2026-10-14T21:00:00Z"}, ["models"], []), now=T14)
+    assert res["build_failed"] and "NOTICE: build_index.py failed" in res["notice"] and res["changed"] == []
+
+
+def test_a_failed_rebuild_in_a_full_refresh_prints_a_notice_and_exits_1(env, monkeypatch, capsys):
+    pg, cn = env
+    import fetch
+    monkeypatch.setattr("blog.list_posts", lambda f: [])
+    pg.write_page("models", RAW, T13)
+    break_build(monkeypatch, cn)
+    f = site(pg, {"models": RAW + "New.\n"}, {"models": None}, ["models"], [])
+    assert fetch.main(f) == 1
+    assert "NOTICE: build_index.py failed (exit 3)" in capsys.readouterr().out
+
+
+# --- a half-written page and a site that is down (gate should-fix 4) -----------------------------------------
+def test_a_half_written_page_is_indexed_and_reported_even_when_the_site_cannot_be_read(env, tmp_path):
+    pg, cn = env
+    pg.write_page("models", "# Models\n\n## Intro\n\ntext\n", T13)
+    run_build(tmp_path)
+    half_written(pg, "models", "# Models\n\n## Intro\n\ntext\n", "# Models\n\n## Intro\n\ntext\n\n## Added section\n\nnew words\n")
+    with pytest.raises(RuntimeError):
+        cn.run(site(pg, {}, None, None, []), now=T14)
+    assert "Added section" in open(tmp_path / "sections.jsonl").read()
+    ch = json.load(open(cn.CHANGES))
+    assert ch["changed"] == ["models"] and ["docs/models.md", "Added section"] in ch["added_sections"]
+
+
+def test_a_full_refresh_records_a_half_written_page_even_when_the_site_cannot_be_read(env, tmp_path):
+    pg, cn = env
+    import fetch
+    pg.write_page("models", "# Models\n\n## Intro\n\ntext\n", T13)
+    run_build(tmp_path)
+    half_written(pg, "models", "# Models\n\n## Intro\n\ntext\n", "# Models\n\n## Intro\n\ntext\n\n## Added section\n\nnew words\n")
+    with pytest.raises(SystemExit):
+        fetch.main(site(pg, {}, None, None, []))
+    assert "Added section" in open(tmp_path / "sections.jsonl").read()
+    assert json.load(open(cn.CHANGES))["changed"] == ["models"]

@@ -4,10 +4,9 @@ A page that fails (404, rate limit) or has moved is named and skipped; the run c
 A blog post with nothing below its title (a video post) is named as skipped and does not fail the run.
 A page whose text changed is archived first (archive/<run time>/changed/), and the changed and removed sections go
 through the same record and checks as check_new.py: section_changes.json, STALE_CITATIONS.md, the routing retest."""
-import datetime, os, subprocess, sys
+import datetime, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pages, blog, check_new
-from paths import SCRIPTS
 
 
 def main(fetch=None):
@@ -23,13 +22,21 @@ def main(fetch=None):
 def _main(fetch):
     fetch = fetch or pages.get
     now = datetime.datetime.now(pages.UTC)
+    before = check_new.headings()  # the sections as indexed before prepare rewrites any page
     prepared = pages.prepare(locked=True, now=now)
     half = list(pages.HALF_WRITTEN)  # new raw text beside an old cleaned copy (a crash): reported as changed below
-    if prepared and not half:  # migrated or re-cleaned pages: the index follows
-        subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=False, capture_output=True)
+    build_failed = False
+    if prepared:  # migrated, re-cleaned or half-written pages: the index follows now, whatever happens next
+        notice = check_new.rebuild_index()
+        if notice:
+            print(notice)
+            build_failed = True
     try:
         found, _ = pages.live_pages(fetch)
     except RuntimeError as e:
+        if half:  # already rewritten and indexed: record them before giving up
+            check_new.record_changes({"changed": half, "added": [], "removed": [], "moved": {}, "removed_sections": [], "added_sections": []},
+                                     now, False, before)
         sys.exit(f"fetch: {e}")
     slugs = sorted(found)
     lib = pages.library()
@@ -74,9 +81,10 @@ def _main(fetch):
     if changed:  # first installs and unchanged refreshes have nothing to compare, so nothing to check
         res = {"changed": changed, "added": added + [f"blog/{p}" for p in saved if p not in had], "removed": [], "moved": {},
                "removed_sections": [], "added_sections": []}
-        for line in check_new.record_changes(res, now):
+        for line in check_new.record_changes(res, now, True, before):
             print(line)
-    return 1 if failed else 0
+        build_failed = build_failed or res.get("build_failed", False)
+    return 1 if failed or build_failed else 0
 
 
 if __name__ == "__main__":
