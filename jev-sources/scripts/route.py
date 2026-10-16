@@ -37,29 +37,10 @@ SEM_ADD, SEM_FLOOR = 2, 0.35  # sections appended by meaning; least similarity t
 STOP = set("a an the of to in on for is are be it i we you can do does how what should with and or this that my our".split())
 
 
-# --- trial switch: JEV_ROUTER is a preset name or a comma list of flags (removed once a winner is kept) ---
-FLAG_NAMES = {"split", "path", "sdkw", "codegate", "semfull", "sigwords", "retrieval"}
-PRESETS = {"today": set(), "rec3": {"split", "path", "sdkw"},
-           "rec3+4": {"split", "path", "sdkw", "codegate", "semfull", "sigwords", "retrieval"}}
-_warned = set()
 # A name like TypeSafe is camel-case, so IDENT matches it: a question that names the company reads as SDK-shaped
-# under sdkw and codegate.
+# and weighs SDK sections in full.
 IDENT = re.compile(r"\b(?:[a-z]+_[a-z0-9_]+|[A-Z][a-z]+[A-Z]\w*|[a-z]+[A-Z]\w*)\b")
 SDKQ = re.compile(r"\b(sdk|python|client|method|class|constructor|parameter|argument|attribute|exception)s?\b", re.I)
-SEMFULL_UNDER = 600
-
-
-def flags():
-    raw = os.environ.get("JEV_ROUTER", "").strip()
-    if raw in PRESETS:
-        return set(PRESETS[raw])
-    got = {f.strip() for f in raw.split(",")} - {""}
-    if got <= FLAG_NAMES:
-        return got
-    if raw not in _warned:
-        _warned.add(raw)
-        print(f"warning: JEV_ROUTER={raw!r} is not a preset or a list of flags; routing as today", file=sys.stderr)
-    return set()
 
 
 def sdk_shaped(q):
@@ -67,12 +48,12 @@ def sdk_shaped(q):
 
 
 def is_code(q):
-    return bool(CODE.search(q)) or ("codegate" in flags() and sdk_shaped(q))
+    return bool(CODE.search(q))
 
 
 def sdk_weight(q):
     """Weight of an SDK section: full when the question is about code, else BOOST['sdk']."""
-    return 1.0 if is_code(q) or ("sdkw" in flags() and sdk_shaped(q)) else BOOST["sdk"]
+    return 1.0 if is_code(q) or sdk_shaped(q) else BOOST["sdk"]
 
 
 def parts(t):
@@ -88,10 +69,6 @@ class Toks(list):
 
 
 def toks(s):
-    if "split" not in flags():
-        out = Toks(t for t in re.findall(r"[a-z0-9][a-z0-9\-/]*", s.lower()) if t not in STOP)
-        out.n = len(out)
-        return out
     out = Toks()  # identifiers are also indexed as their parts (camelCase, snake_case, escaped \\_)
     n = 0
     for t in re.findall(r"[A-Za-z0-9][A-Za-z0-9_\-/]*", s.replace("\\_", "_")):
@@ -122,12 +99,11 @@ def load():
         keep.append(r)
         body = "\n".join(lines[r["line_start"] - 1:r["line_end"]])
         texts[r["id"]] = toks(r["heading"] + " " + r["heading"] + " " + body)  # heading counts double
-        if "path" in flags():  # parent headings join the keyword text
-            c = [h for h in chain.get(r["path"], []) if h[0] < r["level"]]
-            chain[r["path"]] = c + [(r["level"], r["heading"])]
-            if c:  # only words the section lacks: a word it already says is not said again by its parent
-                own = set(texts[r["id"]])
-                texts[r["id"]].inherited = [w for w in dict.fromkeys(toks(" ".join(h for _, h in c))) if w not in own]
+        c = [h for h in chain.get(r["path"], []) if h[0] < r["level"]]  # parent headings join the keyword text
+        chain[r["path"]] = c + [(r["level"], r["heading"])]
+        if c:  # only words the section lacks: a word it already says is not said again by its parent
+            own = set(texts[r["id"]])
+            texts[r["id"]].inherited = [w for w in dict.fromkeys(toks(" ".join(h for _, h in c))) if w not in own]
     for p in sorted(missing):
         print(f"missing source {p}; run {REFRESH}", file=sys.stderr)
     return keep, texts
@@ -234,8 +210,7 @@ def route(q, model=None):
     n_keyword = len(picked) - (len(added) if sem else 0)
     constraint = bool(CONSTRAINT.search(q))
     secs = [dict(id=r["id"], path=r["path"], heading=r["heading"], kind=r["kind"], tokens=r["tokens"],
-                 depth="READ FULL" if constraint or (k < n_keyword and r["tokens"] < FULL_UNDER)
-                 or (k >= n_keyword and "semfull" in flags() and r["tokens"] < SEMFULL_UNDER) else "EXTRACT",
+                 depth="READ FULL" if constraint or (k < n_keyword and r["tokens"] < FULL_UNDER) else "EXTRACT",
                  by="keyword" if k < n_keyword else "meaning")
             for k, r in enumerate(picked)]  # a section matched only by meaning is a pointer, not a mandatory read
     named = {p for w, p in DEFS.items() if re.search(rf"\b{w}s?\b", q, re.I)}

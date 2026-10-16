@@ -49,7 +49,8 @@ def test_constraint_question_gets_full_reads():
 @needs_lib
 def test_definitions_added_for_named_primitive():
     r = route("is a noul right for this check")
-    assert any(d["path"] == "docs/primitives__noul.md" for d in r["definitions"])
+    got = r["definitions"] + [s for s in r["sections"] if s["depth"] == "READ FULL" and s["by"] == "keyword"]
+    assert any(d["path"] == "docs/primitives__noul.md" for d in got)
 
 @needs_lib
 def test_no_match_says_so():
@@ -210,7 +211,7 @@ def test_topic_paths_resolve():
             assert not head or (path, head) in have, f"{t['name']}: {p} is not a section"
 
 
-# --- JEV_ROUTER trial switch (ported from the router experiments; removed once a winner is kept) ---
+# --- router: identifier parts, parent headings and the SDK weight, on an invented library ---
 
 @pytest.fixture
 def trial(tmp_path, monkeypatch):
@@ -232,30 +233,20 @@ def trial(tmp_path, monkeypatch):
     (data / "sections.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
     monkeypatch.setenv("JEV_SOURCES_DATA", str(data))
     monkeypatch.delenv("JEV_SEMANTIC", raising=False)
-    monkeypatch.delenv("JEV_ROUTER", raising=False)
     sys.path.insert(0, os.path.join(CODE, "scripts"))
     import route as R
     return R
 
 
 def test_split_adds_identifier_parts_and_keeps_the_originals(trial, monkeypatch):
-    monkeypatch.setenv("JEV_ROUTER", "split")
     t = trial.toks("TypeSafeRateLimitError request_id")
     assert {"rate", "limit", "error", "request", "id", "typesaferatelimiterror"} <= set(t)
 
 
-def test_today_does_not_split_identifiers(trial):
-    assert "rate" not in trial.toks("TypeSafeRateLimitError")
-
-
 def test_path_puts_parent_headings_into_a_sections_keyword_text(trial, monkeypatch):
-    monkeypatch.setenv("JEV_ROUTER", "path")
     rows, texts = trial.load()
     assert "systemoneresponse" in texts["docs/sdk__b#1"].inherited
-    monkeypatch.setenv("JEV_ROUTER", "split,path")
-    assert "response" in trial.load()[1]["docs/sdk__b#1"].inherited
-    monkeypatch.setenv("JEV_ROUTER", "today")
-    assert not trial.load()[1]["docs/sdk__b#1"].inherited
+    assert "response" in texts["docs/sdk__b#1"].inherited
 
 
 def _lib(trial, tmp_path, monkeypatch, pages):
@@ -284,7 +275,6 @@ def test_split_does_not_penalise_a_section_for_its_identifiers_length(trial, tmp
     pages = {"docs/x.md": "# X\n\npicture data_base64 same_dog has_collar asset_ids\n",
              "docs/y.md": "# Y\n\npicture one two three four five six seven eight\n",
              "docs/z.md": "# Z\n\nnothing about it here at all just filler words padding the page\n"}
-    monkeypatch.setenv("JEV_ROUTER", "split")
     R = _lib(trial, tmp_path, monkeypatch, pages)
     rows, texts = R.load()
     base, extra = R.expand("picture")
@@ -296,7 +286,6 @@ def test_path_adds_only_the_parent_words_a_section_lacks(trial, tmp_path, monkey
     """A child that already says a word gets no second copy of it from the parent heading, so it cannot
     outscore the parent section that names the topic; a word it lacks still comes in once."""
     pages = {"docs/p.md": "# Guide\n\n## Sending pictures in a request\n\nintro text\n\n### Rules\n\nthe request rule: request once, request twice\n"}
-    monkeypatch.setenv("JEV_ROUTER", "path")
     R = _lib(trial, tmp_path, monkeypatch, pages)
     rows, texts = R.load()
     child = texts["docs/p#2"]
@@ -310,7 +299,6 @@ def test_path_credit_is_weaker_than_the_section_saying_the_word_and_ignores_its_
     turn it into a strong one."""
     pages = {"docs/p.md": "# Guide\n\n## Pictures\n\n### Tiny\n\nx\n\n### Own\n\npictures x\n",
              "docs/q.md": "# Other\n\nfiller words so the library has a few more tokens in it\n"}
-    monkeypatch.setenv("JEV_ROUTER", "path")
     R = _lib(trial, tmp_path, monkeypatch, pages)
     rows, texts = R.load()
     base, extra = R.expand("pictures")
@@ -320,69 +308,10 @@ def test_path_credit_is_weaker_than_the_section_saying_the_word_and_ignores_its_
 
 
 def test_sdkw_weighs_sdk_sections_by_the_question(trial, monkeypatch):
-    monkeypatch.setenv("JEV_ROUTER", "sdkw")
     assert trial.sdk_weight("Which exception does the client raise?") == 1.0
     assert trial.sdk_weight("Which exception is raised on a timeout?") == 1.0
     assert trial.sdk_weight("What does request_id hold?") == 1.0
     assert trial.sdk_weight("How do Noul questions work?") == 0.35
-    monkeypatch.setenv("JEV_ROUTER", "today")
-    assert trial.sdk_weight("Which exception is raised on a timeout?") == 0.35
-
-
-def _meaning(trial, monkeypatch, scores):
-    monkeypatch.setattr(trial.semantic, "scores", lambda q, rows: (dict(scores), "ok"))
-
-
-def test_codegate_lets_an_sdk_section_in_by_meaning_for_an_identifier_question(trial, monkeypatch):
-    _meaning(trial, monkeypatch, {"docs/a#0": 0.1, "docs/sdk__b#0": 0.1, "docs/sdk__b#1": 0.9, "docs/c#0": 0.1})
-    q = "Why is retry_count empty on responses?"
-    monkeypatch.setenv("JEV_ROUTER", "today")
-    assert "docs/sdk__b#1" not in {s["id"] for s in trial.route(q)["sections"] if s["by"] == "meaning"}
-    monkeypatch.setenv("JEV_ROUTER", "codegate")
-    assert "docs/sdk__b#1" in {s["id"] for s in trial.route(q)["sections"] if s["by"] == "meaning"}
-
-
-def test_semfull_reads_a_small_meaning_only_section_in_full(trial, monkeypatch):
-    _meaning(trial, monkeypatch, {"docs/a#0": 0.1, "docs/sdk__b#0": 0.1, "docs/sdk__b#1": 0.1, "docs/c#0": 0.9})
-    q = "responses answers header"
-    monkeypatch.setenv("JEV_ROUTER", "today")
-    by = {s["id"]: s for s in trial.route(q)["sections"]}
-    assert by["docs/c#0"]["by"] == "meaning" and by["docs/c#0"]["depth"] == "EXTRACT"
-    monkeypatch.setenv("JEV_ROUTER", "semfull")
-    by = {s["id"]: s for s in trial.route(q)["sections"]}
-    assert by["docs/c#0"]["depth"] == "READ FULL"
-
-
-def test_semfull_leaves_a_large_meaning_only_section_extract(trial, monkeypatch):
-    rows = [json.loads(l) for l in open(os.path.join(os.environ["JEV_SOURCES_DATA"], "sections.jsonl"))]
-    for r in rows:
-        if r["id"] == "docs/c#0":
-            r["tokens"] = 700
-    open(os.path.join(os.environ["JEV_SOURCES_DATA"], "sections.jsonl"), "w").write("\n".join(json.dumps(r) for r in rows) + "\n")
-    _meaning(trial, monkeypatch, {"docs/a#0": 0.1, "docs/sdk__b#0": 0.1, "docs/sdk__b#1": 0.1, "docs/c#0": 0.9})
-    monkeypatch.setenv("JEV_ROUTER", "semfull")
-    by = {s["id"]: s for s in trial.route("responses answers header")["sections"]}
-    assert by["docs/c#0"]["by"] == "meaning" and by["docs/c#0"]["depth"] == "EXTRACT"
-
-
-def test_unknown_router_name_warns_and_routes_as_today(trial, monkeypatch, capsys):
-    _meaning(trial, monkeypatch, {"docs/a#0": 0.1, "docs/sdk__b#0": 0.1, "docs/sdk__b#1": 0.1, "docs/c#0": 0.9})
-    monkeypatch.setenv("JEV_ROUTER", "today")
-    want = trial.route("responses answers header")
-    monkeypatch.setenv("JEV_ROUTER", "nonsense")
-    assert trial.flags() == set()
-    assert "JEV_ROUTER" in capsys.readouterr().err
-    assert trial.route("responses answers header") == want
-
-
-def test_presets_expand_to_their_flags(trial, monkeypatch):
-    for name, flags in {"today": set(), "rec3": {"split", "path", "sdkw"},
-                        "rec3+4": {"split", "path", "sdkw", "codegate", "semfull", "sigwords", "retrieval"},
-                        "split,path,sdkw,semfull,retrieval": {"split", "path", "sdkw", "semfull", "retrieval"}}.items():
-        monkeypatch.setenv("JEV_ROUTER", name)
-        assert trial.flags() == flags, name
-    monkeypatch.delenv("JEV_ROUTER")
-    assert trial.flags() == set()
 
 
 # ---- read.py: CITE AS forms and the quote check, on an invented library ----------------------------------------
