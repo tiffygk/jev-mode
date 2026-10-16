@@ -520,6 +520,19 @@ def test_check_quote_cuts_a_very_long_heading_and_gives_its_id(tmp_path):
     assert len(r.stdout.split(" | ")[1]) < 160
 
 
+def test_check_quote_never_echoes_control_characters_from_a_page(tmp_path):
+    data = tmp_path / "data"
+    (data / "docs").mkdir(parents=True)
+    (data / "docs" / "esc.md").write_text("# Esc\n\n## Text\n\nPlain words.\n\n## Rates\x1b[31m\n\nTen requests\x1b[2J\r a second.\n")
+    env = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_SEMANTIC": "off", "JEV_LOG": "off",
+           "JEV_PRIVATE_CONFIG": str(tmp_path / "absent.json")}
+    subprocess.run([sys.executable, f"{CODE}/scripts/build_index.py", "--no-prepare"], check=True, capture_output=True, env=env)
+    for sid, code in (("docs/esc.md", 0), ("docs/esc.md#Text", 1)):
+        r = read_cli(env, sid, "--check-quote", "Ten requests")
+        assert r.returncode == code and "Ten requests?" in r.stdout, r.stdout
+        assert "\x1b" not in r.stdout and "\r" not in r.stdout
+
+
 def test_reading_a_page_only_id_still_refuses(qlib):
     r = read_cli(qlib, "docs/limits2.md")
     assert r.returncode == 1 and "no section" in r.stderr + r.stdout

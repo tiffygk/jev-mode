@@ -227,12 +227,17 @@ def render(sid, extract_terms=None):
 HEAD_MAX = 120  # the longest real heading is 75 characters; a longer one is cut and cited by its numeric id
 
 
+def _safe(text):
+    """Page text as printable characters only, so a control character on a saved page can't reach the terminal."""
+    return "".join(c if c.isprintable() else "?" for c in text)
+
+
 def _ref(r):
     """path#heading, plus the numeric id when the page repeats that heading or the heading is cut at HEAD_MAX."""
     several = len([x for x in _index() if x["path"] == r["path"] and x["heading"] == r["heading"]]) > 1
     cut = len(r["heading"]) > HEAD_MAX
     head = r["heading"][:HEAD_MAX] + "..." if cut else r["heading"]
-    return f"{r['path']}#{head}" + (f" [{r['id']}]" if several or cut else "")
+    return _safe(f"{r['path']}#{head}") + (f" [{r['id']}]" if several or cut else "")
 
 
 def main():
@@ -249,15 +254,15 @@ def main():
         page_only = bool(_page_rows(sid))
         usage_log.write("check_quote", id=r["id"], found=found)
         if found:
-            print(f"QUOTE FOUND | {_ref(r)} | line {line_no}: {line.strip()[:200]}")
+            print(f"QUOTE FOUND | {_ref(r)} | line {line_no}: {_safe(line.strip()[:200])}")
             return 0
         other = elsewhere_on_page(sid, quote)
         if other:
             o, o_line_no, o_line = other
             print(f"QUOTE NOT FOUND | {_ref(r)} | found on this page under {_ref(o)}, line {o_line_no}: "
-                  f"{o_line.strip()[:200]} | cite that section")
+                  f"{_safe(o_line.strip()[:200])} | cite that section")
             return 1
-        print(f"QUOTE NOT FOUND | {r['path'] if page_only else _ref(r)}")
+        print(f"QUOTE NOT FOUND | {_safe(r['path']) if page_only else _ref(r)}")
         return 1
     terms = sys.argv[sys.argv.index("--extract") + 1:] if "--extract" in sys.argv else None
     text = render(sid, terms)
