@@ -29,7 +29,7 @@ For developers and agent teams checking Jev designs.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/how-it-works-dark.svg">
-  <img alt="A Jev question flows from the reminder hook through jev.py, the keyword route, the meaning route and the labels to the sections read in full and a quoted claim." src="images/how-it-works.svg">
+  <img alt="How a Jev question flows: reminder hook, jev.py, keyword and meaning routes, labels, sections read in full or a reading plan, then a quoted claim." src="images/how-it-works.svg">
 </picture>
 
 1. A hook sees a Jev message and tells the model to run `jev.py`. At most every two days, the hook also starts a background check for new or re-dated TypeSafe pages.
