@@ -82,7 +82,7 @@ def _kept(line):
     return "".join(keep), cols
 
 
-_ELISION = re.compile(r"\s*\[?(?:\.\.\.|…)\]?\s*")
+_ELISION = re.compile(r"\[?(?:\.\.\.|…)\]?")
 _EDGE = "\"'“”‘’.,;:!? \t\r\n"
 
 
@@ -93,9 +93,15 @@ def quote_parts(quote):
     return [p for p in parts if p]
 
 
+def _joins(nxt, ch):
+    """Does the page continue the quote's end character ch? nxt is the two page characters beyond it, nearest
+    first. A letter or digit continues a word; a "." or "," then a digit continues a number ("0" in "0.5")."""
+    return nxt[0].isalnum() or (ch.isdigit() and nxt[0] in ".," and nxt[1].isdigit())
+
+
 def _find(text, lines, owner, cols, want, start):
     """The (first, last) index of want in text at or after start, not starting or ending inside a run of letters
-    or digits; the first letter may differ in case. None if absent."""
+    or digits or inside a number; the first letter may differ in case. None if absent."""
     best = None
     for w in {want, want[0].swapcase() + want[1:]}:
         pos = start - 1
@@ -104,9 +110,10 @@ def _find(text, lines, owner, cols, want, start):
             if pos < 0:
                 break
             first, last = pos, pos + len(w) - 1
-            before = lines[owner[first]][cols[first] - 1] if cols[first] > 0 else " "
-            after = lines[owner[last]][cols[last] + 1] if cols[last] + 1 < len(lines[owner[last]]) else " "
-            if (w[0].isalnum() and before.isalnum()) or (w[-1].isalnum() and after.isalnum()):
+            head, tail = lines[owner[first]], lines[owner[last]]
+            before = head[max(0, cols[first] - 2):cols[first]].rjust(2)
+            after = tail[cols[last] + 1:cols[last] + 3].ljust(2)
+            if (w[0].isalnum() and _joins(before[::-1], w[0])) or (w[-1].isalnum() and _joins(after, w[-1])):
                 continue
             if best is None or first < best[0]:
                 best = (first, last)

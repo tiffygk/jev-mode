@@ -430,7 +430,7 @@ def test_check_quote_function_returns_the_row_and_line(rlib, monkeypatch):
     assert line_no == row["line_start"] + 2
 
 
-QUOTE_PAGES = {"docs/limits.md": "# Limits\n\n## Images\n\nA request holds up to 50 images.\nRun `pip install typesafe` first, then say \"go\".\n"}
+QUOTE_PAGES = {"docs/limits.md": "# Limits\n\n## Images\n\nA request holds up to 50 images.\nRun `pip install typesafe` first, then say \"go\".\nThe limit is 0.5 MB per image and 1,000 per day.\n"}
 
 
 @pytest.fixture
@@ -465,9 +465,23 @@ def test_check_quote_does_not_match_inside_a_word_or_number(qlib, quote, code):
     ("50 images ... A request holds", 1),             # in the page's order
     ("A request holds ... up to 5", 1),               # each part keeps the word-boundary rule
     ("A request holds up to 50 Images.", 1),          # case still counts after the first letter
+    ("The limit is 0.", 1),                           # a dropped end period can't hide the rest of a number
+    ("The limit is 0.5 MB per image.", 0),
+    (".5 MB per image", 1),                           # nor can a dropped leading one
+    ("per image and 1", 1),
+    ("per image and 1,000 per day.", 0),
 ])
 def test_check_quote_allows_the_changes_quoting_makes_at_the_ends_and_elisions(qlib, quote, code):
     assert read_cli(qlib, "docs/limits.md#Images", "--check-quote", quote).returncode == code, quote
+
+
+def test_check_quote_is_fast_on_a_long_run_of_spaces(qlib):
+    import time
+    q = "A" + " " * 40000 + "request holds up to 50 images."
+    t = time.time()
+    r = subprocess.run([sys.executable, f"{CODE}/scripts/read.py", "docs/limits.md#Images", "--check-quote", "-"], input=q,
+                       capture_output=True, text=True, env=qlib)
+    assert r.returncode == 0 and time.time() - t < 3
 
 
 def test_check_quote_of_only_an_elision_or_punctuation_exits_2(qlib):
