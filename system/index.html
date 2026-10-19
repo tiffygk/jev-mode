@@ -530,7 +530,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
         <header><span class="n">3</span><h3>Judgment eval</h3><p>Does a grader route real projects the way the owner does?</p></header>
         <div class="body">
           <ol class="chain">
-            <li><div class="cell pk"><b>Golden dataset</b><span>19 real open-source projects, keyed. 6 of them cover the gaps: one claims Jev and never calls it, one is an honest stub named after Jev, two are high stakes, two very high.</span></div></li>
+            <li><div class="cell pk"><b>Golden dataset</b><span>19 projects, keyed: 17 real open-source projects and 2 written for the eval. 6 of them cover the gaps: one claims Jev and never calls it, one is an honest stub named after Jev, two are high stakes, two very high.</span></div></li>
             <li><div class="cell"><span class="scr">pick_files.py</span><b>Fixed file rule</b><span>Root README, every file with a hosted call, then Jev or decision hits up to 4 files. Code before docs and tests, data last. 3,000 characters each.</span></div></li>
             <li><div class="cell"><b>Provable labels</b><span>Every gold answer must be backed by the packet the grader sees. 13 checked: 12 provable, 1 weak, 0 changed.</span></div></li>
             <li><div class="cell"><span class="tag blind">blind labelers</span><b>Label provenance</b><span>New cases: labels sealed until the owner answers from evidence cards. <span class="scr">check_labels.py</span> refuses a label that cites a doc as a call; <span class="scr">build_cards.py</span> refuses any verdict word on a card.</span></div></li>
