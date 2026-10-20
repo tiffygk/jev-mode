@@ -139,7 +139,9 @@ def bm25(rows, texts, base, extra, k1=1.4, b=0.75):
     return out
 
 
-def route(q, model=None):
+def route(q, model=None, limit=10, per_page=2):
+    """limit caps the keyword-and-topic sections (10 today) and per_page the sections a page may add (2 today);
+    map mode widens both. The defaults are the routing every other caller gets."""
     model = model or applicability.find_model(q)
     rows, texts = load()
     base, extra = expand(q)
@@ -161,9 +163,9 @@ def route(q, model=None):
     ranked = sorted((r for r in rows if scores[r["id"]] > 0), key=final, reverse=True)
     picked, per_file = [], Counter()
     for r in ranked:
-        if per_file[r["path"]] < 2:
+        if per_file[r["path"]] < per_page:
             picked.append(r); per_file[r["path"]] += 1
-        if len(picked) == 6:
+        if len(picked) == max(1, limit - 4):
             break
     # topic map first: the best-scoring section of each mapped page (fix-catalog seeds)
     try:
@@ -196,15 +198,15 @@ def route(q, model=None):
             for r in cands[:t.get("top", 1)]:
                 if r["id"] not in {m["id"] for m in mapped}:
                     mapped.append(r)
-    picked = mapped + [r for r in picked if r["id"] not in {m["id"] for m in mapped}][:max(0, 8 - len(mapped))]
-    picked = picked[:10]
+    picked = mapped + [r for r in picked if r["id"] not in {m["id"] for m in mapped}][:max(0, limit - 2 - len(mapped))]
+    picked = picked[:limit]
     if sem:  # meaning complements the keyword list: append only, never reorder or drop
         have, per_file = {r["id"] for r in picked}, Counter(r["path"] for r in picked)
         added = []
         for r in sorted(rows, key=lambda r: (-sem[r["id"]], r["id"])):
             if len(added) == SEM_ADD or sem[r["id"]] < SEM_FLOOR:
                 break
-            if r["id"] not in have and per_file[r["path"]] < 2 and (r["kind"] != "sdk" or code):
+            if r["id"] not in have and per_file[r["path"]] < per_page and (r["kind"] != "sdk" or code):
                 added.append(r); per_file[r["path"]] += 1
         picked += added
     n_keyword = len(picked) - (len(added) if sem else 0)

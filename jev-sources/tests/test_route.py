@@ -568,3 +568,29 @@ def test_the_skill_md_heredoc_runs_a_quote_with_backticks_unharmed(qlib):
     cmd = f"{sys.executable} {CODE}/scripts/read.py 'docs/limits.md#Images' --check-quote - <<'QUOTE'\nRun `pip install typesafe` first, then say \"go\".\nQUOTE"
     r = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, env=qlib)
     assert r.returncode == 0 and "QUOTE FOUND" in r.stdout, r.stderr
+
+
+# ---- limit and per_page: the wider net map mode uses; the defaults are today's routing ----------------------------
+
+def _many_pages(n_pages, per_page):
+    return {"docs/p%d.md" % k: "".join("# Batch limit part %d of page %d\n\nthe batch limit applies here\n\n" % (j, k)
+                                      for j in range(per_page)) for k in range(n_pages)}
+
+
+def test_route_defaults_keep_two_sections_per_page_and_ten_in_all(trial, tmp_path, monkeypatch):
+    R = _lib(trial, tmp_path, monkeypatch, _many_pages(12, 3))
+    monkeypatch.setenv("JEV_SEMANTIC", "off")
+    res = R.route("batch limit")
+    assert len(res["sections"]) == 6  # six by keyword, two a page: today's cut
+    assert max(sum(1 for s in res["sections"] if s["path"] == p) for p in {s["path"] for s in res["sections"]}) == 2
+    assert R.route("batch limit", limit=10, per_page=2) == res
+
+
+def test_route_limit_and_per_page_widen_the_net(trial, tmp_path, monkeypatch):
+    R = _lib(trial, tmp_path, monkeypatch, _many_pages(12, 3))
+    monkeypatch.setenv("JEV_SEMANTIC", "off")
+    res = R.route("batch limit", limit=30, per_page=3)
+    per = {}
+    for s in res["sections"]:
+        per[s["path"]] = per.get(s["path"], 0) + 1
+    assert max(per.values()) == 3 and len(res["sections"]) == 26
