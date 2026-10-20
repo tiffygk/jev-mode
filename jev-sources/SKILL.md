@@ -35,14 +35,13 @@ python3 <skill>/scripts/jev.py "<topic 1, in your words>" --also "<topic 2>" --a
 
 - Write 3 to 8 questions, each about one thing the goal needs: what the API allows, limits and sizes, cost, errors and reliability, model versions, readiness for production, and the pattern or cookbook closest to the goal.
 - Read the `COVERAGE:` block. Relay every `NO SOURCE FOUND` question to the user as "the docs I routed don't cover <topic>", never as an answer. More than 8 topics: split the goal into two runs.
+- End the answer with what the goal needs that no section you read covers, one line each ("the docs I read don't cover <topic>"), kept apart from sections you didn't read.
 
 ## Over the cap
 
 When `jev.py` prints `READING PLAN`, the unread sections are more than the cap. Keep the sections it already printed in full; don't read them again. It also prints one `READER BRIEF` block per batch: start one read-only reader subagent per block, with the block pasted whole as its brief. Batches may run in parallel.
 
-Where you can't start subagents, read one batch at a time yourself: write its finding lines under that batch's `JEV-READER:` line and keep only those lines before the next batch.
-
-Then check every reply at once, through a quoted heredoc:
+Where you can't start subagents, read one batch at a time yourself: write its finding lines under that batch's `JEV-READER:` line and keep only those lines before the next batch. Then check every reply at once, through a quoted heredoc:
 
 ```
 python3 <skill>/scripts/check_findings.py <plan_id> <<'REPLIES'
