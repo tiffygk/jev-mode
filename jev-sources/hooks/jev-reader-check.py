@@ -5,7 +5,7 @@ no findings blocks the stop once per agent, with the failing rows (never section
 it still holds the pages. A reply with finding lines but no JEV-READER line is sent back once to add it (its batch
 would otherwise count as missing). The second stop of the same agent passes (loop guard). Any fault passes and is logged.
 A quality check, not a security boundary. Logs to <data>/logs/reader_check.jsonl unless JEV_LOG=off."""
-import json, os, re, sys, tempfile
+import json, os, re, sys, tempfile, time
 try:
     import fcntl
 except ImportError:  # Windows: no lock; the guard may then miss a record when readers stop together
@@ -13,10 +13,11 @@ except ImportError:  # Windows: no lock; the guard may then miss a record when r
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jev_terms import ROOT, data_dir, log_event
 
-HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)\b")  # same as check_findings.HEADER
-MARKS = re.compile(r"[*`_]")
+HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)(?=[\s).:]|$)")  # same as check_findings.HEADER
+MARKS = re.compile(r"[*`]|^_+|_+$")  # underscores only at the line's ends, so a plan id keeps its own
 REASON_CAP = 4000
 STATE_CAP = 500
+LOCK_WAIT = 2.0  # seconds
 TAIL = "fix these lines and reply again, starting with the JEV-READER line"
 
 
@@ -43,7 +44,15 @@ def _first_block(agent_id):
     lock = os.open(os.path.join(d, "reader_check_state.lock"), os.O_WRONLY | os.O_CREAT, 0o600)
     try:
         if fcntl:
-            fcntl.flock(lock, fcntl.LOCK_EX)
+            deadline = time.monotonic() + LOCK_WAIT
+            while True:  # a stalled hook holding the lock must not hold every other reader: give up and pass
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() > deadline:
+                        raise TimeoutError("reader_check_state.lock held too long")
+                    time.sleep(0.05)
         seen = _seen()
         if agent_id in seen:
             return False
@@ -84,7 +93,7 @@ def main():
         if not isinstance(msg, str):
             raise ValueError("no last_assistant_message")
         lines = [x for x in msg.split("\n") if x.strip()]
-        lines = [MARKS.sub("", x) if "JEV-READER" in x else x for x in lines]  # **bold** or `code` around the header
+        lines = [MARKS.sub("", x.strip()) if "JEV-READER" in x else x for x in lines]  # **bold** or `code` around the header
         start = next((i for i, x in enumerate(lines) if HEADER.match(x.strip())), None)  # a short preamble may come first
         if start is None:
             if not any(x.strip().startswith("FINDING:") and "| CITE AS:" in x for x in lines):

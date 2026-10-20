@@ -16,8 +16,8 @@ import read as RD
 
 MAX_FINDINGS = 12
 PAGE_TEXT = 200
-HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)\b")  # the hook keeps an identical copy
-MARKS = re.compile(r"[*`_]")
+HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)(?=[\s).:]|$)")  # the hook keeps an identical copy
+MARKS = re.compile(r"[*`]|^_+|_+$")  # underscores only at the line's ends, so a plan id keeps its own
 FINDING = re.compile(r"^FINDING:\s*(.+?)\s*\|\s*CITE AS:\s*(.+?)\s*\|\s*QUOTE:\s*(.+)$")
 PLAN_ID = re.compile(r"[A-Za-z0-9_-]+")
 

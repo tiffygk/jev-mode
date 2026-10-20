@@ -509,3 +509,24 @@ def test_reader_hook_and_checker_share_one_header_rule():
     sys.path.insert(0, os.path.join(os.path.dirname(H), "scripts"))
     import check_findings
     assert m.HEADER.pattern == check_findings.HEADER.pattern and m.MARKS.pattern == check_findings.MARKS.pattern
+
+def test_reader_header_keeps_underscores_in_the_plan_id_and_rejects_batch_ranges():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("jrc2", f"{H}/jev-reader-check.py")
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    hit = m.HEADER.match(m.MARKS.sub("", "_JEV-READER: plan my_plan batch 2_"))
+    assert hit and hit.group(1) == "my_plan" and hit.group(2) == "2"
+    assert not m.HEADER.match("JEV-READER: plan p1 batch 1,2") and not m.HEADER.match("JEV-READER: plan p1 batch 1-3")
+    assert m.HEADER.match("JEV-READER: plan p1 batch 1 (done)") and m.HEADER.match("JEV-READER: plan p1 batch 1.")
+
+def test_reader_a_lock_held_too_long_passes_and_logs(tmp_path, monkeypatch):
+    import fcntl
+    data = reader_lib(tmp_path, monkeypatch)
+    (data / "logs").mkdir(exist_ok=True)
+    fd = os.open(str(data / "logs" / "reader_check_state.lock"), os.O_WRONLY | os.O_CREAT, 0o600)
+    fcntl.flock(fd, fcntl.LOCK_EX)
+    try:
+        assert reader_run(data, head() + BAD + "\n") == (0, None)
+    finally:
+        os.close(fd)
+    assert _lines(data, "reader_check")[-1]["decision"] == "error"
