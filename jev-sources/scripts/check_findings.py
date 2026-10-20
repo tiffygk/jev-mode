@@ -32,18 +32,30 @@ def _load(plan_id):
         return None
 
 
+ID_TAIL = re.compile(r"\s*\(([^()\s]+#\d+)\)\s*$")
+
+
 def _cited(cite):
-    """The index rows a CITE AS names (a numeric id, path#heading with or without its label, or a page); [] if none."""
-    try:
-        return RD._page_rows(cite) or RD._rows(cite)
-    except SystemExit:
-        return []
+    """The index rows a CITE AS names (a numeric id, path#heading with or without its label, or a page); [] if none.
+    A numeric id in parentheses at the end, where readers sometimes put it instead of the label, names its section."""
+    m = ID_TAIL.search(cite)
+    for c in ([m.group(1)] if m else []) + [cite]:
+        try:
+            rows = RD._page_rows(c) or RD._rows(c)
+        except SystemExit:
+            continue
+        if rows:
+            return rows
+    return []
 
 
 def _judge(cite, quote, batch_ids):
     """(verdict, hint) for one well-formed finding."""
     if not _cited(cite):
         return "NOT IN BATCH", ""
+    m = ID_TAIL.search(cite)
+    if m and _cited(m.group(1)):
+        cite = m.group(1)
     found, row, _, _ = RD.check_quote(cite, quote)
     if not found:
         other = RD.elsewhere_on_page(cite, quote)

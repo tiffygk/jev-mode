@@ -190,3 +190,11 @@ def test_invalid_utf8_on_stdin_is_flagged_not_a_crash(lib):
     r = subprocess.run([sys.executable, os.path.join(SCRIPTS, "check_findings.py"), PID], input=data, capture_output=True,
                        env={**os.environ, "JEV_SOURCES_DATA": str(lib), "JEV_SEMANTIC": "off"})
     assert r.returncode == 1 and b"Traceback" not in r.stderr
+
+
+def test_a_numeric_id_in_parentheses_in_place_of_the_label_is_accepted(plan):
+    cf, a, b, g = plan
+    rows, summary, ok = cf.check(PID, reply(1, finding(f"docs/one.md#Alpha ({a})", ALPHA)) + reply(2, finding(g, GAMMA)))
+    assert ok and rows[0].startswith("OK | b1"), rows
+    rows, summary, ok = cf.check(PID, reply(1, finding(f"docs/one.md#Alpha ({a})", "every box answers within nine seconds")) + reply(2, finding(g, GAMMA)))
+    assert rows[0].startswith("QUOTE NOT FOUND | b1"), rows
