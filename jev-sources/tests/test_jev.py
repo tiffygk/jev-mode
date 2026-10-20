@@ -17,8 +17,9 @@ def sec(sid, kind="reference", depth="READ FULL", tokens=100, **kw):
 
 
 @pytest.fixture
-def J(monkeypatch):
+def J(monkeypatch, tmp_path):
     import jev
+    monkeypatch.setattr(jev.paths, "DATA", str(tmp_path / "plandata"))  # a reading plan is written here, never into the library
     monkeypatch.setattr(jev.RD, "render", lambda sid, extract_terms=None: f"CITE AS: {sid}\nbody of {sid}")
     return jev
 
@@ -578,3 +579,113 @@ def test_a_page_over_the_cap_is_split_in_reading_order(J):
     mk = lambda i, p, t: {"id": i, "path": p, "tokens": t}
     plan = J.reading_plan([mk("x1", "x.md", 7000), mk("y1", "y.md", 3000), mk("x2", "x.md", 7000)], 12000)
     assert [[s["id"] for s in b] for b in plan] == [["x1", "y1"], ["x2"]]
+
+
+# ---- the saved plan, the reader blocks and the three T1 review fixes -------------------------------------------------
+
+import re
+
+
+def two_batches(J, monkeypatch):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("docs/a#0", path="docs/a.md", tokens=1900, heading="Alpha"),
+                                                 sec("docs/b#1", path="docs/b.md", tokens=900, heading="It's b"),
+                                                 sec("docs/c#2", path="docs/c.md", tokens=900, heading="Gamma"),
+                                                 sec("docs/d#3", path="docs/d.md", tokens=900, heading="Delta")]},
+                            "q2": {"sections": []}})
+
+
+def plan_files(J):
+    d = os.path.join(J.paths.DATA, "plans")
+    return sorted(os.listdir(d)) if os.path.isdir(d) else []
+
+
+def test_a_printed_plan_is_saved_with_exactly_the_interface_fields(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--cap", "2000")
+    files = plan_files(J)
+    assert len(files) == 1 and re.fullmatch(r"p[0-9a-f]{8}\.json", files[0])
+    d = os.path.join(J.paths.DATA, "plans")
+    plan = json.load(open(os.path.join(d, files[0])))
+    assert list(plan) == ["plan_id", "created", "goal", "batches"]
+    assert plan["plan_id"] + ".json" == files[0] and re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", plan["created"])
+    assert plan["goal"] == ["q1", "q2"]
+    assert plan["batches"] == [{"n": 1, "ids": ["docs/b#1", "docs/c#2"], "tokens": 1800}, {"n": 2, "ids": ["docs/d#3"], "tokens": 900}]
+    assert oct(os.stat(d).st_mode & 0o777) == "0o700"
+    assert oct(os.stat(os.path.join(d, files[0])).st_mode & 0o777) == "0o600"
+
+
+def test_the_plan_is_written_atomically_leaving_no_temp_file(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--cap", "2000")
+    assert all(re.fullmatch(r"p[0-9a-f]{8}\.json", f) for f in plan_files(J))
+
+
+def test_the_reader_block_is_printed_line_for_line(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--cap", "2000")
+    out = capsys.readouterr().out
+    pid = plan_files(J)[0][:-5]
+    skill_line = [l for l in open(os.path.join(CODE, "SKILL.md")).read().split("\n") if l.startswith("JEV-SOURCES:")][0]
+    rd = os.path.join(CODE, "scripts", "read.py")
+    want = "\n".join([
+        f"----- READER BRIEF plan {pid} batch 1 -----",
+        f"JEV-READER: plan {pid} batch 1",
+        skill_line.replace("<skill>", CODE),
+        "GOAL: q1 | q2",
+        "Read these sections in full, in order:",
+        f"  python3 {rd} {shlex.quote('docs/b#1')}   # docs/b.md#It's b",
+        f"  python3 {rd} {shlex.quote('docs/c#2')}   # docs/c.md#Gamma",
+        "Return only lines of this form, at most 12, with no page text:",
+        'FINDING: <one sentence> | CITE AS: <path#heading (label)> | QUOTE: "<exact words>"',
+        "Start your reply with the JEV-READER line above.",
+        "----- END READER BRIEF -----"])
+    assert want in out
+    assert "<skill>" not in out
+    assert "Each reader returns only lines of this form" not in out
+
+
+def test_one_reader_block_per_batch(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("s%d" % i, tokens=12000) for i in range(4)]}})
+    run_main(J, monkeypatch, "q")
+    out = capsys.readouterr().out
+    assert out.count("----- READER BRIEF plan ") == 3 and out.count("----- END READER BRIEF -----") == 3
+    assert out.count("JEV-READER: plan ") == 3 and "batch 3 -----" in out
+
+
+def test_json_carries_the_plan_id(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--cap", "2000", "--json")
+    d = json.loads(capsys.readouterr().out)
+    assert d["plan_id"] + ".json" == plan_files(J)[0]
+
+
+def test_no_plan_no_file_and_no_plan_id(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a")]}})
+    run_main(J, monkeypatch, "q", "--json")
+    assert "plan_id" not in json.loads(capsys.readouterr().out) and plan_files(J) == []
+    routes(J, monkeypatch, {"q": {"sections": [sec("s%d" % i, tokens=12000) for i in range(8)]}})
+    run_main(J, monkeypatch, "q")
+    assert plan_files(J) == []
+
+
+def test_log_off_does_not_stop_the_plan_file(J, monkeypatch, capsys):
+    monkeypatch.setenv("JEV_LOG", "off")
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--cap", "2000")
+    assert len(plan_files(J)) == 1
+
+
+def test_a_too_broad_goal_says_unread_not_in_plan_in_coverage(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("s%d" % i, tokens=12000) for i in range(8)]}, "q2": {"sections": [sec("s7", tokens=12000)]}})
+    run_main(J, monkeypatch, "q1", "--also", "q2")
+    out = capsys.readouterr().out
+    assert "goal too broad" in out
+    assert "  1. q1: read 1, unread 7" in out and "  2. q2: read 0, unread 1" in out
+    assert "in plan" not in out
+
+
+def test_map_with_also_exits_2(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a")]}})
+    assert run_main(J, monkeypatch, "--map", "q", "--also", "q2") == 2
+    cap = capsys.readouterr()
+    assert "--map takes one goal; run --also without --map" in cap.err and cap.out == ""

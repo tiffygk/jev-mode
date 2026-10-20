@@ -5,12 +5,13 @@ cap are listed with their read.py commands, never dropped.
   jev.py "<question>" [--docs-words "<question in the docs' words>"] [--model jev-1.13.0] [--cap 12000] [--json]
   jev.py "<q1>" --also "<q2>" [--also ...]   several questions, one shared cap, a COVERAGE block (at most 8 questions)
   jev.py --map "<goal>"                        an outline of the pages and sections that may answer a broad goal; reads nothing"""
-import argparse, json, os, shlex, sys
+import argparse, datetime, hashlib, json, os, shlex, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import route as R
 import read as RD
 import usage_log
 import applicability
+import paths
 from paths import CODE, REFRESH
 import clean
 
@@ -51,6 +52,48 @@ def reading_plan(not_read, cap):
     if cur:
         batches.append(cur)
     return batches
+
+
+def save_plan(qs, batches):
+    """Write <data>/plans/<plan_id>.json (folder owner-only, file written atomically) and return the plan id. The file is
+    what check_findings.py reads, so JEV_LOG=off does not stop it."""
+    created = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    plan_id = "p" + hashlib.sha256((json.dumps(qs) + created + str(os.getpid())).encode()).hexdigest()[:8]
+    d = os.path.join(paths.DATA, "plans")
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    plan = {"plan_id": plan_id, "created": created, "goal": list(qs),
+            "batches": [{"n": n, "ids": [s["id"] for s in b], "tokens": sum(s["tokens"] for s in b)} for n, b in enumerate(batches, 1)]}
+    fd, tmp = tempfile.mkstemp(dir=d, prefix=".tmp-", suffix=".json")  # mkstemp makes the file 0600
+    with os.fdopen(fd, "w") as f:
+        json.dump(plan, f, indent=1)
+    os.replace(tmp, os.path.join(d, plan_id + ".json"))
+    return plan_id
+
+
+def skill_line():
+    """SKILL.md's JEV-SOURCES: line with <skill> written out as this skill's folder."""
+    try:
+        for line in open(os.path.join(CODE, "SKILL.md"), encoding="utf-8"):
+            if line.startswith("JEV-SOURCES:"):
+                return line.rstrip("\n").replace("<skill>", CODE)
+    except OSError:
+        pass
+    return f'JEV-SOURCES: before any finding, run `python3 {CODE}/scripts/jev.py "<the question>"` and read what it prints; quote verbatim.'
+
+
+def reader_block(plan_id, n, batch, qs):
+    rd = f"python3 {os.path.join(CODE, 'scripts', 'read.py')}"
+    return "\n".join([
+        f"----- READER BRIEF plan {plan_id} batch {n} -----",
+        f"JEV-READER: plan {plan_id} batch {n}",
+        skill_line(),
+        "GOAL: " + " | ".join(qs),
+        "Read these sections in full, in order:",
+        *[f"  {rd} {shlex.quote(s['id'])}   # {s['path']}#{s['heading']}" for s in batch],
+        "Return only lines of this form, at most 12, with no page text:",
+        'FINDING: <one sentence> | CITE AS: <path#heading (label)> | QUOTE: "<exact words>"',
+        "Start your reply with the JEV-READER line above.",
+        "----- END READER BRIEF -----"])
 
 
 def bundle(questions, model=None, cap=CAP, log=True, coverage=True):
@@ -133,7 +176,7 @@ def map_outline(goal, docs_words=None, budget=MAP_TOKENS, model=None):
     if not pages:
         return f"MAP: {goal}\nno section found; route in other words or refresh\n"
     blocks = []
-    for path, secs in pages.items():
+    for path, secs in pages.items():  # a page's token figure counts only its listed sections, not the whole page
         n = len(secs)
         head = f"{path} ({LABEL.get(secs[0]['kind'], 'other')}, {n} section{'s' if n != 1 else ''}, ~{sum(x['tokens'] for x in secs):,} tokens)"
         blocks.append([head] + [f"  - {x['heading']} (~{x['tokens']:,})" for x in secs])
@@ -161,6 +204,9 @@ def main():
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     model = applicability.checked(a.model)
+    if a.map and a.also:
+        print("--map takes one goal; run --also without --map", file=sys.stderr)
+        return 2
     if a.map:
         print(map_outline(a.question, a.docs_words, MAP_TOKENS, model), end="")
         return 0
@@ -172,8 +218,9 @@ def main():
     b = bundle(groups, model, a.cap)
     usage_log.write("jev", questions=qs, model=model, cap=a.cap, read=b["read_ids"],
                     not_read=[s["id"] for s in b["not_read"]], extract=[s["id"] for s in b["extract"]])
+    plan_id = save_plan(qs, b["plan_batches"]) if b["plan_batches"] else None
     if a.json:
-        print(json.dumps({**{k: v for k, v in b.items() if k != "plan_batches"}, "not_read": [s["id"] for s in b["not_read"]],
+        print(json.dumps({**{k: v for k, v in b.items() if k != "plan_batches"}, **({"plan_id": plan_id} if plan_id else {}), "not_read": [s["id"] for s in b["not_read"]],
                           "extract": [s["id"] for s in b["extract"]]}, indent=1))
         return 0
     print("\n\n".join(b["read"]) or "no section found; route in other words or refresh")
@@ -189,11 +236,9 @@ def main():
               f"Start one reader per batch (SKILL.md, \"Over the cap\").")
         print("GOAL: " + " | ".join(qs))
         for n, batch in enumerate(b["plan_batches"], 1):
-            print(f"BATCH {n} (~{sum(s['tokens'] for s in batch):,} tokens):")
-            for s in batch:
-                print(f"  {rd} {shlex.quote(s['id'])}   # {s['path']}#{s['heading']}")
-        print("Each reader returns only lines of this form, with no page text:")
-        print('FINDING: <one sentence> | CITE AS: <path#heading (label)> | QUOTE: "<exact words>"')
+            print(f"BATCH {n} (~{sum(s['tokens'] for s in batch):,} tokens)")
+        for n, batch in enumerate(b["plan_batches"], 1):
+            print(reader_block(plan_id, n, batch, qs))
     else:
         for s in b["not_read"]:
             print(f"NOT YET READ (over the cap): {rd} {shlex.quote(s['id'])}  # {s['path']}#{s['heading']}")
@@ -208,7 +253,8 @@ def main():
             if not c["read"] and not c["planned"]:
                 print(f"  {n}. {c['q']}: NO SOURCE FOUND (nothing to read in full; EXTRACT only: {len(c['extract'])})")
             else:
-                print(f"  {n}. {c['q']}: read {len(c['read'])}, in plan {len(c['planned'])}")
+                word = "unread" if b["too_broad"] else "in plan"  # a too-broad goal has no plan to be in
+                print(f"  {n}. {c['q']}: read {len(c['read'])}, {word} {len(c['planned'])}")
     print(f"semantic: {b['semantic']}")
     return 0
 
