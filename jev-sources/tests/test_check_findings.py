@@ -198,3 +198,40 @@ def test_a_numeric_id_in_parentheses_in_place_of_the_label_is_accepted(plan):
     assert ok and rows[0].startswith("OK | b1"), rows
     rows, summary, ok = cf.check(PID, reply(1, finding(f"docs/one.md#Alpha ({a})", "every box answers within nine seconds")) + reply(2, finding(g, GAMMA)))
     assert rows[0].startswith("QUOTE NOT FOUND | b1"), rows
+
+
+def test_page_text_before_the_header_is_flagged(plan):
+    cf, a, b, g = plan
+    rows, _, ok = cf.check(PID, ALPHA + "\n" + reply(1, finding(a, ALPHA)) + reply(2, finding(g, GAMMA)))
+    assert "PAGE TEXT | b1 | " + ALPHA[:80] in rows and not ok
+
+
+def test_a_section_pasted_line_by_line_is_page_text(plan):
+    cf, a, b, g = plan
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), BETA) + reply(2, finding(g, GAMMA)))
+    assert any(r.startswith("PAGE TEXT | b1") for r in rows) and not ok
+    rows, _, ok = cf.check(PID, reply(1, "Here are my findings.", finding(a, ALPHA)) + reply(2, finding(g, GAMMA)))
+    assert ok, rows  # a short note of the reader's own is not page text
+
+
+def test_a_quote_or_sentence_over_the_cap_is_flagged(plan):
+    cf, a, b, g = plan
+    long_q = (ALPHA + " ") * 5
+    rows, _, ok = cf.check(PID, reply(1, finding(a, long_q.strip())) + reply(2, finding(g, GAMMA)))
+    assert rows[0].startswith("TOO LONG | b1") and not ok
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA, sentence=BETA * 6)) + reply(2, finding(g, GAMMA)))
+    assert rows[0].startswith("TOO LONG | b1") and not ok
+
+
+def test_a_cite_holding_section_text_echoes_at_most_80_characters(plan):
+    cf, a, b, g = plan
+    rows, _, ok = cf.check(PID, reply(1, finding((BETA + " ") * 4, ALPHA)) + reply(2, finding(g, GAMMA)))
+    assert not ok and all(len(r.split(" | ", 2)[2]) <= 80 for r in rows if r.count(" | ") >= 2)
+
+
+def test_a_damaged_plan_file_reads_as_no_plan(lib):
+    (lib / "plans").mkdir(exist_ok=True)
+    (lib / "plans" / (PID + ".json")).write_text('{"batches": [{"x": 1}]}')
+    import check_findings
+    rows, summary, ok = check_findings.check(PID, "")
+    assert summary is None and rows[0].startswith("NO PLAN")

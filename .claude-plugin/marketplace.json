@@ -120,7 +120,8 @@
             "hooks": [
               {
                 "type": "command",
-                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-reader-check.py\""
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-reader-check.py\"",
+                "timeout": 15
               }
             ]
           }

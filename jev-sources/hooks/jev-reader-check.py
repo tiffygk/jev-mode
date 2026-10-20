@@ -106,7 +106,7 @@ def main():
                               "JEV-READER: plan <id> batch <n>. If you are not a reader for a Jev Sources reading plan, "
                               "reply again unchanged."}))
             return 0
-        lines = lines[start:]
+        pre, lines = lines[:start], lines[start:]
         m = HEADER.match(lines[0].strip())
         plan_id, batch = m.group(1)[:80], int(m.group(2))
         if not isinstance(agent, str) or not agent:
@@ -120,7 +120,7 @@ def main():
             own.append(x)
         sys.path.insert(0, os.path.join(ROOT, "scripts"))
         import check_findings
-        rows, summary, ok = check_findings.check(plan_id, "\n".join(own) + "\n")
+        rows, summary, ok = check_findings.check(plan_id, "\n".join(pre + own) + "\n")  # the preamble is checked too
         if summary is None:
             log_event("reader_check", decision="no_plan", **ctx)
             return 0

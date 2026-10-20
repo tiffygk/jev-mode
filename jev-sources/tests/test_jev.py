@@ -458,6 +458,14 @@ def test_map_stays_under_the_budget_on_forty_pages_and_says_how_many_more(J, mon
     assert lines[-2] == "... and %d more pages" % (40 - shown) and 0 < shown < 40
 
 
+def test_map_echoes_a_long_goal_cut_to_200_characters(J, monkeypatch, capsys):
+    goal = "word " * 2000
+    map_routes(J, monkeypatch, {goal: {"sections": big_map(40)}})
+    assert run_main(J, monkeypatch, "--map", goal) == 0
+    text = capsys.readouterr().out
+    assert len(text.splitlines()[0]) <= len("MAP: ") + 200 and len(text) / 4 <= J.MAP_TOKENS
+
+
 def test_map_outline_takes_a_smaller_budget_and_keeps_at_least_one_page(J, monkeypatch):
     map_routes(J, monkeypatch, {"goal": {"sections": big_map(5)}})
     out = J.map_outline("goal", budget=100)

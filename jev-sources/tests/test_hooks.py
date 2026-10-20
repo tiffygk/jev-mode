@@ -530,3 +530,18 @@ def test_reader_a_lock_held_too_long_passes_and_logs(tmp_path, monkeypatch):
     finally:
         os.close(fd)
     assert _lines(data, "reader_check")[-1]["decision"] == "error"
+
+def test_reader_hook_flags_page_text_in_the_preamble(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out = reader_run(data, R_ALPHA + "\n" + head() + GOOD + "\n")
+    assert out["decision"] == "block" and "PAGE TEXT | b1" in out["reason"]
+
+def test_a_printed_reader_brief_passes_the_dispatch_check(tmp_path):
+    sys.path.insert(0, os.path.join(os.path.dirname(H), "scripts"))
+    import jev
+    brief = "\n".join(["----- READER BRIEF plan p1 batch 1 -----", "JEV-READER: plan p1 batch 1", jev.READER_SOURCES,
+                       "GOAL: how do Jev Noul questions work"])
+    payload = json.dumps({"session_id": "s1", "tool_name": "Agent", "tool_input": {"prompt": brief, "description": "Jev reader"}})
+    r = subprocess.run([sys.executable, f"{H}/jev-dispatch-check.py"], input=payload, capture_output=True, text=True,
+                       env={**os.environ, "JEV_HOOK_LOG_DIR": str(tmp_path), "JEV_LOG": "off"})
+    assert r.returncode == 0 and "deny" not in r.stdout

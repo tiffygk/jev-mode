@@ -16,6 +16,9 @@ import read as RD
 
 MAX_FINDINGS = 12
 PAGE_TEXT = 200
+MAX_SENTENCE = 300  # live readers wrote at most 226 characters
+MAX_QUOTE = 300  # and quoted at most 201
+VERBATIM_WORDS = 8  # a shorter line copied from a section is a phrase, not page text
 HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)(?=[\s).:]|$)")  # the hook keeps an identical copy
 MARKS = re.compile(r"[*`]|^_+|_+$")  # underscores only at the line's ends, so a plan id keeps its own
 FINDING = re.compile(r"^FINDING:\s*(.+?)\s*\|\s*CITE AS:\s*(.+?)\s*\|\s*QUOTE:\s*(.+)$")
@@ -27,9 +30,12 @@ def _load(plan_id):
         return None
     try:
         with open(os.path.join(paths.DATA, "plans", plan_id + ".json"), encoding="utf-8") as f:
-            return json.load(f)
+            plan = json.load(f)
     except (OSError, ValueError):
         return None
+    ok = isinstance(plan, dict) and isinstance(plan.get("batches"), list) and all(
+        isinstance(b, dict) and isinstance(b.get("n"), int) and isinstance(b.get("ids"), list) for b in plan["batches"])
+    return plan if ok else None  # a damaged plan file reads as no plan, never a crash
 
 
 ID_TAIL = re.compile(r"\s*\(([^()\s]+#\d+)\)\s*$")
@@ -47,6 +53,32 @@ def _cited(cite):
         if rows:
             return rows
     return []
+
+
+def _echo(cite):
+    """What a row shows for a CITE AS: the reader's own citation when it is at most 80 characters; a longer one is shown
+    as its section's short reference when it resolves, else cut to 80 characters (a long cite may carry page text)."""
+    if len(cite) <= 80:
+        return RD._safe(cite)
+    m = ID_TAIL.search(cite)
+    rows = _cited(m.group(1)) if m and _cited(m.group(1)) else _cited(cite)
+    return RD._ref(rows[0]) if len(rows) == 1 else RD._safe(cite[:80])
+
+
+def _page_text(line, batch_ids):
+    """A non-finding line that is long, or that copies 8 or more words of one of its batch's sections."""
+    if len(line) > PAGE_TEXT:
+        return True
+    words = line.lstrip("-*>#0123456789. ").strip()
+    if len(words.split()) < VERBATIM_WORDS:
+        return False
+    for sid in sorted(batch_ids):
+        try:
+            if RD.check_quote(sid, words)[0]:
+                return True
+        except SystemExit:
+            continue
+    return False
 
 
 def _judge(cite, quote, batch_ids):
@@ -70,7 +102,11 @@ def check(plan_id, text):
         return [f"NO PLAN | {RD._safe(plan_id)[:80]}"], None, False
     batches = {b["n"]: set(b["ids"]) for b in plan["batches"]}
     rows, count, extra = {}, {}, {}
-    reported, cur = set(), None
+    reported, cur, pending = set(), None, []
+    def other_line(n, line):
+        if _page_text(line, batches[n]):
+            extra[n] = extra.get(n, 0) + 1
+            rows.setdefault(n, []).append((None, f"PAGE TEXT | b{n} | {RD._safe(line[:80])}"))
     for raw in text.split("\n"):
         line = raw.strip()
         m = HEADER.match(MARKS.sub("", line))
@@ -78,8 +114,15 @@ def check(plan_id, text):
             cur = int(m.group(2)) if m.group(1) == plan_id and int(m.group(2)) in batches else None
             if cur is not None:
                 reported.add(cur)
+                for p in pending:  # lines before a reply's header belong to that reply
+                    other_line(cur, p)
+            pending = []
             continue
-        if cur is None or not line:
+        if not line:
+            continue
+        if cur is None:
+            if not line.startswith("FINDING:"):
+                pending.append(line)
             continue
         out = rows.setdefault(cur, [])
         if line.startswith("FINDING:"):
@@ -89,11 +132,13 @@ def check(plan_id, text):
                 out.append((False, f"MALFORMED | b{cur} | {RD._safe(line[:80])}"))
                 continue
             cite = m.group(2)
+            if len(m.group(1)) > MAX_SENTENCE or len(m.group(3)) > MAX_QUOTE:
+                out.append((False, f"TOO LONG | b{cur} | {_echo(cite)}"))
+                continue
             verdict, hint = _judge(cite, m.group(3), batches[cur])
-            out.append((verdict == "OK", f"{verdict} | b{cur} | {RD._safe(cite[:200])}{hint}"))
-        elif len(line) > PAGE_TEXT:
-            extra[cur] = extra.get(cur, 0) + 1
-            out.append((None, f"PAGE TEXT | b{cur} | {RD._safe(line[:80])}"))
+            out.append((verdict == "OK", f"{verdict} | b{cur} | {_echo(cite)}{hint}"))
+        else:
+            other_line(cur, line)
     flat = []
     for n in sorted(set(rows) | reported):
         flat += rows.get(n, [])

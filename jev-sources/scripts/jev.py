@@ -174,7 +174,7 @@ def map_outline(goal, docs_words=None, budget=MAP_TOKENS, model=None):
             ids.add(s["id"])
             pages.setdefault(s["path"], []).append(s)
     if not pages:
-        return f"MAP: {goal}\nno section found; route in other words or refresh\n"
+        return f"MAP: {goal[:200]}\nno section found; route in other words or refresh\n"
     blocks = []
     for path, secs in pages.items():  # a page's token figure counts only its listed sections, not the whole page
         n = len(secs)
@@ -182,7 +182,7 @@ def map_outline(goal, docs_words=None, budget=MAP_TOKENS, model=None):
         blocks.append([head] + [f"  - {x['heading']} (~{x['tokens']:,})" for x in secs])
 
     def text(kept):
-        lines = [f"MAP: {goal}"] + [l for b in blocks[:kept] for l in b]
+        lines = [f"MAP: {goal[:200]}"] + [l for b in blocks[:kept] for l in b]
         more = len(blocks) - kept
         if more:
             lines.append(f"... and {more} more page{'s' if more != 1 else ''}")
