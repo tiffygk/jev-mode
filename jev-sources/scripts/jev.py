@@ -75,15 +75,10 @@ def save_plan(qs, batches):
     return plan_id
 
 
-def skill_line():
-    """SKILL.md's JEV-SOURCES: line with <skill> written out as this skill's folder."""
-    try:
-        for line in open(os.path.join(CODE, "SKILL.md"), encoding="utf-8"):
-            if line.startswith("JEV-SOURCES:"):
-                return line.rstrip("\n").replace("<skill>", CODE)
-    except OSError:
-        pass
-    return f'JEV-SOURCES: before any finding, run `python3 {CODE}/scripts/jev.py "<the question>"` and read what it prints; quote verbatim.'
+READER_SOURCES = ("JEV-SOURCES: your reading for this goal is the read.py commands below, already routed; run them and "
+                  "no other search (no jev.py or route.py), and quote only from those sections.")
+# The reader brief carries the JEV-SOURCES marker the dispatch hook looks for, but not SKILL.md's routing line: a reader
+# told to run jev.py routes its own goal again and reads far past its batch (a live test, 2026-10-19).
 
 
 def reader_block(plan_id, n, batch, qs):
@@ -91,7 +86,7 @@ def reader_block(plan_id, n, batch, qs):
     return "\n".join([
         f"----- READER BRIEF plan {plan_id} batch {n} -----",
         f"JEV-READER: plan {plan_id} batch {n}",
-        skill_line(),
+        READER_SOURCES,
         "GOAL: " + " | ".join(qs),
         "Read these sections in full, in order:",
         *[f"  {rd} {shlex.quote(s['id'])}   # {s['path']}#{s['heading']}" for s in batch],

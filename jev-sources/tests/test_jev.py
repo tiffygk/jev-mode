@@ -622,15 +622,15 @@ def test_the_plan_is_written_atomically_leaving_no_temp_file(J, monkeypatch, cap
 
 def test_the_reader_block_is_printed_line_for_line(J, monkeypatch, capsys):
     two_batches(J, monkeypatch)
+    import jev
     run_main(J, monkeypatch, "q1", "--also", "q2", "--cap", "2000")
     out = capsys.readouterr().out
     pid = plan_files(J)[0][:-5]
-    skill_line = [l for l in open(os.path.join(CODE, "SKILL.md")).read().split("\n") if l.startswith("JEV-SOURCES:")][0]
     rd = os.path.join(CODE, "scripts", "read.py")
     want = "\n".join([
         f"----- READER BRIEF plan {pid} batch 1 -----",
         f"JEV-READER: plan {pid} batch 1",
-        skill_line.replace("<skill>", CODE),
+        jev.READER_SOURCES,
         "GOAL: q1 | q2",
         "Read these sections in full, in order:",
         f"  python3 {rd} {shlex.quote('docs/b#1')}   # docs/b.md#It's b",
@@ -642,6 +642,7 @@ def test_the_reader_block_is_printed_line_for_line(J, monkeypatch, capsys):
     assert want in out
     assert "<skill>" not in out
     assert "Each reader returns only lines of this form" not in out
+    assert "scripts/jev.py" not in want  # readers read their batch; they never route again
 
 
 def test_one_reader_block_per_batch(J, monkeypatch, capsys):
