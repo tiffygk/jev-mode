@@ -3,9 +3,11 @@
   python3 scripts/check_findings.py <plan_id> < replies.txt
 
 Prints one line per finding: OK | b1 | <CITE AS>, QUOTE NOT FOUND | b1 | <CITE AS>[ | found under <ref>],
-NOT IN BATCH | b1 | <CITE AS>, MALFORMED | b1 | <first 80 characters>; and PAGE TEXT | b1 | <first 80 characters> for a line
-over 200 characters, TOO MANY | b1 | <count> for more than 12 findings in a batch, EMPTY | b1 | no findings for a reply
-with no finding line. Then one summary line.
+NOT IN BATCH | b1 | <CITE AS>, MALFORMED | b1 | <first 80 characters>, TOO LONG | b1 | <CITE AS> for a sentence or
+quote over 300 characters or a CITE AS over 200; PAGE TEXT | b1 | line starting "<first 5 words>" (<n> characters) for a
+line over 200 characters or one holding 8 words in a row from a section of its batch, PAGE TEXT | b1 | <n> characters
+outside finding lines when a reply's other lines pass 600 characters, TOO MANY | b1 | <count> for more than 12 findings in
+a batch, EMPTY | b1 | no findings for a reply with no finding line. Then one summary line.
 Exit 0 only when every batch reported and every finding is OK; 1 otherwise; 2 when the plan file is missing.
 Never prints section text: every echoed string passes through read._safe."""
 import json, os, re, sys
@@ -18,7 +20,10 @@ MAX_FINDINGS = 12
 PAGE_TEXT = 200
 MAX_SENTENCE = 300  # live readers wrote at most 226 characters
 MAX_QUOTE = 300  # and quoted at most 201
-VERBATIM_WORDS = 8  # a shorter line copied from a section is a phrase, not page text
+MAX_CITE = 200
+VERBATIM_WORDS = 8  # a shorter run copied from a section is a phrase, not page text
+OTHER_TEXT = 600  # characters a reply may hold outside its finding lines (live readers wrote none)
+WORD = re.compile(r"[a-z0-9]+")
 HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)(?=[\s).:]|$)")  # the hook keeps an identical copy
 MARKS = re.compile(r"[*`]|^_+|_+$")  # underscores only at the line's ends, so a plan id keeps its own
 FINDING = re.compile(r"^FINDING:\s*(.+?)\s*\|\s*CITE AS:\s*(.+?)\s*\|\s*QUOTE:\s*(.+)$")
@@ -65,20 +70,34 @@ def _echo(cite):
     return RD._ref(rows[0]) if len(rows) == 1 else RD._safe(cite[:80])
 
 
-def _page_text(line, batch_ids):
-    """A non-finding line that is long, or that copies 8 or more words of one of its batch's sections."""
-    if len(line) > PAGE_TEXT:
-        return True
-    words = line.lstrip("-*>#0123456789. ").strip()
-    if len(words.split()) < VERBATIM_WORDS:
-        return False
+def _runs(text):
+    """Every run of VERBATIM_WORDS words in text, lowercased, with punctuation and markup dropped."""
+    w = WORD.findall(text.lower())
+    return {tuple(w[i:i + VERBATIM_WORDS]) for i in range(len(w) - VERBATIM_WORDS + 1)}
+
+
+def _batch_runs(batch_ids):
+    """The word runs of every section in a batch, for spotting copied page text."""
+    runs = set()
     for sid in sorted(batch_ids):
         try:
-            if RD.check_quote(sid, words)[0]:
-                return True
-        except SystemExit:
+            r = RD._row(sid)
+            with open(os.path.join(RD.ROOT, r["path"]), encoding="utf-8") as f:
+                runs |= _runs("\n".join(f.read().split("\n")[r["line_start"] - 1:r["line_end"]]))
+        except (SystemExit, OSError, KeyError):
             continue
-    return False
+    return runs
+
+
+def _page_text(line, runs):
+    """A non-finding line that is long, or that holds 8 words in a row from a section of its batch, wherever they sit
+    in the line (after a label, inside a lead-in, before a citation) and whatever punctuation or markup is changed."""
+    return len(line) > PAGE_TEXT or not _runs(line).isdisjoint(runs)
+
+
+def _start(line):
+    """A flagged line's first words, fewer than VERBATIM_WORDS, so the row names the line without echoing page text."""
+    return RD._safe(" ".join(line.split()[:VERBATIM_WORDS - 3]))[:60]
 
 
 def _judge(cite, quote, batch_ids):
@@ -101,12 +120,15 @@ def check(plan_id, text):
     if plan is None:
         return [f"NO PLAN | {RD._safe(plan_id)[:80]}"], None, False
     batches = {b["n"]: set(b["ids"]) for b in plan["batches"]}
-    rows, count, extra = {}, {}, {}
+    rows, count, extra, other_chars, runs = {}, {}, {}, {}, {}
     reported, cur, pending = set(), None, []
     def other_line(n, line):
-        if _page_text(line, batches[n]):
+        other_chars[n] = other_chars.get(n, 0) + len(line)
+        if n not in runs:
+            runs[n] = _batch_runs(batches[n])
+        if _page_text(line, runs[n]):
             extra[n] = extra.get(n, 0) + 1
-            rows.setdefault(n, []).append((None, f"PAGE TEXT | b{n} | {RD._safe(line[:80])}"))
+            rows.setdefault(n, []).append((None, f'PAGE TEXT | b{n} | line starting "{_start(line)}" ({len(line)} characters)'))
     for raw in text.split("\n"):
         line = raw.strip()
         m = HEADER.match(MARKS.sub("", line))
@@ -132,7 +154,7 @@ def check(plan_id, text):
                 out.append((False, f"MALFORMED | b{cur} | {RD._safe(line[:80])}"))
                 continue
             cite = m.group(2)
-            if len(m.group(1)) > MAX_SENTENCE or len(m.group(3)) > MAX_QUOTE:
+            if len(m.group(1)) > MAX_SENTENCE or len(m.group(3)) > MAX_QUOTE or len(cite) > MAX_CITE:
                 out.append((False, f"TOO LONG | b{cur} | {_echo(cite)}"))
                 continue
             verdict, hint = _judge(cite, m.group(3), batches[cur])
@@ -144,6 +166,8 @@ def check(plan_id, text):
         flat += rows.get(n, [])
         if not count.get(n):  # a reader that returned nothing is flagged, never counted as a clean report
             flat.append((None, f"EMPTY | b{n} | no findings"))
+        if other_chars.get(n, 0) > OTHER_TEXT:  # many short lines of the reader's own still carry a section
+            flat.append((None, f"PAGE TEXT | b{n} | {other_chars[n]} characters outside finding lines (at most {OTHER_TEXT})"))
         if count.get(n, 0) > MAX_FINDINGS:
             extra[n] = extra.get(n, 0) + 1
             flat.append((None, f"TOO MANY | b{n} | {count[n]}"))

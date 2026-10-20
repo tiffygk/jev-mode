@@ -110,7 +110,7 @@ def test_page_text_is_flagged_and_so_is_a_thirteenth_finding(plan):
     cf, a, *_ = plan
     prose = "The box answers within five seconds because " + "words " * 40
     rows, _, ok = cf.check(PID, reply(1, prose, finding(a, "every box")) + reply(2))
-    assert rows[0] == "PAGE TEXT | b1 | " + prose[:80] and not ok
+    assert rows[0] == f'PAGE TEXT | b1 | line starting "The box answers within five" ({len(prose.strip())} characters)' and not ok
     many = [finding(a, "every box")] * 13
     rows, _, ok = cf.check(PID, reply(1, *many) + reply(2))
     assert "TOO MANY | b1 | 13" in rows and not ok
@@ -203,7 +203,7 @@ def test_a_numeric_id_in_parentheses_in_place_of_the_label_is_accepted(plan):
 def test_page_text_before_the_header_is_flagged(plan):
     cf, a, b, g = plan
     rows, _, ok = cf.check(PID, ALPHA + "\n" + reply(1, finding(a, ALPHA)) + reply(2, finding(g, GAMMA)))
-    assert "PAGE TEXT | b1 | " + ALPHA[:80] in rows and not ok
+    assert f'PAGE TEXT | b1 | line starting "Alpha holds the first secret" ({len(ALPHA)} characters)' in rows and not ok
 
 
 def test_a_section_pasted_line_by_line_is_page_text(plan):
@@ -235,3 +235,60 @@ def test_a_damaged_plan_file_reads_as_no_plan(lib):
     import check_findings
     rows, summary, ok = check_findings.check(PID, "")
     assert summary is None and rows[0].startswith("NO PLAN")
+
+
+@pytest.mark.parametrize("line", [f"- **Rule:** {BETA}", f'The page says "{BETA}"', f"{BETA} (docs/one#2)",
+                                  BETA.replace(":", "").replace(",", "")])
+def test_page_text_behind_a_label_lead_in_or_citation_is_flagged(plan, line):
+    cf, a, b, g = plan
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), line) + reply(2, finding(g, GAMMA)))
+    assert any(r.startswith("PAGE TEXT | b1") for r in rows) and not ok, rows
+
+
+def test_seven_words_in_a_row_from_a_section_pass_and_eight_are_page_text(plan):
+    cf, a, b, g = plan
+    seven = "Note: beta holds the other rule, a state."  # 7 words in a row from Beta, plus one of the reader's own
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), seven) + reply(2, finding(g, GAMMA)))
+    assert ok, rows
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), seven[:-1] + " carries.") + reply(2, finding(g, GAMMA)))
+    assert any(r.startswith("PAGE TEXT | b1") for r in rows) and not ok, rows
+
+
+def test_many_short_lines_outside_findings_pass_the_budget_and_are_flagged(plan):
+    cf, a, b, g = plan
+    notes = ["Line %d of my own notes here." % i for i in range(25)]  # about 750 characters, no copied run
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), *notes) + reply(2, finding(g, GAMMA)))
+    assert any(r.startswith("PAGE TEXT | b1 |") and "characters outside finding lines" in r for r in rows) and not ok
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), *notes[:5]) + reply(2, finding(g, GAMMA)))
+    assert ok, rows
+
+
+LONG = " ".join("d%03d" % i for i in range(59))  # 294 characters
+
+
+def test_quote_and_sentence_caps_sit_at_300_characters(lib):
+    (lib / "docs" / "three.md").write_text(f"# Three\n\n## Delta\n\n{LONG} abc end.\n\n{LONG} abcd end.\n")
+    import build_index
+    build_index.main()
+    d = sid(lib, "docs/three.md", "Delta")
+    save_plan(lib, [[d]], pid="pcap00001")
+    import check_findings as cf
+    at, over = LONG + " abc", LONG + " abcd"  # with quote marks: 300 and 301 characters
+    rows, _, _ = cf.check("pcap00001", reply(1, finding(d, at), pid="pcap00001"))
+    assert rows[0].startswith("OK | b1"), rows
+    rows, _, _ = cf.check("pcap00001", reply(1, finding(d, over), pid="pcap00001"))
+    assert rows[0].startswith("TOO LONG | b1"), rows
+    rows, _, _ = cf.check("pcap00001", reply(1, finding(d, at, sentence="s" * 300), pid="pcap00001"))
+    assert rows[0].startswith("OK | b1"), rows
+    rows, _, _ = cf.check("pcap00001", reply(1, finding(d, at, sentence="s" * 301), pid="pcap00001"))
+    assert rows[0].startswith("TOO LONG | b1"), rows
+
+
+def test_an_unresolved_cite_over_80_characters_echoes_80_and_one_over_200_is_too_long(plan):
+    cf, a, b, g = plan
+    cite = "docs/nowhere.md#" + "x" * 134  # 150 characters
+    rows, _, ok = cf.check(PID, reply(1, finding(cite, ALPHA)) + reply(2, finding(g, GAMMA)))
+    assert rows[0] == "NOT IN BATCH | b1 | " + cite[:80] and not ok, rows
+    long_cite = f"{BETA} {BETA} {BETA} {BETA} ({a})"  # resolves by its id tail, but carries page text
+    rows, _, ok = cf.check(PID, reply(1, finding(long_cite, ALPHA)) + reply(2, finding(g, GAMMA)))
+    assert rows[0].startswith("TOO LONG | b1") and BETA not in rows[0] and not ok, rows

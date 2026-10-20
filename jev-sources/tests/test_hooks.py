@@ -536,6 +536,11 @@ def test_reader_hook_flags_page_text_in_the_preamble(tmp_path, monkeypatch):
     code, out = reader_run(data, R_ALPHA + "\n" + head() + GOOD + "\n")
     assert out["decision"] == "block" and "PAGE TEXT | b1" in out["reason"]
 
+def test_reader_hook_blocks_page_text_behind_a_label(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out = reader_run(data, head() + GOOD + "\n- **Rule:** " + R_ALPHA + "\n")
+    assert out["decision"] == "block" and "PAGE TEXT | b1" in out["reason"]
+
 def test_a_printed_reader_brief_passes_the_dispatch_check(tmp_path):
     sys.path.insert(0, os.path.join(os.path.dirname(H), "scripts"))
     import jev
