@@ -1,6 +1,6 @@
 # Installing the hooks (optional)
 
-Three hooks go with the skill: a reminder and a dispatch check that keep Claude reading sources on Jev work, and a ledger (below). The Claude Code plugin install adds all three automatically; don't also add them to `settings.json`, or both fire. For a copy install, add the first two to `~/.claude/settings.json` under `"hooks"`:
+Four hooks go with the skill: a reminder and a dispatch check that keep Claude reading sources on Jev work, a ledger and a reader check (both below). The Claude Code plugin install adds all four automatically; don't also add them to `settings.json`, or both fire. For a copy install, add the first two to `~/.claude/settings.json` under `"hooks"`:
 
 ```json
 "UserPromptSubmit": [
@@ -24,9 +24,17 @@ A third hook, `jev-ledger.py`, keeps a record of which sections were routed and 
 ]
 ```
 
+A fourth hook, `jev-reader-check.py`, runs when a subagent stops. A reader subagent of a saved reading plan starts its reply with `JEV-READER: plan <id> batch <n>`. The hook runs `scripts/check_findings.py` on that reply, for that batch only. If a quote is altered, a finding is outside the batch, a line is page text, there are more than 12 findings, or there are none, it blocks the stop once for that agent and prints the failing lines, so the reader fixes them while it still holds the pages. The reason never carries section text and is at most 4,000 characters. The same agent's next stop passes (the loop guard; state in `<data>/logs/reader_check_state.json`, owner-only, the newest 500 agent ids). A reply without the `JEV-READER:` first line, a missing plan file, or any fault passes with no output and is logged. It logs counts, never the reply, to `<data>/logs/reader_check.jsonl`; `JEV_LOG=off` turns the log off. It is a quality check, not a security boundary. The plugin install adds it. For a copy install, add it by hand to `~/.claude/settings.json` under `"hooks"`:
+
+```json
+"SubagentStop": [
+  {"hooks": [{"type": "command", "command": "python3 ~/.claude/skills/jev-sources/hooks/jev-reader-check.py"}]}
+]
+```
+
 ## Logs and settings
 
-The reminder logs every decision, fire or skip, to `<data>/logs/reminder.jsonl`: the session, the rule, the matched words and the first 120 characters of the message. The dispatch check logs each decision to `<data>/logs/dispatch.jsonl`. `<data>` is `$JEV_SOURCES_DATA`, else `~/.claude/jev-sources-data`. The logs stay on your machine.
+The reminder logs every decision, fire or skip, to `<data>/logs/reminder.jsonl`: the session, the rule, the matched words and the first 120 characters of the message. The dispatch check logs each decision to `<data>/logs/dispatch.jsonl`, the reader check to `<data>/logs/reader_check.jsonl`. `<data>` is `$JEV_SOURCES_DATA`, else `~/.claude/jev-sources-data`. The logs stay on your machine.
 
 - `JEV_LOG=off` turns these logs off.
 - `JEV_FIRE_RULE=<rule>` runs another rule from `hooks/firing.py`, for testing. An unknown name falls back to the default.
@@ -42,4 +50,4 @@ Codex runs the same reminder from `~/.codex/hooks.json`. Use absolute paths:
 ]}}
 ```
 
-Codex runs a new hook only after you review and trust it in Codex. If you also installed the plugin in Codex, check that the reminder doesn't appear twice; if it does, remove this entry. The dispatch check has no Codex version.
+Codex runs a new hook only after you review and trust it in Codex. If you also installed the plugin in Codex, check that the reminder doesn't appear twice; if it does, remove this entry. The dispatch check and the reader check have no Codex version: Codex has no `SubagentStop`. There, run `python3 scripts/check_findings.py <plan_id> < replies.txt` on the readers' replies before relaying them.

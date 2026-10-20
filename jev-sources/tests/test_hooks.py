@@ -306,3 +306,158 @@ def test_state_save_leaves_no_temp_file_when_replace_fails(tmp_path, monkeypatch
     os.makedirs(reminder_state._path("s1"))  # a folder where the state file goes: os.replace fails
     reminder_state.save("s1", {"n": 1, "fires": []})
     assert sorted(os.listdir(reminder_state._dir())) == [os.path.basename(reminder_state._path("s1"))]
+
+
+# --- jev-reader-check.py (SubagentStop) ---------------------------------------------------------------------------
+READER_PID = "p1a2b3c4d"
+R_ALPHA = "Alpha holds the first secret rule: every box answers within five seconds."
+R_BETA = "Beta holds the other rule: a state carries at most nine fields."
+R_PAGES = {"docs/one.md": f"# One\n\nIntro.\n\n## Alpha\n\n{R_ALPHA}\n\n## Beta\n\n{R_BETA}\n"}
+GOOD = 'FINDING: A rule. | CITE AS: docs/one.md#Alpha (reference rule) | QUOTE: "every box answers within five seconds"'
+BAD = 'FINDING: A rule. | CITE AS: docs/one.md#Alpha (reference rule) | QUOTE: "every box answers within five minutes"'
+
+
+def reader_lib(tmp_path, monkeypatch, with_plan=True):
+    """An invented library and a saved reading plan with one batch holding both sections."""
+    data = tmp_path / "data"
+    for p, text in R_PAGES.items():
+        (data / p).parent.mkdir(parents=True, exist_ok=True)
+        (data / p).write_text(text)
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(data))
+    monkeypatch.setenv("JEV_SEMANTIC", "off")
+    monkeypatch.setenv("JEV_PRIVATE_CONFIG", str(tmp_path / "absent.json"))
+    monkeypatch.syspath_prepend(os.path.join(os.path.dirname(H), "scripts"))
+    for n in ("paths", "build_index", "route", "read", "check_findings", "usage_log", "applicability"):
+        sys.modules.pop(n, None)
+    import build_index
+    monkeypatch.setattr(build_index, "embed", lambda rows: None)
+    build_index.main()
+    ids = [r["id"] for r in map(json.loads, open(data / "sections.jsonl"))]
+    if with_plan:
+        (data / "plans").mkdir(exist_ok=True)
+        (data / "plans" / (READER_PID + ".json")).write_text(json.dumps(
+            {"plan_id": READER_PID, "created": "2026-10-20T10:00:00Z", "goal": ["g"],
+             "batches": [{"n": 1, "ids": ids, "tokens": 100}]}))
+    return data
+
+
+def reader_run(data, message, agent_id="a1", session="s1", raw=None, **env):
+    """(exit code, parsed stdout or None) for one SubagentStop call; the hook's log and state land in `data`."""
+    e = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_HOOK_LOG_DIR": str(data), "JEV_LOG": "on", "JEV_SEMANTIC": "off", **env}
+    payload = raw if raw is not None else json.dumps({"session_id": session, "agent_id": agent_id, "last_assistant_message": message})
+    r = subprocess.run([sys.executable, f"{H}/jev-reader-check.py"], input=payload, capture_output=True, text=True, env=e)
+    return r.returncode, (json.loads(r.stdout) if r.stdout.strip() else None)
+
+
+def head(n=1, pid=READER_PID):
+    return f"JEV-READER: plan {pid} batch {n}\n"
+
+
+def test_reader_bad_quote_blocks_with_that_line(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out = reader_run(data, head() + BAD + "\n")
+    assert code == 0 and set(out) == {"decision", "reason"} and out["decision"] == "block"
+    assert "QUOTE NOT FOUND | b1 | docs/one.md#Alpha (reference rule)" in out["reason"]
+    assert out["reason"].rstrip().endswith("fix these lines and reply again, starting with the JEV-READER line")
+
+def test_reader_clean_reply_passes_with_no_output(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert reader_run(data, head() + GOOD + "\n") == (0, None)
+
+def test_reader_second_stop_of_same_agent_is_let_through_and_logged(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert reader_run(data, head() + BAD + "\n")[1]["decision"] == "block"
+    assert reader_run(data, head() + BAD + "\n") == (0, None)
+    assert [x["decision"] for x in _lines(data, "reader_check")] == ["block", "loop_guard"]
+    assert reader_run(data, head() + BAD + "\n", agent_id="a2")[1]["decision"] == "block"  # another agent is checked afresh
+
+def test_reader_ignores_a_reply_without_the_reader_line(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert reader_run(data, "Here are my notes.\n" + BAD + "\n") == (0, None)
+    assert reader_run(data, "") == (0, None)
+    assert not (data / "logs" / "reader_check.jsonl").exists()
+
+def test_reader_line_may_follow_blank_lines(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert reader_run(data, "\n\n" + head() + BAD + "\n")[1]["decision"] == "block"
+
+def test_reader_malformed_input_exits_0_and_logs(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    for raw in ("not json", "[1, 2]", json.dumps({"last_assistant_message": 5, "agent_id": "a1"})):
+        assert reader_run(data, "", raw=raw) == (0, None), raw
+    assert reader_run(data, head() + BAD, raw=json.dumps({"last_assistant_message": head() + BAD})) == (0, None)  # no agent_id
+    decisions = [x["decision"] for x in _lines(data, "reader_check")]
+    assert decisions and set(decisions) == {"error"}
+
+def test_reader_missing_plan_exits_0_and_logs(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch, with_plan=False)
+    assert reader_run(data, head() + BAD + "\n") == (0, None)
+    (x,) = _lines(data, "reader_check")
+    assert x["decision"] == "no_plan" and x["plan"] == READER_PID
+
+def test_reader_fault_in_the_check_exits_0_and_logs(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    (data / "plans" / (READER_PID + ".json")).write_text('{"batches": [{"x": 1}]}')  # a plan the checker cannot read
+    assert reader_run(data, head() + BAD + "\n") == (0, None)
+    assert _lines(data, "reader_check")[-1]["decision"] in ("error", "no_plan")
+
+def test_reader_reason_is_at_most_4000_characters(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    many = "\n".join(f'FINDING: r | CITE AS: {"x" * 190}{i} | QUOTE: "q"' for i in range(60))
+    page = "\n" + "P" * 150 + "\n" + "\n".join("Q" * 400 for _ in range(40))
+    code, out = reader_run(data, head() + many + page + "\n")
+    assert out["decision"] == "block" and 3000 < len(out["reason"]) <= 4000 and "more failing lines" in out["reason"]
+    assert out["reason"].rstrip().endswith("starting with the JEV-READER line")  # the instruction survives the trim
+
+def test_reader_reason_never_holds_a_section_body(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    paste = f"FINDING: x | CITE AS: docs/one.md#Alpha | QUOTE: \"{R_ALPHA}\" " + R_ALPHA + " " + R_BETA
+    for msg in (head() + BAD + "\n" + R_ALPHA + " " + R_BETA + "\n", head() + paste + "\n"):
+        _, out = reader_run(data, msg, agent_id=str(hash(msg)))
+        assert out and R_ALPHA not in out["reason"] and R_BETA not in out["reason"]
+
+def test_reader_empty_page_text_and_too_many_each_block(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    _, out = reader_run(data, head(), agent_id="e")
+    assert "EMPTY | b1" in out["reason"]
+    _, out = reader_run(data, head() + GOOD + "\n" + R_ALPHA * 3 + "\n", agent_id="p")
+    assert "PAGE TEXT | b1" in out["reason"]
+    _, out = reader_run(data, head() + "\n".join([GOOD] * 13) + "\n", agent_id="m")
+    assert "TOO MANY | b1 | 13" in out["reason"]
+
+def test_reader_checks_only_the_batch_named_on_the_first_line(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    msg = head() + GOOD + "\n" + head(2) + BAD + "\n"  # a second block for a batch the plan lacks is not this hook's business
+    assert reader_run(data, msg) == (0, None)
+
+def test_reader_log_holds_counts_never_the_reply(tmp_path, monkeypatch):
+    import stat
+    data = reader_lib(tmp_path, monkeypatch)
+    reader_run(data, head() + GOOD + "\n" + BAD + "\n")
+    (x,) = _lines(data, "reader_check")
+    assert {"ts", "session", "agent_id", "plan", "batch", "decision", "findings", "failed"} <= set(x)
+    assert x["plan"] == READER_PID and x["batch"] == 1 and x["decision"] == "block" and x["findings"] == 2 and x["failed"] == 1
+    assert "every box" not in json.dumps(x)
+    for p in (data / "logs", data / "logs" / "reader_check.jsonl", data / "logs" / "reader_check_state.json"):
+        assert stat.S_IMODE(os.stat(p).st_mode) & 0o077 == 0, p
+
+def test_reader_log_off_writes_no_log(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out = reader_run(data, head() + BAD + "\n", JEV_LOG="off")
+    assert out["decision"] == "block"  # the check still runs
+    assert not (data / "logs" / "reader_check.jsonl").exists()
+
+def test_reader_state_keeps_at_most_500_agent_ids(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    for i in range(3):
+        reader_run(data, head() + BAD + "\n", agent_id=f"seed{i}")
+    st = data / "logs" / "reader_check_state.json"
+    seeded = json.loads(st.read_text())
+    key = next(iter(seeded))
+    seeded[key] = [f"old{i}" for i in range(700)]
+    st.write_text(json.dumps(seeded))
+    _, out = reader_run(data, head() + BAD + "\n", agent_id="newest")
+    assert out["decision"] == "block"
+    ids = json.loads(st.read_text())[key]
+    assert len(ids) == 500 and ids[-1] == "newest" and "old0" not in ids
+    assert reader_run(data, head() + BAD + "\n", agent_id="newest") == (0, None)
