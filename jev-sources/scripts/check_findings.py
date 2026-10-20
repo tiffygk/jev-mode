@@ -16,7 +16,8 @@ import read as RD
 
 MAX_FINDINGS = 12
 PAGE_TEXT = 200
-HEADER = re.compile(r"^JEV-READER: plan (\S+) batch (\d+)\s*$")
+HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)\b")  # the hook keeps an identical copy
+MARKS = re.compile(r"[*`_]")
 FINDING = re.compile(r"^FINDING:\s*(.+?)\s*\|\s*CITE AS:\s*(.+?)\s*\|\s*QUOTE:\s*(.+)$")
 PLAN_ID = re.compile(r"[A-Za-z0-9_-]+")
 
@@ -60,7 +61,7 @@ def check(plan_id, text):
     reported, cur = set(), None
     for raw in text.split("\n"):
         line = raw.strip()
-        m = HEADER.match(line)
+        m = HEADER.match(MARKS.sub("", line))
         if m:
             cur = int(m.group(2)) if m.group(1) == plan_id and int(m.group(2)) in batches else None
             if cur is not None:

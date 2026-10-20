@@ -472,3 +472,40 @@ def test_reader_state_keeps_at_most_500_agent_ids(tmp_path, monkeypatch):
     ids = json.loads(st.read_text())[key]
     assert len(ids) == 500 and ids[-1] == "newest" and "old0" not in ids
     assert reader_run(data, head() + BAD + "\n", agent_id="newest") == (0, None)
+
+def test_reader_hooks_stopping_together_each_block_exactly_once(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    e = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_HOOK_LOG_DIR": str(data), "JEV_LOG": "on", "JEV_SEMANTIC": "off"}
+    def start(i):
+        payload = json.dumps({"session_id": "s1", "agent_id": f"c{i}", "last_assistant_message": head() + BAD + "\n"})
+        p = subprocess.Popen([sys.executable, f"{H}/jev-reader-check.py"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True, env=e)
+        p.stdin.write(payload); p.stdin.close()
+        return p
+    procs = [start(i) for i in range(20)]
+    outs = [p.stdout.read() for p in procs]
+    for p in procs:
+        p.wait()
+    assert all('"block"' in o for o in outs)
+    state = json.load(open(data / "logs" / "reader_check_state.json"))["agents"]
+    assert sorted(state) == sorted(f"c{i}" for i in range(20))
+    assert all(reader_run(data, head() + BAD + "\n", agent_id=f"c{i}") == (0, None) for i in range(20))
+    assert not [f for f in os.listdir(data / "logs") if f.endswith(".tmp")]
+
+def test_reader_header_in_bold_or_with_trailing_words_is_recognized(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert reader_run(data, f"**JEV-READER: plan {READER_PID} batch 1**\n" + GOOD + "\n") == (0, None)
+    assert reader_run(data, f"JEV-READER: plan {READER_PID} batch 1 (done)\n" + GOOD + "\n", agent_id="a2") == (0, None)
+    assert reader_run(data, f"`JEV-READER: plan {READER_PID} batch 1`\n" + BAD + "\n", agent_id="a3")[1]["decision"] == "block"
+
+def test_reader_batch_not_in_the_plan_blocks_once(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out = reader_run(data, head(7) + GOOD + "\n")
+    assert out["decision"] == "block" and out["reason"].startswith("BAD BATCH | b7 |")
+
+def test_reader_hook_and_checker_share_one_header_rule():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("jrc", f"{H}/jev-reader-check.py")
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    sys.path.insert(0, os.path.join(os.path.dirname(H), "scripts"))
+    import check_findings
+    assert m.HEADER.pattern == check_findings.HEADER.pattern and m.MARKS.pattern == check_findings.MARKS.pattern

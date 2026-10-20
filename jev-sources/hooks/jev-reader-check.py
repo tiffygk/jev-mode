@@ -5,11 +5,16 @@ no findings blocks the stop once per agent, with the failing rows (never section
 it still holds the pages. A reply with finding lines but no JEV-READER line is sent back once to add it (its batch
 would otherwise count as missing). The second stop of the same agent passes (loop guard). Any fault passes and is logged.
 A quality check, not a security boundary. Logs to <data>/logs/reader_check.jsonl unless JEV_LOG=off."""
-import json, os, re, sys
+import json, os, re, sys, tempfile
+try:
+    import fcntl
+except ImportError:  # Windows: no lock; the guard may then miss a record when readers stop together
+    fcntl = None
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jev_terms import ROOT, data_dir, log_event
 
-HEADER = re.compile(r"^JEV-READER: plan (\S+) batch (\d+)\s*$")
+HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)\b")  # same as check_findings.HEADER
+MARKS = re.compile(r"[*`_]")
 REASON_CAP = 4000
 STATE_CAP = 500
 TAIL = "fix these lines and reply again, starting with the JEV-READER line"
@@ -28,19 +33,32 @@ def _seen():
         return []
 
 
-def _remember(agent_id):
-    """Add agent_id to the owner-only state file, keeping the newest STATE_CAP ids. The write is atomic."""
-    ids = [x for x in _seen() if x != agent_id] + [agent_id]
+def _first_block(agent_id):
+    """True, and agent_id recorded, when this agent has not been sent back before. The check and the record happen
+    under one lock, with a uniquely named temp file, so readers stopping together each get exactly one block."""
     d = os.path.dirname(_state_path())
     os.makedirs(os.path.dirname(d), mode=0o700, exist_ok=True)
     os.makedirs(d, mode=0o700, exist_ok=True)
     os.chmod(d, 0o700)
-    tmp = _state_path() + ".tmp"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump({"agents": ids[-STATE_CAP:]}, f)
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, _state_path())
+    lock = os.open(os.path.join(d, "reader_check_state.lock"), os.O_WRONLY | os.O_CREAT, 0o600)
+    try:
+        if fcntl:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        seen = _seen()
+        if agent_id in seen:
+            return False
+        ids = seen + [agent_id]
+        fd, tmp = tempfile.mkstemp(dir=d, prefix=".reader_check_state.", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump({"agents": ids[-STATE_CAP:]}, f)
+            os.replace(tmp, _state_path())
+        finally:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        return True
+    finally:
+        os.close(lock)  # closing releases the lock
 
 
 def _reason(rows):
@@ -66,16 +84,18 @@ def main():
         if not isinstance(msg, str):
             raise ValueError("no last_assistant_message")
         lines = [x for x in msg.split("\n") if x.strip()]
+        lines = [MARKS.sub("", x) if "JEV-READER" in x else x for x in lines]  # **bold** or `code` around the header
         start = next((i for i, x in enumerate(lines) if HEADER.match(x.strip())), None)  # a short preamble may come first
         if start is None:
             if not any(x.strip().startswith("FINDING:") and "| CITE AS:" in x for x in lines):
                 return 0  # not a reader reply: say nothing, log nothing
-            if not isinstance(agent, str) or not agent or agent in _seen():
-                return 0
-            _remember(agent)  # finding lines with no header: the reader dropped it, so its batch would count as missing
+            if not isinstance(agent, str) or not agent or not _first_block(agent):
+                return 0  # finding lines with no header: the reader dropped it, so its batch would count as missing
             log_event("reader_check", decision="block_no_header", session=sid if isinstance(sid, str) else "-", agent_id=agent)
             print(json.dumps({"decision": "block", "reason": "NO HEADER | your reply has FINDING lines but no JEV-READER "
-                              "line\nreply again, starting with the JEV-READER line from your brief"}))
+                              "line\nreply again, starting with the JEV-READER line from your brief, on a line of its own: "
+                              "JEV-READER: plan <id> batch <n>. If you are not a reader for a Jev Sources reading plan, "
+                              "reply again unchanged."}))
             return 0
         lines = lines[start:]
         m = HEADER.match(lines[0].strip())
@@ -96,14 +116,16 @@ def main():
             log_event("reader_check", decision="no_plan", **ctx)
             return 0
         bad = [r for r in rows if f"| b{batch} |" in r and not r.startswith("OK |")]
+        plan = check_findings._load(plan_id) or {}
+        if batch not in {b.get("n") for b in plan.get("batches", [])}:
+            bad = [f"BAD BATCH | b{batch} | batch {batch} is not in plan {plan_id}; copy the JEV-READER line from your brief"]
         counts = dict(findings=sum(1 for x in own if x.strip().startswith("FINDING:")), failed=len(bad))
         if not bad:
             log_event("reader_check", decision="clean", **ctx, **counts)
             return 0
-        if agent in _seen():
+        if not _first_block(agent):
             log_event("reader_check", decision="loop_guard", **ctx, **counts)
             return 0
-        _remember(agent)
         log_event("reader_check", decision="block", **ctx, **counts)
         print(json.dumps({"decision": "block", "reason": _reason(bad)}))
         return 0
