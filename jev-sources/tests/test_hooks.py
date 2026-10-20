@@ -373,9 +373,20 @@ def test_reader_second_stop_of_same_agent_is_let_through_and_logged(tmp_path, mo
 
 def test_reader_ignores_a_reply_without_the_reader_line(tmp_path, monkeypatch):
     data = reader_lib(tmp_path, monkeypatch)
-    assert reader_run(data, "Here are my notes.\n" + BAD + "\n") == (0, None)
+    assert reader_run(data, "Here are my notes.\nThe docs cover limits.\n") == (0, None)
     assert reader_run(data, "") == (0, None)
     assert not (data / "logs" / "reader_check.jsonl").exists()
+
+def test_reader_finding_lines_with_no_header_block_once(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out = reader_run(data, GOOD + "\n")
+    assert code == 0 and out["decision"] == "block" and out["reason"].startswith("NO HEADER")
+    assert reader_run(data, GOOD + "\n") == (0, None)  # loop guard
+
+def test_reader_header_after_a_short_preamble_is_checked(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert reader_run(data, "Here are my findings.\n" + head() + BAD + "\n")[1]["decision"] == "block"
+    assert reader_run(data, "Here are my findings.\n" + head() + GOOD + "\n", agent_id="a9") == (0, None)
 
 def test_reader_line_may_follow_blank_lines(tmp_path, monkeypatch):
     data = reader_lib(tmp_path, monkeypatch)

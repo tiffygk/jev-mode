@@ -2,7 +2,8 @@
 """SubagentStop: a reader subagent whose reply starts `JEV-READER: plan <id> batch <n>` has its findings checked by
 scripts/check_findings.py before it returns. A bad quote, a finding outside its batch, page text, too many findings or
 no findings blocks the stop once per agent, with the failing rows (never section text), so the reader fixes them while
-it still holds the pages. The second stop of the same agent passes (loop guard). Any fault passes and is logged.
+it still holds the pages. A reply with finding lines but no JEV-READER line is sent back once to add it (its batch
+would otherwise count as missing). The second stop of the same agent passes (loop guard). Any fault passes and is logged.
 A quality check, not a security boundary. Logs to <data>/logs/reader_check.jsonl unless JEV_LOG=off."""
 import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -65,9 +66,19 @@ def main():
         if not isinstance(msg, str):
             raise ValueError("no last_assistant_message")
         lines = [x for x in msg.split("\n") if x.strip()]
-        m = HEADER.match(lines[0].strip()) if lines else None
-        if not m:
-            return 0  # not a reader reply: say nothing, log nothing
+        start = next((i for i, x in enumerate(lines) if HEADER.match(x.strip())), None)  # a short preamble may come first
+        if start is None:
+            if not any(x.strip().startswith("FINDING:") and "| CITE AS:" in x for x in lines):
+                return 0  # not a reader reply: say nothing, log nothing
+            if not isinstance(agent, str) or not agent or agent in _seen():
+                return 0
+            _remember(agent)  # finding lines with no header: the reader dropped it, so its batch would count as missing
+            log_event("reader_check", decision="block_no_header", session=sid if isinstance(sid, str) else "-", agent_id=agent)
+            print(json.dumps({"decision": "block", "reason": "NO HEADER | your reply has FINDING lines but no JEV-READER "
+                              "line\nreply again, starting with the JEV-READER line from your brief"}))
+            return 0
+        lines = lines[start:]
+        m = HEADER.match(lines[0].strip())
         plan_id, batch = m.group(1)[:80], int(m.group(2))
         if not isinstance(agent, str) or not agent:
             raise ValueError("no agent_id")
