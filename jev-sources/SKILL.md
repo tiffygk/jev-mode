@@ -25,16 +25,32 @@ Add `--model <id>` when the project pins a model. The docs' words are the terms 
 
 `route.py` (pick the sections) and `read.py` (print one section) are the parts `jev.py` uses; run them directly to look at one section or one routing.
 
+## Broad goals
+
+A goal that spans several topics (building a whole feature, moving a system over, "what do I need to know to...") gets one `jev.py` run with one question per topic:
+
+```
+python3 <skill>/scripts/jev.py "<topic 1, in your words>" --also "<topic 2>" --also "<topic 3>"
+```
+
+- Write 3 to 8 questions, each about one thing the goal needs: what the API allows, limits and sizes, cost, errors and reliability, model versions, readiness for production, and the pattern or cookbook closest to the goal.
+- Read the `COVERAGE:` block. Relay every `NO SOURCE FOUND` question to the user as "the docs I routed don't cover <topic>", never as an answer. More than 8 topics: split the goal into two runs.
+
 ## Over the cap
 
-When `jev.py` prints `READING PLAN`, the unread sections are more than the cap. Keep the sections it already printed in full; don't read them again. Start one read-only reader subagent per `BATCH`; batches may run in parallel. Each reader's brief holds, in this order:
+When `jev.py` prints `READING PLAN`, the unread sections are more than the cap. Keep the sections it already printed in full; don't read them again. It also prints one `READER BRIEF` block per batch: start one read-only reader subagent per block, with the block pasted whole as its brief. Batches may run in parallel.
 
-1. the `JEV-SOURCES:` line (see "Briefing a subagent on Jev"), followed by "the commands below are your reading for this goal";
-2. the plan's `GOAL:` line;
-3. that batch's `read.py` commands, copied as printed;
-4. the plan's `FINDING: ... | CITE AS: ... | QUOTE: "..."` line, with "return only lines of this form, with no page text".
+Where you can't start subagents, read one batch at a time yourself: write its finding lines under that batch's `JEV-READER:` line and keep only those lines before the next batch.
 
-Where you can't start subagents, run one batch at a time, write its finding lines, and keep only those lines before the next batch. Until every batch has reported, tell the user which sections are still unread.
+Then check every reply at once, through a quoted heredoc:
+
+```
+python3 <skill>/scripts/check_findings.py <plan_id> <<'REPLIES'
+<every reader's reply>
+REPLIES
+```
+
+Relay only `OK` lines as checked. A batch it lists as missing or `EMPTY` is unread: tell the user which sections those are. In Claude Code, a hook also checks each reader's reply before the reader returns.
 
 ## What a claim looks like
 
@@ -98,9 +114,12 @@ With the reminder hook installed (the Claude Code plugin, or hooks added by hand
 | Answers rest on sections the router found and printed in full | `scripts/jev.py`, `scripts/route.py`; `tests/test_jev.py`, `tests/test_route.py` |
 | A Jev message gets a reminder to run `jev.py`; reads are recorded | `hooks/jev-prompt-reminder.py`, `hooks/jev-ledger.py`; `tests/test_hooks.py` |
 | Sections past the cap print with their `read.py` command, or as a reading plan in batches | `scripts/jev.py`; `tests/test_jev.py` |
+| A broad goal runs as up to 8 questions in one call, with a coverage line each and NO SOURCE FOUND for a topic with nothing to read | `scripts/jev.py`; `tests/test_jev.py` |
+| A reading plan is saved and prints one reader brief per batch | `scripts/jev.py`; `tests/test_jev.py` |
+| Every reader finding is checked: quote, batch, format, page text, empty or missing batches | `scripts/check_findings.py`, `hooks/jev-reader-check.py`; `tests/test_check_findings.py`, `tests/test_hooks.py` |
 | Each section carries its label, and NEEDS or EXPERIMENTAL where it applies | `scripts/read.py`, `scripts/applicability.py`; `tests/test_route.py`, `tests/test_applicability.py` |
 | A Jev brief carries the `JEV-SOURCES:` line | `hooks/jev-dispatch-check.py`; `tests/test_hooks.py` |
 | A finding's quote is checked against its section | `scripts/read.py` (`--check-quote`); `tests/test_route.py` |
 | Saved pages hold no site code, and the build warns when some is left | `scripts/clean.py`, `scripts/build_index.py`; `tests/test_clean.py`, `tests/test_health.py` |
 | The library checks for new pages every two days and lists stale citations | `hooks/refresh_trigger.py`, `scripts/check_new.py`, `scripts/citations.py`; `tests/test_refresh_trigger.py`, `tests/test_check_new.py`, `tests/test_citations.py` |
-| Running `jev.py` before a claim, starting readers on a reading plan, relaying EXTRACT and unchecked findings as unverified, quoting readiness lines, cookbook layouts as examples, "the docs don't say", no widening "so" sentences, reading stale-citation rows, locked files | the model, following this file |
+| Running `jev.py` before a claim, splitting a broad goal into questions, starting readers on a reading plan, relaying EXTRACT and unchecked findings as unverified, quoting readiness lines, cookbook layouts as examples, "the docs don't say", no widening "so" sentences, reading stale-citation rows, locked files | the model, following this file |
