@@ -57,16 +57,21 @@ def reading_plan(not_read, cap):
 def save_plan(qs, batches):
     """Write <data>/plans/<plan_id>.json (folder owner-only, file written atomically) and return the plan id. The file is
     what check_findings.py reads, so JEV_LOG=off does not stop it."""
-    created = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    created = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     plan_id = "p" + hashlib.sha256((json.dumps(qs) + created + str(os.getpid())).encode()).hexdigest()[:8]
     d = os.path.join(paths.DATA, "plans")
     os.makedirs(d, mode=0o700, exist_ok=True)
+    os.chmod(d, 0o700)  # a folder made earlier with looser permissions is tightened
     plan = {"plan_id": plan_id, "created": created, "goal": list(qs),
             "batches": [{"n": n, "ids": [s["id"] for s in b], "tokens": sum(s["tokens"] for s in b)} for n, b in enumerate(batches, 1)]}
     fd, tmp = tempfile.mkstemp(dir=d, prefix=".tmp-", suffix=".json")  # mkstemp makes the file 0600
-    with os.fdopen(fd, "w") as f:
-        json.dump(plan, f, indent=1)
-    os.replace(tmp, os.path.join(d, plan_id + ".json"))
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(plan, f, indent=1)
+        os.replace(tmp, os.path.join(d, plan_id + ".json"))
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
     return plan_id
 
 

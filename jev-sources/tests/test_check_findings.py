@@ -159,3 +159,34 @@ def test_cli_exit_codes_and_output(plan, lib):
     assert r.returncode == 1 and r.stdout.startswith(f"QUOTE NOT FOUND | b1 | {a}")
     r = run_cli(lib, "pdeadbeef", "")
     assert r.returncode == 2 and r.stdout == "NO PLAN | pdeadbeef\n"
+
+
+def test_a_reader_that_returns_only_its_header_is_flagged_empty(plan):
+    cf, a, b, g = plan
+    rows, summary, ok = cf.check(PID, reply(1, finding(a, ALPHA)) + reply(2))
+    assert "EMPTY | b2 | no findings" in rows and not ok
+    rows, summary, ok = cf.check(PID, reply(1, finding(a, ALPHA)) + reply(2, "Nothing relevant here."))
+    assert "EMPTY | b2 | no findings" in rows and not ok
+
+
+def test_a_plan_id_with_a_trailing_newline_is_no_plan(plan):
+    cf = plan[0]
+    rows, summary, ok = cf.check(PID + "\n", "")
+    assert summary is None and rows[0].startswith("NO PLAN")
+
+
+def test_one_batch_summary_says_batch(lib):
+    a = sid(lib, "docs/one.md", "Alpha")
+    save_plan(lib, [[a]])
+    import check_findings
+    rows, summary, ok = check_findings.check(PID, reply(1, finding(a, ALPHA)))
+    assert ok and summary.startswith(f"plan {PID}: 1 batch, 1 reported")
+
+
+def test_invalid_utf8_on_stdin_is_flagged_not_a_crash(lib):
+    a = sid(lib, "docs/one.md", "Alpha")
+    save_plan(lib, [[a]])
+    data = reply(1, finding(a, ALPHA)).encode() + b"FINDING: bad \xff bytes | CITE AS: x | QUOTE: \"y\"\n"
+    r = subprocess.run([sys.executable, os.path.join(SCRIPTS, "check_findings.py"), PID], input=data, capture_output=True,
+                       env={**os.environ, "JEV_SOURCES_DATA": str(lib), "JEV_SEMANTIC": "off"})
+    assert r.returncode == 1 and b"Traceback" not in r.stderr
