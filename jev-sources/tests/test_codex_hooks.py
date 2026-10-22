@@ -68,3 +68,36 @@ def test_a_hooks_file_that_is_not_json_is_left_alone(tmp_path):
     r = run("install", home=tmp_path)
     assert r.returncode == 1 and "not valid JSON" in r.stderr
     assert (tmp_path / "hooks.json").read_text() == "{not json"
+
+
+def test_a_users_hook_sharing_a_group_with_ours_survives_install_and_remove(tmp_path):
+    run("install", home=tmp_path)
+    doc = json.load(open(tmp_path / "hooks.json"))
+    doc["hooks"]["Stop"][0]["hooks"].append({"type": "command", "command": "echo MINE"})
+    (tmp_path / "hooks.json").write_text(json.dumps(doc))
+    run("install", home=tmp_path)
+    assert "echo MINE" in commands(json.load(open(tmp_path / "hooks.json")))
+    run("remove", home=tmp_path)
+    assert commands(json.load(open(tmp_path / "hooks.json"))) == ["echo MINE"]
+
+
+def test_a_symlinked_hooks_file_is_written_through_and_keeps_its_mode(tmp_path):
+    real = tmp_path / "dotfiles" / "hooks.json"
+    real.parent.mkdir()
+    real.write_text('{"hooks": {}}')
+    os.chmod(real, 0o644)
+    home = tmp_path / "home"
+    home.mkdir()
+    (home / "hooks.json").symlink_to(real)
+    assert run("install", home=home).returncode == 0
+    assert os.path.islink(home / "hooks.json") and len(commands(json.load(open(real)))) == 5
+    assert oct(os.stat(real).st_mode & 0o777) == "0o644"
+
+
+def test_bad_arguments_and_bad_shapes_exit_with_a_message_and_write_nothing(tmp_path):
+    r = run("install", "--project")
+    assert r.returncode == 2 and "Traceback" not in r.stderr
+    for bad in ("[]", '{"hooks": []}', '{"hooks": {"Stop": ["x"]}}'):
+        (tmp_path / "hooks.json").write_text(bad)
+        r = run("install", home=tmp_path)
+        assert r.returncode == 1 and "Traceback" not in r.stderr and (tmp_path / "hooks.json").read_text() == bad

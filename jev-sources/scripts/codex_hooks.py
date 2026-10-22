@@ -14,7 +14,7 @@ HOOKS = [("UserPromptSubmit", None, "jev-prompt-reminder.py", None),
          ("PostToolUse", "Bash", "jev-ledger.py", None),
          ("SubagentStop", None, "jev-reader-check.py", 15),
          ("Stop", None, "jev-answer-check.py", 15)]
-MARK = os.sep + "jev-sources" + os.sep + "hooks" + os.sep
+NAMES = {name for _, _, name, _ in HOOKS}
 
 
 def target(project):
@@ -23,35 +23,61 @@ def target(project):
     return os.path.join(os.environ.get("CODEX_HOME") or os.path.expanduser("~/.codex"), "hooks.json")
 
 
-def ours(group):
-    return any(MARK in h.get("command", "") or "/jev-sources/hooks/" in h.get("command", "") for h in group.get("hooks", []))
+def ours(hook):
+    """A jev-sources hook: a command running one of HOOKS' files from a jev-sources/hooks folder."""
+    cmd = hook.get("command", "") if isinstance(hook, dict) else ""
+    return "/jev-sources/hooks/" in cmd and any(cmd.rstrip('"').endswith("/" + n) for n in NAMES)
+
+
+def well_formed(doc):
+    return (isinstance(doc, dict) and isinstance(doc.get("hooks", {}), dict)
+            and all(isinstance(gs, list) and all(isinstance(g, dict) and isinstance(g.get("hooks", []), list) for g in gs)
+                    for gs in doc.get("hooks", {}).values()))
 
 
 def strip(doc):
-    """Remove jev-sources' groups from doc in place; return how many were removed."""
+    """Remove jev-sources' hooks from doc in place, keeping every other hook; a group left empty goes. Returns how
+    many hooks were removed."""
     n = 0
     for event in list(doc.get("hooks", {})):
-        keep = [g for g in doc["hooks"][event] if not ours(g)]
-        n += len(doc["hooks"][event]) - len(keep)
-        if keep:
-            doc["hooks"][event] = keep
+        groups = []
+        for g in doc["hooks"][event]:
+            mine = [h for h in g.get("hooks", []) if ours(h)]
+            n += len(mine)
+            if mine:
+                g = dict(g, hooks=[h for h in g["hooks"] if not ours(h)])
+            if g.get("hooks"):
+                groups.append(g)
+        if groups:
+            doc["hooks"][event] = groups
         else:
             del doc["hooks"][event]
     return n
 
 
 def write(path, doc):
+    """Atomic replace of the file a symlinked path points to, keeping its mode; the temp file never outlives a failure."""
+    path = os.path.realpath(path)
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    mode = os.stat(path).st_mode & 0o777 if os.path.exists(path) else 0o644
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".hooks-")
-    with os.fdopen(fd, "w") as f:
-        json.dump(doc, f, indent=2)
-        f.write("\n")
-    os.replace(tmp, path)
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(doc, f, indent=2)
+            f.write("\n")
+        os.chmod(tmp, mode)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def main():
     a = sys.argv[1:]
     if not a or a[0] not in ("install", "remove"):
+        print(__doc__, file=sys.stderr)
+        return 2
+    if "--project" in a and a.index("--project") + 1 >= len(a):
         print(__doc__, file=sys.stderr)
         return 2
     project = a[a.index("--project") + 1] if "--project" in a else None
@@ -66,11 +92,15 @@ def main():
         except ValueError:
             print(f"{path} is not valid JSON; fix or move it, then run this again", file=sys.stderr)
             return 1
+        if not well_formed(doc):
+            print(f"{path} is not a hooks file this can merge into (a \"hooks\" object of event lists); fix or move it, "
+                  "then run this again", file=sys.stderr)
+            return 1
         doc.setdefault("hooks", {})
     removed = strip(doc)
     if a[0] == "remove":
         write(path, doc)
-        print(f"removed {removed} jev-sources hooks from {path}")
+        print(f"removed {removed} jev-sources hook{'s' if removed != 1 else ''} from {path}")
         return 0
     for event, matcher, name, timeout in HOOKS:
         hook = {"type": "command", "command": f'python3 "{os.path.join(SKILL, "hooks", name)}"'}

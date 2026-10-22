@@ -148,7 +148,7 @@ def bundle(questions, model=None, cap=CAP, log=True, coverage=True):
             usage_log.write("read", id=s["id"], extract=False, tokens=s["tokens"], via="jev.py")
         used += s["tokens"]
     plan, too_broad = [], None
-    if sum(s["tokens"] for s in not_read) > direct_limit(cap):
+    if 3 * sum(s["tokens"] for s in not_read) > cap:  # more than a third of the cap (direct_limit), compared exactly
         plan = reading_plan(not_read, cap)
         if len(plan) > MAX_BATCHES:  # no partial plan: the goal is narrowed or split instead
             too_broad = {"batches": len(plan), "tokens": sum(s["tokens"] for s in not_read)}

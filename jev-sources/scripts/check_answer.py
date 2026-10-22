@@ -25,7 +25,10 @@ import check_findings as CF
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hooks"))
 from jev_terms import JEV
 
-MIN_WORDS = 4  # a shorter quoted string is a term or a name ("danger zone"), not a quote
+MIN_WORDS = 4
+MAX_SENTENCE = 500  # characters of one sentence the unquoted-fact check reads
+MAX_CITE = 200  # characters of a bare citation tried against the index; a longer run is not a citation
+MAX_CUTS = 10  # comma cuts tried on one bare citation  # a shorter quoted string is a term or a name ("danger zone"), not a quote
 UNCITED_WORDS = 8  # with no citation of its own, a shorter quoted phrase reads as a term, not a claimed quote
 KINDS = r"(?:docs|cookbooks|patterns|blog)/"
 TICKED = re.compile(r"`([^`\n]+)`")
@@ -38,13 +41,16 @@ NOFOLDER = re.compile(r"(?<![\w/`.-])([\w-]+\.(?:md|txt)#[^;()`\"*\n]*[^;()`\"*\
 NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
 UNVERIFIED = re.compile(r"\bunverified\b", re.I)
 USERS = re.compile(r"\byou(?:'re| are)?\s+(?:asked|said|say|wrote|want(?:ed)?|mentioned|described|called|put it)\b[^\"]{0,40}$"
-                   r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$", re.I)
+                   r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$"
+                   r"|\b(?:the|your|this|that)\s+(?:error|exception|traceback|stack trace|log(?: line)?|output|response)"
+                   r"(?:\s+(?:shows|says|reads|is|was|text))?\s*:?\s*$", re.I)
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
 # unquoted facts: a Jev term and a specific in one sentence
-FACT_TERM = re.compile(r"\b(?:Jevs?|Nouls?|Choice|Score|Box|System One|TypeSafe|SDK|API|endpoint|rate[ -]limits?|models?|alias|"
+FACT_TERM = re.compile(r"\b(?:Jevs?|Nouls?|System One|TypeSafe|SDK|API|endpoint|rate[ -]limits?|models?|alias|"
                        r"bills?|billed|charges?|priced?|pricing|context)\b", re.I)
-SPECIFIC = re.compile(r"\$\s?\d|\b\d[\d,.]*\s*(?:%|ms\b|seconds?\b|tokens?\b|requests?\b|options?\b|questions?\b|"
+FACT_NAME = re.compile(r"\b(?:Choice|Score|Box)\b")  # common words in lower case, question types when capitalized
+SPECIFIC = re.compile(r"\$\s?\d|\b\d[\d,.]{0,20}\s*(?:%|ms\b|seconds?\b|tokens?\b|requests?\b|options?\b|questions?\b|levels?\b|"
                       r"characters?\b|per\b|million\b|billion\b|k\b|MB\b)|\b[45]\d\d\b|`[^`\n]+`")
 HEDGED = re.compile(r"\b(?:unconfirmed|unverified|my read|I'd|I would|you|your)\b|(?:pages?|docs|sections?) I (?:read|routed)\b"
                     r"|\bI (?:didn't|did not|haven't|have not) (?:read|check|see)|\bthe docs (?:don't|do not) (?:say|show|cover|list)", re.I)
@@ -89,11 +95,14 @@ def _blocks(text):
 def _bare(cite):
     """A citation written without code marks runs to the end of its phrase; a heading may hold commas, so the longest
     prefix, cut at a comma, that names a section is the citation."""
-    cut = cite
-    while True:
-        if _resolve(cut) or "," not in cut:
-            return cut if _resolve(cut) else cite
+    cut = cite = cite[:MAX_CITE]
+    for _ in range(MAX_CUTS):
+        if _resolve(cut):
+            return cut
+        if "," not in cut:
+            break
         cut = cut.rsplit(",", 1)[0].rstrip()
+    return cite
 
 
 def _cites(block):
@@ -118,6 +127,18 @@ def _idx():
     if _CACHE.get("stamp") != stamp or "rows" not in _CACHE:
         _CACHE.update(stamp=stamp, rows=RD._index())
     return _CACHE["rows"]
+
+
+def _norm(s):
+    return " ".join(re.sub(r"[^\w\s]", " ", s.lower()).split())
+
+
+def _headings():
+    """Every heading in the library, normalized, read once per index."""
+    rows = _idx()
+    if _CACHE.get("heads_of") is not rows:
+        _CACHE.update(heads_of=rows, heads={_norm(r["heading"]) for r in rows if len(r["heading"].split()) >= MIN_WORDS})
+    return _CACHE["heads"]
 
 
 def _quote_text(block):
@@ -231,11 +252,13 @@ def check(text):
         quotes = [q for q in QUOTE.findall(qtext) if len(q.split()) >= MIN_WORDS and not _users(qtext, q)
                   and (any_cite or _said_by_docs(qtext, q))]  # with no citation anywhere, only quotes given as the docs' words
         for q in quotes:
+            if _norm(q) in _headings():
+                continue  # a page or section title in quotes ("the guide "How to build..."") is a name, not a quote
             use = cites or parent + [c for c in under.get(head, []) if c not in parent]
             q2 = ESCAPE.sub(r"\1", q)
             parts = RD.quote_parts(q2)
             rows, bad = _rows_for(use)
-            if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()):
+            if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                 continue
             if not use:
                 held = _holder(parts, pages)
@@ -251,7 +274,7 @@ def check(text):
                     continue  # a quoted question not on the page is the answer's own example question
                 elif UNVERIFIED.search(block):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {RD._ref(rows[0])}"
-                elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()):
+                elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                     continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
                 elif not cites:  # it borrowed the citations around it, and none holds it
                     held = _holder(parts, pages)
@@ -290,7 +313,8 @@ def unquoted_facts(text):
         if any(len(q.split()) >= MIN_WORDS for q in QUOTE.findall(line)) or _cites(line):
             continue
         for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*#>|")):
-            if FACT_TERM.search(s) and SPECIFIC.search(s) and not HEDGED.search(s):
+            s = s[:MAX_SENTENCE]  # a fact sits in an ordinary sentence; a very long run is not one
+            if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(s) and not HEDGED.search(s):
                 out.append(f"UNQUOTED | {_short(s)}")
     return out
 

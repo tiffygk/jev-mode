@@ -11,6 +11,7 @@ GAMMA = "Gamma says the body is over 32 MiB when it is rejected."
 PAGES = {
     "docs/one.md": f"# One\n\nIntro.\n\n## Alpha\n\n{ALPHA}\n\n## Beta\n\n{BETA}\n",
     "docs/two.md": f"# Two\n\n## Gamma\n\n{GAMMA}\n",
+    "docs/three.md": "# Three\n\n## How to build with the box\n\nBuild steps go here in order.\n",
 }
 
 
@@ -255,3 +256,36 @@ def test_cli_prints_unquoted_rows_and_keeps_its_exit_code(ca, tmp_path):
 def test_a_gap_statement_is_not_an_unquoted_fact_but_a_flat_denial_is(ca):
     assert ca.unquoted_facts(CITED + "The pages I read don't give a limit on 255 options.\n\nI didn't read the SDK errors page for `422`.\n") == []
     assert len(ca.unquoted_facts(CITED + "The API doesn't stream partial answers over 3 requests.\n")) == 1
+
+
+# --- gate round 1 must-fixes ------------------------------------------------------------------------------------
+
+def test_a_quoted_heading_title_is_not_a_quote(ca):
+    rows, _, ok = ca.check('Retry (`docs/one.md#Alpha`). The guide "How to build with the box" explains composing.\n')
+    assert ok and "NOT FOUND" not in " ".join(rows)
+
+
+def test_the_users_own_error_or_log_line_in_quotes_is_not_a_docs_quote(ca):
+    rows, _, ok = ca.check('The error "RateLimitError: you have exceeded your quota today" comes from the 429 (`docs/one.md#Alpha`).\n')
+    assert ok and rows == []
+    rows, _, ok = ca.check(CITED + 'Your log shows "request failed after three retries with status four twenty nine".\n')
+    assert ok and verdicts(rows) == ["FOUND"]
+
+
+def test_a_short_quote_holding_a_specific_fact_is_checked_not_skipped(ca):
+    text = '## Price\n\n- Speed: "every box answers within five seconds" (`docs/one.md#Alpha`)\n\nJev bills "$42 per billion input tokens" at list price.\n'
+    rows, _, ok = ca.check(text)
+    assert not ok and any(r.startswith(("UNCITED", "NOT FOUND")) and "$42" in r for r in rows)
+
+
+def test_a_backticked_file_name_next_to_lowercase_score_is_not_a_jev_fact(ca):
+    assert ca.unquoted_facts(CITED + "My code writes three spreadsheets: `flags.csv` with each score.\n") == []
+    assert len(ca.unquoted_facts(CITED + "A Score question returns 3 levels.\n")) == 1
+
+
+def test_long_comma_runs_and_long_digit_runs_stay_fast(ca):
+    import time
+    t = time.perf_counter()
+    ca.check('Jev: "every box answers within five seconds" docs/one.md#' + "a," * 3000 + "x\n")
+    ca.unquoted_facts("Jev costs " + "1," * 20000 + "x\n")
+    assert time.perf_counter() - t < 2
