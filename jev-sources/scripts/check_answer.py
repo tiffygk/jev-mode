@@ -35,6 +35,7 @@ MAX_CUTS = 10  # comma cuts tried on one bare citation
 MAX_CITES = 30  # distinct citations read from one block
 MAX_QUOTES = 200  # quotes checked in one answer; past it, one TOO MANY row fails the answer
 MAX_HINTS, MAX_HINT_PAGES = 30, 30  # "found under" hints: failing quotes given one, cited pages searched for it
+MAX_MEMO = 2000  # resolved citations kept between answers
 UNCITED_WORDS = 8  # with no citation of its own, a shorter quoted phrase reads as a term, not a claimed quote
 KINDS = r"(?:docs|cookbooks|patterns|blog)/"
 TICKED = re.compile(r"`([^`\n]+)`")
@@ -45,22 +46,30 @@ ITEM = re.compile(r"^\s{0,3}(?:[-*+]|\d+[.)])\s")
 DOCS_URL = re.compile(r"https?://docs\.typesafe\.ai/([\w/-]+?)(?:\.md)?/?(?=[)#\s>\]]|$)")
 NOFOLDER = re.compile(r"(?<![\w/`.-])([\w-]+\.(?:md|txt)#[^;()`\"*\n]*[^;()`\"*\s,])")
 NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
-LABEL_BEFORE = re.compile(r"\b(?:unverified|unconfirmed)\b(?:\s*[:,)-]|\s+(?:quote|figure|line|wording|claim|number|value|text)s?\b|"
-                          r"\s*$)", re.I)  # a label, not an adjective on some other noun
-LABEL_AFTER = re.compile(r"\s*[,:(-]?\s*(?:\(?\s*)?(?:unverified|unconfirmed)\b\s*\)?\s*$", re.I)  # "..." unverified.
+LABEL_WORD = r"(?:unverified|unconfirmed)"
+LABEL_NOUN = r"(?:quote|figure|line|wording|claim|number|value|text)s?"
+LABEL_BEFORE = re.compile(r"\b" + LABEL_WORD + r"\b(?:[*_]*\s*[:,)]|[*_]*\s+[-–]|\s+" + LABEL_NOUN
+                          + r"\b(?=[*_]*\s*(?:[:,(\-–]|$)|\s+(?:from|in|on|of)\b)|[*_]*\s*$)", re.I)  # a label, not an adjective
+LABEL_ONLY = re.compile(r"^[\s*_]*" + LABEL_WORD + r"(?:\s+" + LABEL_NOUN + r")?[\s*_.]*$", re.I)  # a parenthesis part or cell
+AFTER_PAREN = re.compile(r"\s*[,:;\-–]?\s*[*_]*\(([^()]*)\)[*_]*")
+AFTER_WORD = re.compile(r"\s*[,:;\-–]?\s*[*_]*\(?\s*" + LABEL_WORD + r"\s*\)?[*_]*(?=\s*(?:[.,;:!?(]|$))", re.I)
+OPENS = re.compile(r"(?:\A|[.!?]\s)[\s>*_+\-]*(?:\d+[.)]\s*)?\Z")  # nothing before it in its sentence
+ASKING = re.compile(r"(?:\b(?:ask|asks|asked|asking|for example|for instance|such as|questions?|try)\b|\be\.g\.)[^\"]{0,30}$", re.I)
 ERRORISH = re.compile(r"^\s*(?:[A-Za-z_][\w.]*(?:Error|Exception|Warning)\b|Traceback\b|[A-Z]\w*: )")  # an error line
 LABEL = re.compile(r"\b(?:unverified|unconfirmed)\b", re.I)
 LABEL_NEXT = re.compile(r"^\s*(?:This|That|The) (?:quote|wording|line|figure)s? (?:is|are) (?:unverified|unconfirmed)\b", re.I)
 CLAUSE_END = re.compile(r"[;.!?](?=\s|$)")
 NOT_LABEL = re.compile(r"\b(?:not|no|nothing|never|none|isn't|aren't|without)\b[^.;:]{0,30}\b(?:unverified|unconfirmed)\b",
                        re.I)  # "Nothing here is unverified" labels nothing
-DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
+DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page|section|FAQ)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
 # unquoted facts: a Jev term and a specific in one sentence
 FACT_TERM = re.compile(r"\b(?:Jevs?|Nouls?|System One|TypeSafe|SDK|API|endpoint|rate[ -]limits?|models?|alias|"
                        r"bills?|billed|charges?|priced?|pricing|context)\b", re.I)
 FACT_NAME = re.compile(r"\b(?:Choice|Score|Box)\b")  # common words in lower case, question types when capitalized
-SPECIFIC = re.compile(r"\b[a-z]+_[a-z_]+\b|\$\s?\d|\b\d[\d,.]{0,20}\s*(?:%|ms\b|seconds?\b|tokens?\b|requests?\b|options?\b|questions?\b|levels?\b|"
+SPECIFIC = re.compile(r"\b[a-z]+_[a-z_]+\b|\$\s?\d|\b(?:limits?|caps?|max(?:imum)?|minimum|default)\s+(?:is|of|at|to|=)\s+\$?\d"
+                      r"|\b\d[\d,.]{0,20}\s*(?:%|ms\b|s\b|secs?\b|seconds?\b|min\b|mins\b|minutes?\b|hours?\b|hrs?\b|days?\b|"
+                      r"weeks?\b|RPM\b|RPS\b|TPM\b|x\b|tokens?\b|requests?\b|options?\b|questions?\b|levels?\b|"
                       r"[KMGB]i?B\b|[KMB]\b|[MB]tok\b|dollars?\b|cents?\b|"
                       r"characters?\b|per\b|million\b|billion\b|k\b|MB\b)|\b[45]\d\d\b|`[^`\n]+`")
 YOU_HEDGE = re.compile(r"\b(?:you|your)\b", re.I)  # about the person's own case, unless the sentence quotes a specific
@@ -202,7 +211,7 @@ def _family(row):
 def _resolve(cite):
     rows = _idx()
     memo = _CACHE.setdefault("resolved", {})
-    if memo.get("of") is not rows:
+    if memo.get("of") is not rows or len(memo) > MAX_MEMO:
         memo.clear()
         memo["of"] = rows
     if cite not in memo:
@@ -237,18 +246,21 @@ def _resolve_one(cite):
     return hits if len(hits) == 1 and head else []
 
 
-def _holder(parts, paths):
-    """The first section on one of these pages that holds the quote, or None."""
-    return next((r for r in _idx() if parts and r["path"] in paths and RD._in_row(r, parts)), None)
+def _holder(parts, paths, skip=()):
+    """The first section on one of these pages, other than the skipped ids, that holds the quote, or None."""
+    return next((r for r in _idx() if parts and r["path"] in paths and r["id"] not in skip and RD._in_row(r, parts)), None)
 
 
 def _rows_for(cites):
     """(resolved section rows, cites that resolve to nothing)."""
-    rows, bad = [], []
+    rows, bad, ids = [], [], set()
     for c in cites:
         r = _resolve(c)
         if r:
-            rows += [x for x in r if x not in rows]
+            for x in r:
+                if x["id"] not in ids:
+                    ids.add(x["id"])
+                    rows.append(x)
         else:
             bad.append(c)
     return rows, bad
@@ -283,27 +295,42 @@ def _ref(row):
     return memo[row["id"]]
 
 
+def _label_after(s):
+    """Is a quote labeled right after it (s starts just after its closing mark): by a parenthesis that is a label, or
+    one whose parts split at ; or , include one ("(`docs/x.md#H`; unverified)"), or by the bare word before any other
+    word, in emphasis or after a dash or comma ("**unverified**", ", unverified.")? A word followed by another quote
+    labels that quote, and one followed by a noun is an adjective ("unverified accounts")."""
+    pos = 0
+    for _ in range(3):
+        m = AFTER_PAREN.match(s, pos)
+        if not m:
+            return bool(AFTER_WORD.match(s, pos))
+        if any(LABEL_ONLY.match(p) for p in re.split(r"[;,]", m.group(1))):
+            return True
+        pos = m.end()
+    return False
+
+
 def _labeled(block, q):
-    """Is this quote labeled unverified or unconfirmed beside it: in the six words before it, in the parentheses right
-    after it, or right after it before any other word; or by a next sentence that names it ("This quote is
-    unverified")? A label further along the clause, a negated one, or one used as an ordinary adjective ("unverified
-    accounts") is about something else."""
+    """Is this quote labeled unverified or unconfirmed beside it: in the six words before it, right after it
+    (_label_after), in a table cell of its row that is only the label, or by a next sentence that names it ("This quote
+    is unverified")? A label further along the clause, a negated one, or one used as an ordinary adjective ("unverified
+    accounts", "unverified-account tier") is about something else."""
     span = _clause(block, q)
     if span is None:
         return False
     i = block.find('"' + q + '"')
     j, end = i + len(q) + 2, span[1]
     clause = re.split(r",|;|\b(?:and|but|while|whereas)\b", block[span[0]:i])[-1]
+    if NOT_LABEL.search(clause):
+        return False
     before = clause
     if '"' in before:  # a quote earlier in the clause owns the words and parentheses right after it
-        before = re.sub(r"^\s*\([^()]*\)", "", before.rsplit('"', 1)[-1])
+        before = re.sub(r"^\s*[*_]*\([^()]*\)[*_]*", "", before.rsplit('"', 1)[-1])
     before = " ".join(before.split()[-6:])  # a label sits beside its quote
-    paren = re.match(r"\s*\([^()]*\)", block[j:end])
-    k = j + (paren.end() if paren else 0)
-    tail = re.split(r",|\b(?:and|but|while|whereas)\b", block[k:end])[0].split('"', 1)[0]
-    if NOT_LABEL.search(clause + " " + (paren.group() if paren else "") + " " + tail):
-        return False
-    if LABEL_BEFORE.search(before) or (paren and LABEL.search(paren.group())) or LABEL_AFTER.match(tail):
+    row = block[block.rfind("\n", 0, i) + 1:].split("\n", 1)[0]
+    if (LABEL_BEFORE.search(before) or _label_after(block[j:j + 600])
+            or (row.lstrip().startswith("|") and any(LABEL_ONLY.match(c) for c in row.split("|") if c.strip()))):
         return True
     nxt = block[end:end + 1] if end < len(block) else ""
     return bool(nxt and CLAUSE_END.match(block, end) and block[end + 1:end + 2].isspace()
@@ -314,6 +341,14 @@ def _said_by_docs(block, q):
     """Is this quote given as the docs' words ("The docs say "...""), going by the words just before it?"""
     i = block.find('"' + q + '"')
     return i > 0 and bool(DOCS_SAY.search(block[max(0, i - 60):i]))
+
+
+def _example_question(block, q):
+    """Is this quoted question the answer's own example: after an asking lead-in ("Ask Jev "...?"", "e.g. "...?""), or
+    opening its sentence ("- "Is the customer unhappy?" works as a Noul")? A question given as the docs', the API's or an error's words ("The error reads "...?"") is a quote."""
+    i = block.find('"' + q + '"')
+    return (q.strip().endswith("?") and i >= 0 and not _said_by_docs(block, q)
+            and bool(ASKING.search(block[max(0, i - 60):i]) or OPENS.search(block[max(0, i - 60):i])))
 
 
 def check(text, seen=None):
@@ -360,7 +395,7 @@ def check(text, seen=None):
             if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not _specific(t):
                 continue
             if not use:
-                if q.strip().endswith("?") and not _said_by_docs(qtext, q):
+                if _example_question(qtext, q):
                     continue  # the answer's own example question
                 if _labeled(qtext, q):
                     counts["LABELED"] = counts.get("LABELED", 0) + 1
@@ -380,19 +415,22 @@ def check(text, seen=None):
                                                           or (esc and RD._in_row(r, esc)))), None)
                 if hit:
                     v, row = "FOUND", f"FOUND | {_short(q)} | {_ref(hit)}"
-                elif q.strip().endswith("?") and not _said_by_docs(qtext, q):
+                elif _example_question(qtext, q):
                     continue  # a quoted question not on the page is the answer's own example question
                 elif _labeled(qtext, q):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {_ref(rows[0])}"
-                elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not _specific(t):
-                    continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
+                elif (not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not _specific(t)
+                      and not _said_by_docs(qtext, q)):
+                    continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term,
+                    # unless it is given as the docs' words
                 elif not cites:  # it borrowed the citations around it, and none holds it
                     held = hint(parts)
                     v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation of its own, and none under this heading holds it"
                                          + (f" | found under {_ref(held)}" if held else ""))
                 else:
-                    other = next((r for r in _idx() if parts and r["path"] in {x["path"] for x in rows}
-                                  and r not in rows and RD._in_row(r, parts)), None)
+                    hints[0] += 1  # the same bound as the other hints
+                    other = (_holder(parts, {x["path"] for x in rows}, {x["id"] for x in rows})
+                             if hints[0] <= MAX_HINTS else None)
                     v = "NOT FOUND"
                     row = (f"NOT FOUND | {_short(q)} | cited {_ref(rows[0])}"
                            + (f" | found under {_ref(other)}" if other else ""))
@@ -411,10 +449,15 @@ def check(text, seen=None):
     return out, summary, ok
 
 
-def _user_code(span):
-    """A backticked span that is the user's text or a citation, not a stated fact: an error line, three or more words,
-    or a library id."""
-    return bool(ERRORISH.match(span) or len(span.split()) >= 3 or BARE.match(span) or NOFOLDER.match(span))
+USER_TIE = re.compile(r"\b(?:you|your|yours|log|logs|logged|output|printed|prints|pasted|traceback|stdout|stderr|terminal|"
+                      r"console|returned|showed|raised|threw|emitted|got|received)\b", re.I)  # past tense: the run that happened
+
+
+def _user_code(span, sentence):
+    """A backticked span that is the user's text or a citation, not a stated fact: an error line, a library id, or three
+    or more words in a sentence that ties them to the user's own run ("The run printed `...`")."""
+    return bool(ERRORISH.match(span) or BARE.match(span) or NOFOLDER.match(span)
+                or (len(span.split()) >= 3 and USER_TIE.search(sentence)))
 
 
 def unquoted_facts(text, seen=None):
@@ -441,7 +484,7 @@ def unquoted_facts(text, seen=None):
         for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*#>|")):
             s = s[:MAX_SENTENCE]  # a fact sits in an ordinary sentence; a very long run is not one
             hedged = HEDGED.search(s) or (YOU_HEDGE.search(s) and not any(SPECIFIC.search(q) for q in QUOTE.findall(s)))
-            bare = BARE.sub(" ", TICKED.sub(lambda m: " " if _user_code(m.group(1)) else m.group(0), s))
+            bare = BARE.sub(" ", TICKED.sub(lambda m: " " if _user_code(m.group(1), s) else m.group(0), s))
             if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(bare) and not hedged:
                 out.append(f"UNQUOTED | {_short(s)}")
     return out

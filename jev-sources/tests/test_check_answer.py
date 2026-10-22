@@ -514,7 +514,7 @@ def test_a_label_covers_only_its_own_quote_and_not_an_adjective(ca):
 def test_the_found_under_hint_is_bounded(ca, monkeypatch):
     calls = []
     real = ca._holder
-    monkeypatch.setattr(ca, "_holder", lambda parts, paths: calls.append(len(paths)) or real(parts, paths))
+    monkeypatch.setattr(ca, "_holder", lambda parts, paths, skip=(): calls.append(len(paths)) or real(parts, paths, skip))
     text = "Jev.\n\n" + "".join(f'## H{i}\n\n"made up line number {i} about the box answer"\n\n' for i in range(60))
     ca.check(text + "See `docs/one.md#Alpha`.\n")
     assert len(calls) == ca.MAX_HINTS and max(calls) <= ca.MAX_HINT_PAGES
@@ -529,3 +529,96 @@ def test_the_section_index_is_read_once_per_file_version(ca):
     time.sleep(0.01)
     open(path, "w").write(lines.split("\n", 1)[1])  # one section fewer
     assert len(read._index()) == len(a) - 1
+
+
+# --- re-gate 6 must-fixes -----------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize("lead", ["The docs say", "Per the guide,", "The page says", "TypeSafe writes that", "In TypeSafe's words,", "The section reads"])
+def test_a_short_misquote_given_as_the_docs_words_with_a_borrowed_citation_is_checked(ca, lead):
+    for t in (f'## Alpha (`docs/one.md#Alpha`)\n\n{lead} "every box answers fast".\n',
+              f'## A\n\nSee `docs/one.md#Alpha`.\n\n{lead} "every box answers fast".\n'):
+        assert not ca.check(t)[2], t
+    assert ca.check('## Alpha (`docs/one.md#Alpha`)\n\nThe docs say "every box answers within".\n')[2]
+
+
+@pytest.mark.parametrize("q", ["24 hours", "30s timeout", "every 5 minutes", "60 RPM", "7 days", "1.5x"])
+def test_a_short_quote_with_a_time_or_rate_unit_is_checked(ca, q):
+    for t in (f'- The docs say the default is "{q}" (`docs/one.md#Alpha`).\n',
+              f'## Alpha (`docs/one.md#Alpha`)\n\nThe docs say the default is "{q}".\n',
+              f'Jev.\n\nThe docs say the Jev default is "{q}".\n'):
+        assert not ca.check(t)[2], t
+
+
+@pytest.mark.parametrize("s", ["Jev's cache lasts 24 hours.", "Jev times out after 30s.", "Jev's batch limit is 64.",
+                               "Jev's API caps the body at `40 MiB per request`.", "Jev's rate limit is `600 requests per minute`."])
+def test_an_unquoted_fact_with_a_time_unit_a_bare_limit_or_a_backticked_phrase_is_listed(ca, s):
+    assert ca.unquoted_facts("Jev.\n\n" + s + "\n"), s
+
+
+def test_a_backticked_phrase_tied_to_the_users_output_is_not_a_fact(ca):
+    for s in ("The Jev run printed `body over the limit, retrying` twice.", "Your Jev log shows `waiting on the queue now`.",
+              "The Jev SDK logged `retrying in 4 seconds (attempt 2 of 5)` before it gave up.",
+              "The Jev API returned `RateLimitError: too many calls` on the third batch."):
+        assert ca.unquoted_facts("Jev.\n\n" + s + "\n") == [], s
+
+
+@pytest.mark.parametrize("lead", ["The error reads", "Jev replies", "The FAQ asks", "The API returns the message"])
+def test_a_quoted_question_given_as_the_docs_or_the_apis_words_is_checked(ca, lead):
+    assert not ca.check(f'- {lead} "Did you exceed 600 requests per minute?" (`docs/one.md#Alpha`).\n')[2]
+
+
+def test_a_quoted_question_after_an_asking_lead_in_is_the_answers_own_example(ca):
+    for t in ('- Ask Jev "Is this over the limit?" (`docs/one.md#Alpha`).\n',
+              '- Questions like "Is this email about billing?" work as a Noul (`docs/one.md#Alpha`).\n',
+              '- A Noul, e.g. "Is this email about billing?" (`docs/one.md#Alpha`).\n',
+              '## A (`docs/one.md#Alpha`)\n\n- "Is the customer unhappy?" works as a Noul.\n',
+              '## A (`docs/one.md#Alpha`)\n\nThe first question for your team is "who sets the review threshold, and who signs off?"\n'):
+        rows, _, ok = ca.check(t)
+        assert ok and rows == [], (t, rows)
+
+
+def test_real_labels_count_in_emphasis_after_a_dash_or_a_comma_and_inside_a_citation(ca):
+    for t in (f'- The docs say "{MIS}" **unverified** (`docs/one.md#Alpha`).\n',
+              f'- The docs say "{MIS}" *(unverified)* (`docs/one.md#Alpha`).\n',
+              f'- The docs say "{MIS}" - unverified (`docs/one.md#Alpha`).\n',
+              f'- "{MIS}" (`docs/one.md#Alpha`; unverified).\n',
+              f'- The docs say "{MIS}" (`docs/one.md#Alpha`), unverified.\n',
+              f'| "{MIS}" | `docs/one.md#Alpha` | unverified |\n'):
+        assert verdicts(ca.check(t)[0]) == ["LABELED"], t
+
+
+def test_an_adjective_or_a_neighbours_label_never_labels_a_quote(ca):
+    other = "every box answers within eight seconds"
+    for t in (f'- The docs say "{MIS}" (for unverified accounts) (`docs/one.md#Alpha`).\n',
+              f'- The docs say "{MIS}" (`docs/one.md#Alpha`; unverified orgs only).\n',
+              f"- Jev's unverified-account tier: \"{MIS}\" (`docs/one.md#Alpha`).\n",
+              f'- For unverified line items the docs say "{MIS}" (`docs/one.md#Alpha`).\n'):
+        assert verdicts(ca.check(t)[0]) == ["NOT FOUND"], t
+    rows = ca.check(f'- The docs say "{other}" unverified "{MIS}" (`docs/one.md#Alpha`).\n')[0]
+    assert sorted(verdicts(rows)) == ["LABELED", "NOT FOUND"], rows
+
+
+def test_the_not_found_hint_is_bounded(ca, monkeypatch):
+    calls = []
+    real = ca._holder
+    monkeypatch.setattr(ca, "_holder", lambda parts, paths, skip=(): calls.append(1) or real(parts, paths, skip))
+    ca.check("Jev.\n\n" + "".join(f'- "made up line number {i} about the box answer" (`docs/one.md#Alpha`)\n' for i in range(60)))
+    assert len(calls) == ca.MAX_HINTS
+
+
+def test_the_citation_memo_is_bounded(ca):
+    for i in range(2500):
+        ca._resolve(f"docs/one.md#Alpha {i}")
+    assert len(ca._CACHE["resolved"]) <= ca.MAX_MEMO + 1
+
+
+def test_a_page_rewritten_with_its_old_time_and_size_is_read_again(ca):
+    import read
+    path = os.path.join(read.ROOT, "docs", "one.md")
+    r = next(x for x in read._index() if x["path"] == "docs/one.md" and x["heading"] == "Alpha")
+    before = read._flat(r)[1]
+    st = os.stat(path)
+    text = open(path).read().replace("five seconds", "nine seconds")
+    open(path, "w").write(text)
+    os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
+    assert read._flat(r)[1] != before

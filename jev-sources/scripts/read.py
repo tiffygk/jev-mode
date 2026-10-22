@@ -31,7 +31,7 @@ def _index():
     path = os.path.join(ROOT, "sections.jsonl")
     try:
         st = os.stat(path)
-        key = (path, st.st_mtime_ns, st.st_size)
+        key = (path, st.st_mtime_ns, st.st_size, st.st_ctime_ns, st.st_ino)  # ctime moves on any write
         if _INDEX.get("key") != key:
             _INDEX.update(key=key, rows=[json.loads(l) for l in open(path)])
         return _INDEX["rows"]
@@ -144,7 +144,8 @@ def _flat(r):
     path = os.path.join(ROOT, r["path"])
     if not os.path.exists(path):
         sys.exit(f"missing source {r['path']}; run {REFRESH}")
-    key = (path, r["line_start"], r["line_end"], os.path.getmtime(path))
+    st = os.stat(path)
+    key = (path, r["line_start"], r["line_end"], st.st_mtime_ns, st.st_size, st.st_ctime_ns, st.st_ino)
     if key not in _FLAT:
         if len(_FLAT) > 2000:
             _FLAT.clear()
