@@ -14,7 +14,8 @@ CITES = re.compile(r"(?:docs|cookbooks|patterns|blog)/")
 REASON_CAP = 4000
 TAIL = ("fix each line: correct the quote from its section (read.py '<id>'), cite the section that holds it, or label "
         "it unverified; wording you made up (an example question or option) goes in backticks, not quotation marks. "
-        "Then send the whole corrected answer, with no note about this check.")
+        "For an UNQUOTED line, a fact stated without a quote: quote it with its citation, mark it unconfirmed, or move it under "
+        "My read. Then send the whole corrected answer, with no note about this check.")
 
 
 def _from_transcript(path):
@@ -75,12 +76,13 @@ def main():
         if summary is None:
             return 0
         bad = [r for r in rows if not r.startswith(("FOUND", "LABELED"))]
-        counts = dict(quotes=len(rows), failed=len(bad))
-        if not bad:
+        loose = check_answer.unquoted_facts(msg)
+        counts = dict(quotes=len(rows), failed=len(bad), unquoted=len(loose))
+        if not bad and not loose:
             log_event("answer_check", decision="clean", session=sid, **counts)
             return 0
         log_event("answer_check", decision="block", session=sid, **counts)
-        print(json.dumps({"decision": "block", "reason": _reason(bad)}))
+        print(json.dumps({"decision": "block", "reason": _reason(bad + loose)}))
         return 0
     except BaseException as e:  # fail open: a fault in this check must never hold an answer back
         if isinstance(e, SystemExit) and e.code in (0, None):

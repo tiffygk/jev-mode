@@ -214,3 +214,44 @@ def test_a_docs_url_cites_its_page_and_a_heading_cut_at_a_word_boundary_resolves
     assert verdicts(rows) == ["FOUND", "FOUND"] and ok, rows
     rows, _, ok = ca.check('- "A Seven answer is the selected option here." (`docs/primitives__seven.md#Step`)\n')
     assert verdicts(rows) == ["FOUND"], rows  # one heading starts with "Step"
+
+
+# --- unquoted facts: a specific Jev fact stated with no quote ---------------------------------------------------
+
+CITED = 'Speed: "every box answers within five seconds" (`docs/one.md#Alpha`, reference rule)\n\n'
+
+
+def test_a_price_or_status_code_about_jev_with_no_quote_is_listed(ca):
+    facts = ca.unquoted_facts(CITED + "Jev bills $42 per billion input tokens.\n\nWhen a body is wrong, the API returns a `422`.\n")
+    assert [f.split(" | ")[0] for f in facts] == ["UNQUOTED", "UNQUOTED"]
+    assert facts[0].startswith("UNQUOTED | Jev bills $42 per billion")
+
+
+def test_a_fact_with_its_quote_on_the_line_or_under_my_read_or_marked_unconfirmed_is_not_listed(ca):
+    text = (CITED + 'Price: "You pay per input token." (`docs/one.md#Alpha`)\n\n'
+            "Jev allows 255 options per Choice (unconfirmed: the pages I read don't show it).\n\n"
+            "**My read:** at 10 million questions a month, Jev would cost about $4.\n")
+    assert ca.unquoted_facts(text) == []
+
+
+def test_the_persons_own_numbers_code_blocks_and_answers_with_no_jev_are_not_listed(ca):
+    text = CITED + "You send 2 million texts a month, 5 questions each.\n\n```\nclient.system_one(model=\"jev-1.13.0\")  # 255 options\n```\n"
+    assert ca.unquoted_facts(text) == []
+    assert ca.unquoted_facts("The 3 queues cost $5 a day to run.\n") == []
+
+
+def test_unquoted_facts_never_change_the_quote_verdict(ca):
+    rows, summary, ok = ca.check(CITED + "Jev bills $42 per billion input tokens.\n")
+    assert ok and verdicts(rows) == ["FOUND"]
+
+
+def test_cli_prints_unquoted_rows_and_keeps_its_exit_code(ca, tmp_path):
+    env = {**os.environ, "JEV_SOURCES_DATA": os.environ["JEV_SOURCES_DATA"], "JEV_LOG": "off", "JEV_SEMANTIC": "off"}
+    r = subprocess.run([sys.executable, os.path.join(SCRIPTS, "check_answer.py")], input=CITED + "Jev bills $42 per billion input tokens.\n",
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0 and "UNQUOTED | Jev bills $42 per billion" in r.stdout
+
+
+def test_a_gap_statement_is_not_an_unquoted_fact_but_a_flat_denial_is(ca):
+    assert ca.unquoted_facts(CITED + "The pages I read don't give a limit on 255 options.\n\nI didn't read the SDK errors page for `422`.\n") == []
+    assert len(ca.unquoted_facts(CITED + "The API doesn't stream partial answers over 3 requests.\n")) == 1

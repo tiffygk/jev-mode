@@ -12,6 +12,9 @@ its lead-in line, a "Sources:" line after a list). Prints one row per quote:
   UNCITED | <first words> | no citation under this heading
   LABELED | <first words> | <section>           (not found, but its block calls it unverified)
 then one summary line. An answer with no library citation is not a Jev answer: nothing is printed and it passes.
+unquoted_facts(text) lists, apart from the quote check, each sentence that states a specific Jev fact (a price, a
+number with a unit, a status code, a backticked name) with no quote or citation on its line, before "My read" and
+not marked unconfirmed: UNQUOTED | <first words>. They never change the exit code; the Stop hook asks once.
 Exit 0 when every quote is FOUND or LABELED; 1 otherwise; 2 on bad usage. Never prints page text: a quote is shown
 by its first 5 words, at most 60 characters."""
 import os, re, sys
@@ -38,6 +41,14 @@ USERS = re.compile(r"\byou(?:'re| are)?\s+(?:asked|said|say|wrote|want(?:ed)?|me
                    r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$", re.I)
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
+# unquoted facts: a Jev term and a specific in one sentence
+FACT_TERM = re.compile(r"\b(?:Jevs?|Nouls?|Choice|Score|Box|System One|TypeSafe|SDK|API|endpoint|rate[ -]limits?|models?|alias|"
+                       r"bills?|billed|charges?|priced?|pricing|context)\b", re.I)
+SPECIFIC = re.compile(r"\$\s?\d|\b\d[\d,.]*\s*(?:%|ms\b|seconds?\b|tokens?\b|requests?\b|options?\b|questions?\b|"
+                      r"characters?\b|per\b|million\b|billion\b|k\b|MB\b)|\b[45]\d\d\b|`[^`\n]+`")
+HEDGED = re.compile(r"\b(?:unconfirmed|unverified|my read|I'd|I would|you|your)\b|(?:pages?|docs|sections?) I (?:read|routed)\b"
+                    r"|\bI (?:didn't|did not|haven't|have not) (?:read|check|see)|\bthe docs (?:don't|do not) (?:say|show|cover|list)", re.I)
+MY_READ = re.compile(r"^\s*(?:#+\s*|\*\*)My read\b", re.I)
 ESCAPE = re.compile(r"\\([^\w\s])")
 CURLY = str.maketrans({"\u201c": '"', "\u201d": '"', "\u201e": '"'})
 
@@ -262,13 +273,36 @@ def check(text):
     return out, summary, ok
 
 
+def unquoted_facts(text):
+    """Rows for sentences stating a specific Jev fact with no quote or citation on their line (module docstring)."""
+    text = text.translate(CURLY)
+    if not JEV.search(text) and not any(_cites(b) for _, b, _ in _blocks(text)):
+        return []
+    out, fence = [], False
+    for line in text.split("\n"):
+        if line.lstrip().startswith("```"):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        if MY_READ.match(line):
+            break
+        if any(len(q.split()) >= MIN_WORDS for q in QUOTE.findall(line)) or _cites(line):
+            continue
+        for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*#>|")):
+            if FACT_TERM.search(s) and SPECIFIC.search(s) and not HEDGED.search(s):
+                out.append(f"UNQUOTED | {_short(s)}")
+    return out
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv:
         print("usage: check_answer.py < answer.md", file=sys.stderr)
         return 2
-    rows, summary, ok = check(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
-    for r in rows:
+    text = sys.stdin.buffer.read().decode("utf-8", errors="replace")
+    rows, summary, ok = check(text)
+    for r in rows + unquoted_facts(text):
         print(r)
     if summary:
         print(summary)
