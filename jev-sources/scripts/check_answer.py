@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Check every docs quote in an answer against the section it cites. The answer comes on stdin.
-  python3 scripts/check_answer.py < answer.md
+  python3 scripts/check_answer.py [--transcript <session.jsonl>] < answer.md
 
 A quote is text of 4 or more words in double quotes (straight or curly), outside code spans. Its citations are the
 library ids (docs/, cookbooks/, patterns/, blog/) in the same bullet, table row or paragraph; with none there, the
@@ -10,14 +10,17 @@ its lead-in line, a "Sources:" line after a list). Prints one row per quote:
   NOT FOUND | <first words> | cited <section>[ | found under <section>]
   BAD CITE | <first words> | <citation>          (no section has that id)
   UNCITED | <first words> | no citation under this heading
-  LABELED | <first words> | <section>           (not found, but its block calls it unverified)
-then one summary line. An answer with no library citation is not a Jev answer: nothing is printed and it passes.
+  LABELED | <first words> | <section>           (not found, but its own clause calls it unverified or unconfirmed)
+then one summary line. A quote not on its page is the user's own line, and is not checked, only when the session
+record holds it (--transcript, or the Stop hook's transcript_path: the user's messages and command output); with no
+record, only when the words right before it give it to the user ("you got", "your log shows") or it is an error
+line in a block that names no docs page. With no citation anywhere, a quote holding a specific fact is still checked. An answer with no library citation is not a Jev answer: nothing is printed and it passes.
 unquoted_facts(text) lists, apart from the quote check, each sentence that states a specific Jev fact (a price, a
 number with a unit, a status code, a backticked name) with no quote or citation on its line, before "My read" and
 not marked unconfirmed: UNQUOTED | <first words>. They never change the exit code; the Stop hook asks once.
 Exit 0 when every quote is FOUND or LABELED; 1 otherwise; 2 on bad usage. Never prints page text: a quote is shown
 by its first 5 words, at most 60 characters."""
-import os, re, sys
+import json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import read as RD
@@ -30,6 +33,7 @@ MAX_SENTENCE = 500  # characters of one sentence the unquoted-fact check reads
 MAX_CITE = 200  # characters of a bare citation tried against the index; a longer run is not a citation
 MAX_CUTS = 10  # comma cuts tried on one bare citation
 MAX_CITES = 30  # distinct citations read from one block
+MAX_QUOTES = 200  # quotes checked in one answer; past it, one TOO MANY row fails the answer
 UNCITED_WORDS = 8  # with no citation of its own, a shorter quoted phrase reads as a term, not a claimed quote
 KINDS = r"(?:docs|cookbooks|patterns|blog)/"
 TICKED = re.compile(r"`([^`\n]+)`")
@@ -40,14 +44,21 @@ ITEM = re.compile(r"^\s{0,3}(?:[-*+]|\d+[.)])\s")
 DOCS_URL = re.compile(r"https?://docs\.typesafe\.ai/([\w/-]+?)(?:\.md)?/?(?=[)#\s>\]]|$)")
 NOFOLDER = re.compile(r"(?<![\w/`.-])([\w-]+\.(?:md|txt)#[^;()`\"*\n]*[^;()`\"*\s,])")
 NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
-UNVERIFIED = re.compile(r"\bunverified\b", re.I)
-USERS = re.compile(r"\byou(?:'re| are)?\s+(?:asked|said|say|wrote|want(?:ed)?|mentioned|described|called|put it)\b[^\"]{0,40}$"
-                   r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$", re.I)
-# a quote not on its cited page is the user's own line when the words before it give it to the user, or when it is
-# shaped like an error or log line; a misquote of the docs gets neither
-YOURS = re.compile(r"\byou\s+(?:got|get|see|saw|pasted|posted|shared|ran|hit|copied)\b"
-                   r"|\byour\s+(?:logs?|errors?|output|traceback|terminal|console|stack trace|message|paste|run)\b", re.I)
+LABEL = re.compile(r"\b(?:unverified|unconfirmed)\b", re.I)
+LABEL_NEXT = re.compile(r"^\s*(?:This|That|The) (?:quote|wording|line|figure)s? (?:is|are) (?:unverified|unconfirmed)\b", re.I)
+CLAUSE_END = re.compile(r"[;.!?](?=\s|$)")
+# Without the session record, a quote not on its cited page is the user's own words only when the words right before
+# it give it to the user ("You asked", "you got", "your log shows"), with nothing after them; with the record, only when
+# the user's messages or a command's output in the session hold it.
+USERS = re.compile(r"\byou\s+(?:(?:asked|said|wrote|mentioned|described|called it|put it)(?:\s+me)?"
+                   r"(?:\s+(?:you\s+)?(?:want(?:ed)?|need(?:ed)?|plan(?:ned)?)\s+to)?|(?:want(?:ed)?|need(?:ed)?)\s+to)\s*[:,]?\s*$"
+                   r"|\byour\s+(?:question|words|message|request|note)(?:\s+(?:was|is|reads|says))?\s*[:,]?\s*$", re.I)
+YOURS = re.compile(r"\byou\s+(?:got|see|saw|pasted|posted|shared|copied)\s*[:,]?\s*$"
+                   r"|\byour\s+(?:logs?|errors?|output|traceback|terminal|console|stack trace|paste|run)"
+                   r"(?:\s+(?:shows?|showed|reads?|says?|said|prints?|printed|is|was|has|had|contains?|ends with))?\s*[:,]?\s*$", re.I)
 DOCS_NAMED = re.compile(r"\b(?:docs?|documentation|page|reference|guide|cookbook|TypeSafe)\b", re.I)
+RECORD_ROW = re.compile(r"^(?:FOUND|NOT FOUND|BAD CITE|UNCITED|LABELED|UNQUOTED) \|.*$|^answer check: .*$", re.M)
+MAX_RECORD = 20_000_000  # bytes of a session record read for the user's lines (the end, when longer)
 LOGLINE = re.compile(r"^\s*(?:[A-Za-z_][\w.]*(?:Error|Exception|Warning)\b|Traceback\b|HTTP/\d|\[?\d{4}-\d\d-\d\d|[A-Z]+\d{3,}\b)")
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
@@ -236,10 +247,26 @@ def _rows_for(cites):
     return rows, bad
 
 
-def _users(block, q):
-    """Is this quote the user's own words ("You asked "...""), going by the words just before it?"""
+def _lead(block, q):
+    """The words before the quote in its own clause (at most 80 characters); empty when that clause names the docs, so
+    "the docs say you want to "..."" never reads as the user's words."""
     i = block.find('"' + q + '"')
-    return i > 0 and bool(USERS.search(block[max(0, i - 80):i]))
+    lead = block[max(0, i - 80):i] if i > 0 else ""
+    lead = CLAUSE_END.split(lead)[-1]
+    return "" if DOCS_NAMED.search(BARE.sub(" ", TICKED.sub(" ", lead))) else lead
+
+
+def _in_record(q, record):
+    """Does the session record (the user's messages and command output, normalized) hold this quote?"""
+    words = _norm(ESCAPE.sub(r"\1", q))
+    return bool(words) and words in record
+
+
+def _users(block, q, record=None):
+    """Is this quote the user's own words ("You asked "...")? With the session record, only if the record holds it."""
+    if record is not None:
+        return bool(USERS.search(_lead(block, q))) and _in_record(q, record)
+    return bool(USERS.search(_lead(block, q)))
 
 
 def _claimed(q):
@@ -247,11 +274,82 @@ def _claimed(q):
     return len(q.split()) >= MIN_WORDS or bool(SPECIFIC.search(q))
 
 
-def _users_line(block, q):
-    """A quote not on its cited page that is the user's own line (an error, a log line, their paste)."""
+def _users_line(block, q, record=None):
+    """A quote not on its cited page that is the user's own line (an error, a log line, their paste). With the session
+    record, the record must hold it; without, the words right before it give it to the user, or it is shaped like an
+    error line in a block that names no docs page outside its citations."""
+    if record is not None:
+        return _in_record(q, record)
+    bare = BARE.sub(" ", TICKED.sub(" ", block.replace('"' + q + '"', " ")))
+    return bool(YOURS.search(_lead(block, q))) or (bool(LOGLINE.match(q)) and not DOCS_NAMED.search(bare))
+
+
+def _labeled(block, q):
+    """Is this quote labeled unverified or unconfirmed in its own clause (its citation's parentheses included), or by a
+    next sentence that names it ("This quote is unverified")?"""
     i = block.find('"' + q + '"')
-    lead = block[max(0, i - 80):i] if i > 0 else ""
-    return bool(YOURS.search(lead)) or (bool(LOGLINE.match(q)) and not DOCS_NAMED.search(lead))
+    if i < 0:
+        return False
+    j = i + len(q) + 2
+    lo = max(0, i - 400)
+    ends = list(CLAUSE_END.finditer(block[lo:i]))
+    start = lo + ends[-1].end() if ends else lo
+    after = CLAUSE_END.search(block, j, j + 400)
+    end = after.start() if after else min(len(block), j + 400)
+    if LABEL.search(block[start:i] + " " + block[j:end]):
+        return True
+    return bool(after and block[after.end():after.end() + 1].isspace() and LABEL_NEXT.match(block[after.end():]))
+
+
+def transcript_context(path):
+    """The user's messages and every command's output in a session record (Claude Code or Codex JSON lines),
+    normalized for quote lookup, or None when the record can't be read or holds neither. The checker's own rows are left
+    out, so a sent-back answer can't excuse its quote by the row that named it."""
+    try:
+        size = os.path.getsize(path)
+        with open(path, "rb") as f:
+            if size > MAX_RECORD:
+                f.seek(size - MAX_RECORD)
+                f.readline()
+            raw = f.read().decode("utf-8", errors="replace")
+    except (OSError, TypeError, ValueError):
+        return None
+    texts, seen_any = [], False
+    def strings(x, depth=0):
+        if depth > 6:
+            return
+        if isinstance(x, str):
+            texts.append(x)
+        elif isinstance(x, list):
+            for y in x:
+                strings(y, depth + 1)
+        elif isinstance(x, dict):
+            if x.get("type") in ("tool_use", "thinking", "redacted_thinking"):
+                return
+            for k in ("text", "content", "output", "message", "stdout", "stderr"):
+                if k in x:
+                    strings(x[k], depth + 1)
+    for line in raw.split("\n"):
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(e, dict):
+            continue
+        pay = e.get("payload") if isinstance(e.get("payload"), dict) else None
+        if e.get("type") == "user" and isinstance(e.get("message"), dict):  # Claude Code: a user turn or tool results
+            seen_any = True
+            strings(e["message"].get("content"))
+        elif pay is not None and (pay.get("role") == "user" or pay.get("type") in (
+                "function_call_output", "custom_tool_call_output", "user_message", "exec_command_end")):  # Codex
+            seen_any = True
+            strings({k: pay.get(k) for k in ("content", "output", "message", "stdout", "stderr")})
+        elif isinstance(e.get("item"), dict) and e["item"].get("type") == "command_execution":  # codex exec --json
+            seen_any = True
+            strings({"output": e["item"].get("aggregated_output")})
+    if not seen_any:
+        return None
+    return _norm(RECORD_ROW.sub(" ", "\n".join(texts)))
 
 
 def _said_by_docs(block, q):
@@ -260,15 +358,25 @@ def _said_by_docs(block, q):
     return i > 0 and bool(DOCS_SAY.search(block[max(0, i - 60):i]))
 
 
-def check(text, seen=None):
+def check(text, seen=None, context=None):
     """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev. seen, a
-    set, collects each quote given a row, so unquoted_facts reads the lines whose quotes were passed over as terms."""
+    set, collects each quote given a row or found to be the user's, so unquoted_facts reads the lines whose quotes were
+    passed over as terms. context, when given, is a function returning the session record (transcript_context); it is
+    read only when a quote is not on its page."""
     text = text.translate(CURLY)
+    memo = []
+    def record():
+        if context is None:
+            return None
+        if not memo:
+            memo.append(context())
+        return memo[0]
     blocks = _blocks(text)
     if not any(_cites(b) for _, b, _ in blocks) and not JEV.search(text):
         return [], None, True
     any_cite = any(_cites(b) for _, b, _ in blocks)
     out, counts = [], {}
+    skipped = [0, 0]  # quotes looked at, quotes past MAX_QUOTES
     pages = {x["path"] for _, b, _ in blocks for c in _cites(b) for x in _resolve(c)}  # pages this answer cites
     items = []  # (indent, cites) of the bullets so far under this heading, for a nested bullet's parent
     under = {}  # every citation under each heading
@@ -282,9 +390,18 @@ def check(text, seen=None):
         if indent is not None:
             items.append((indent, cites))
         qtext = _quote_text(block)
-        quotes = [q for q in QUOTE.findall(qtext) if _claimed(q) and not _users(qtext, q)
-                  and (any_cite or _said_by_docs(qtext, q))]  # with no citation anywhere, only quotes given as the docs' words
-        for q in quotes:
+        quotes = [q for q in QUOTE.findall(qtext) if _claimed(q)
+                  and (any_cite or _said_by_docs(qtext, q) or SPECIFIC.search(q))]  # with no citation anywhere, quotes
+        # given as the docs' words or holding a specific fact
+        for q in dict.fromkeys(quotes):  # a quote repeated in one block is checked once
+            if skipped[0] >= MAX_QUOTES:
+                skipped[1] += 1
+                continue
+            skipped[0] += 1
+            if USERS.search(_lead(qtext, q)) and _users(qtext, q, record()):
+                if seen is not None:
+                    seen.add(q)
+                continue
             if _norm(q) in _headings():
                 continue  # a page or section title in quotes ("the guide "How to build..."") is a name, not a quote
             use = cites or parent + [c for c in under.get(head, []) if c not in parent]
@@ -294,7 +411,17 @@ def check(text, seen=None):
             if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                 continue
             if not use:
-                if _users_line(qtext, q):
+                if q.strip().endswith("?") and not _said_by_docs(qtext, q):
+                    continue  # the answer's own example question
+                if _users_line(qtext, q, record()):
+                    if seen is not None:
+                        seen.add(q)
+                    continue
+                if _labeled(qtext, q):
+                    counts["LABELED"] = counts.get("LABELED", 0) + 1
+                    out.append(f"LABELED | {_short(q)} | no citation")
+                    if seen is not None:
+                        seen.add(q)
                     continue
                 held = _holder(parts, pages)
                 v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation under this heading"
@@ -303,16 +430,20 @@ def check(text, seen=None):
                 v, row = "BAD CITE", f"BAD CITE | {_short(q)} | {RD._safe(bad[0])[:80]}"
             else:
                 raw = RD.quote_parts(q) if q2 != q else None  # the page may keep the escapes ("\\$42") the quote was read without
-                hit = next((r for r in rows if parts and (RD._in_row(r, parts) or (raw and RD._in_row(r, raw)))), None)
+                esc = RD.quote_parts(re.sub(r"(?<!\\)\$", r"\\$", q2)) if "$" in q2 else None  # or the quote may drop them
+                hit = next((r for r in rows if parts and (RD._in_row(r, parts) or (raw and RD._in_row(r, raw))
+                                                          or (esc and RD._in_row(r, esc)))), None)
                 if hit:
                     v, row = "FOUND", f"FOUND | {_short(q)} | {RD._ref(hit)}"
-                elif q.strip().endswith("?"):
+                elif q.strip().endswith("?") and not _said_by_docs(qtext, q):
                     continue  # a quoted question not on the page is the answer's own example question
-                elif UNVERIFIED.search(block):
+                elif _labeled(qtext, q):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {RD._ref(rows[0])}"
                 elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                     continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
-                elif _users_line(qtext, q):
+                elif _users_line(qtext, q, record()):
+                    if seen is not None:
+                        seen.add(q)
                     continue  # the user's error or log line, quoted beside a citation
                 elif not cites:  # it borrowed the citations around it, and none holds it
                     held = _holder(parts, pages)
@@ -328,6 +459,9 @@ def check(text, seen=None):
             out.append(row)
             if seen is not None:
                 seen.add(q)
+    if skipped[1]:
+        counts["TOO MANY"] = 1
+        out.append(f"TOO MANY | {skipped[1]} more quotes not checked | at most {MAX_QUOTES} are checked in one answer")
     n = sum(counts.values())
     summary = (f"answer check: {n} quote{'s' if n != 1 else ''}, {counts.get('FOUND', 0)} found, "
                f"{counts.get('NOT FOUND', 0)} not found, {counts.get('BAD CITE', 0)} bad cite, "
@@ -336,13 +470,13 @@ def check(text, seen=None):
     return out, summary, ok
 
 
-def unquoted_facts(text):
+def unquoted_facts(text, context=None):
     """Rows for sentences stating a specific Jev fact with no quote or citation on their line (module docstring)."""
     text = text.translate(CURLY)
     if not JEV.search(text) and not any(_cites(b) for _, b, _ in _blocks(text)):
         return []
     seen = set()
-    check(text, seen)
+    check(text, seen, context)
     out, fence = [], False
     for line in text.split("\n"):
         if line.lstrip().startswith("```"):
@@ -365,12 +499,13 @@ def unquoted_facts(text):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if argv:
-        print("usage: check_answer.py < answer.md", file=sys.stderr)
+    if argv and (len(argv) != 2 or argv[0] != "--transcript"):
+        print("usage: check_answer.py [--transcript <session.jsonl>] < answer.md", file=sys.stderr)
         return 2
     text = sys.stdin.buffer.read().decode("utf-8", errors="replace")
-    rows, summary, ok = check(text)
-    for r in rows + unquoted_facts(text):
+    ctx = (lambda: transcript_context(argv[1])) if argv else None
+    rows, summary, ok = check(text, context=ctx)
+    for r in rows + unquoted_facts(text, ctx):
         print(r)
     if summary:
         print(summary)

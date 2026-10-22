@@ -346,3 +346,78 @@ def test_a_price_quoted_with_the_pages_own_escapes_is_found(ca):
 
 def test_a_line_labeled_unverified_is_not_an_unquoted_fact_even_with_a_specific_quote(ca):
     assert ca.unquoted_facts(CITED + 'Unverified: "Jev answers in under 50 ms" (a blog figure I did not find in the docs).\n') == []
+
+
+# --- re-gate 3 must-fixes ---------------------------------------------------------------------------------------
+
+MIS = "every box answers within six seconds"
+
+
+@pytest.mark.parametrize("lead", ["When you get a 429, the page says", "If you hit the limit, the docs say",
+                                  "As you saw, the docs say", "your output should match", "You get",
+                                  "The docs say your output will hit", "you copied the example, but the docs say",
+                                  "In your run, the docs say", "You asked about speed; the docs say"])
+def test_a_user_phrase_earlier_in_the_sentence_does_not_excuse_a_misquote(ca, lead):
+    rows, _, ok = ca.check(f'- {lead} "{MIS}" (`docs/one.md#Alpha`)\n')
+    assert not ok and verdicts(rows) == ["NOT FOUND"], rows
+
+
+def test_an_error_line_in_a_paragraph_that_names_a_docs_page_is_checked(ca):
+    pad = "The rate limit error reference page describes what the SDK raises when the server answers with a 429. "
+    rows, _, ok = ca.check(f'{pad}It prints "RateLimitError: too many calls, retry in 60 seconds" (`docs/one.md#Alpha`).\n')
+    assert not ok, rows
+
+
+def test_the_session_record_decides_whose_line_a_quote_is(ca):
+    line = "RateLimitError: too many calls, retry in 60 seconds"
+    text = f'- It prints "{line}" (`docs/one.md#Alpha`)\n'
+    assert ca.check(text, context=lambda: ca._norm(f"I ran it and got {line} twice"))[2]
+    assert not ca.check(f'- You got "{line}" (`docs/one.md#Alpha`)\n', context=lambda: ca._norm("an unrelated paste"))[2]
+    assert not ca.check(f'- You asked "{MIS}" (`docs/one.md#Alpha`)\n', context=lambda: "")[2]
+
+
+@pytest.mark.parametrize("text", ['Jev.\n\nThe body limit is "64 MiB".\n', 'Jev.\n\nYour body limit is "$40".\n',
+                                  'Jev.\n\nI\'d note the Jev body limit is "2M".\n',
+                                  'Jev.\n\nMy read is the Jev body limit is "`max_batch`".\n'])
+def test_a_made_up_quote_holding_a_specific_fails_with_no_citation_in_the_answer(ca, text):
+    rows, _, ok = ca.check(text)
+    assert not ok and verdicts(rows) == ["UNCITED"], rows
+
+
+def test_an_unverified_label_covers_only_its_own_quote(ca):
+    assert not ca.check(f'- The speed is "{MIS}" (`docs/one.md#Alpha`); the retry header name is unverified.\n')[2]
+    assert not ca.check(f'- "{MIS}" (`docs/one.md#Alpha`). Other details here are unverified.\n')[2]
+    for ok_text in (f'- "{MIS}" (`docs/one.md#Alpha`, unverified)\n', f'- Unconfirmed: "{MIS}" (`docs/one.md#Alpha`)\n',
+                    f'- "{MIS}" (`docs/one.md#Alpha`). This quote is unverified.\n'):
+        rows, _, ok = ca.check(ok_text)
+        assert ok and verdicts(rows) == ["LABELED"], (ok_text, rows)
+
+
+def test_a_price_written_as_the_page_shows_it_matches_the_escaped_page_text(ca):
+    rows, _, ok = ca.check('- The price is "$42 / $0.042" (`docs/three.md#Price`)\n')
+    assert ok and verdicts(rows) == ["FOUND"], rows
+
+
+def test_a_quoted_question_the_docs_are_said_to_ask_is_checked(ca):
+    assert not ca.check('Jev.\n\nThe docs say "Is the body limit 64 MiB?"\n')[2]
+    assert ca.check('Jev.\n\nAsk a Choice question such as "Which of these 3 tickets is urgent?"\n')[2]
+
+
+def test_the_users_error_line_beside_a_citation_is_not_an_unquoted_fact(ca):
+    assert ca.unquoted_facts('- You got "RateLimitError: 429 after 60 requests per second" (`docs/one.md#Alpha`).\n') == []
+
+
+def test_many_quotes_stay_fast_and_past_the_cap_fail_once(ca):
+    import time
+    t = time.perf_counter()
+    rows, _, ok = ca.check("Jev " + ('"2 MiB" ' * 25000)[:200000])
+    rows2, _, _ = ca.check("Jev.\n\n" + '- "every box answers within five seconds" (`docs/one.md#Alpha`)\n' * 2000)
+    ca.unquoted_facts("Jev.\n\n" + 'When you send, the body limit is "64 MiB" and "$40" per `x_y`. ' * 3000)
+    assert time.perf_counter() - t < 3
+    assert not ok and rows == [r for r in rows if r.startswith("UNCITED")] and len(rows) == 1  # one block: checked once
+    assert rows2[-1].startswith("TOO MANY") and len(rows2) == ca.MAX_QUOTES + 1
+
+
+def test_the_users_stated_wish_is_theirs_but_not_when_the_docs_are_said_to_say_it(ca):
+    assert ca.check(CITED + 'You said you want to "try the longer context for a contract review", so here is how.\n')[2]
+    assert not ca.check(f'- The docs say you want to "{MIS}" (`docs/one.md#Alpha`)\n')[2]
