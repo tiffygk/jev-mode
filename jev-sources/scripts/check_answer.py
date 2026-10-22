@@ -97,6 +97,18 @@ def _cites(block):
     return found
 
 
+_CACHE = {}
+
+
+def _idx():
+    """The library index, read once per change of sections.jsonl (one answer looks it up many times)."""
+    path = os.path.join(RD.ROOT, "sections.jsonl")
+    stamp = os.path.getmtime(path) if os.path.exists(path) else None
+    if _CACHE.get("stamp") != stamp or "rows" not in _CACHE:
+        _CACHE.update(stamp=stamp, rows=RD._index())
+    return _CACHE["rows"]
+
+
 def _quote_text(block):
     """The block with code spans that hold a double quote blanked, and other code spans kept as their text, so a quote
     that holds `code` still reads as the page does."""
@@ -113,7 +125,7 @@ ELLIPSIS = re.compile(r"\s*(?:…|\.\.\.)\s*(?:\([^()]*\))?\s*$")
 def _family(row):
     """A section and its subsections: the rows after it on its page, up to the next heading at its level or above."""
     out, inside = [], False
-    for x in RD._index():
+    for x in _idx():
         if x["path"] != row["path"]:
             if inside:
                 break
@@ -150,14 +162,14 @@ def _resolve_one(cite):
     path, head = ELLIPSIS.sub("", cite).split("#", 1)
     path = path if path.endswith((".md", ".txt")) else path + ".md"
     head = re.sub(r"\s*\([^()]*\)\s*$", "", head).strip()  # a trailing label
-    hits = [x for x in RD._index() if x["path"] == path and x["heading"].startswith(head)
+    hits = [x for x in _idx() if x["path"] == path and x["heading"].startswith(head)
             and (cut or len(x["heading"]) == len(head) or not x["heading"][len(head)].isalnum())]
     return hits if len(hits) == 1 and head else []
 
 
 def _holder(parts, paths):
     """The first section on one of these pages that holds the quote, or None."""
-    return next((r for r in RD._index() if parts and r["path"] in paths and RD._in_row(r, parts)), None)
+    return next((r for r in _idx() if parts and r["path"] in paths and RD._in_row(r, parts)), None)
 
 
 def _rows_for(cites):
@@ -235,7 +247,7 @@ def check(text):
                     v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation of its own, and none under this heading holds it"
                                          + (f" | found under {RD._ref(held)}" if held else ""))
                 else:
-                    other = next((r for r in RD._index() if parts and r["path"] in {x["path"] for x in rows}
+                    other = next((r for r in _idx() if parts and r["path"] in {x["path"] for x in rows}
                                   and r not in rows and RD._in_row(r, parts)), None)
                     v = "NOT FOUND"
                     row = (f"NOT FOUND | {_short(q)} | cited {RD._ref(rows[0])}"
