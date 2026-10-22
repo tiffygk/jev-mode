@@ -31,7 +31,8 @@ def ours(hook):
 
 def well_formed(doc):
     return (isinstance(doc, dict) and isinstance(doc.get("hooks", {}), dict)
-            and all(isinstance(gs, list) and all(isinstance(g, dict) and isinstance(g.get("hooks", []), list) for g in gs)
+            and all(isinstance(gs, list) and all(isinstance(g, dict) and isinstance(g.get("hooks", []), list)
+                                                 and all(isinstance(h, dict) for h in g.get("hooks", [])) for g in gs)
                     for gs in doc.get("hooks", {}).values()))
 
 
@@ -77,7 +78,7 @@ def main():
     if not a or a[0] not in ("install", "remove"):
         print(__doc__, file=sys.stderr)
         return 2
-    if "--project" in a and a.index("--project") + 1 >= len(a):
+    if "--project" in a and (a.index("--project") + 1 >= len(a) or not a[a.index("--project") + 1].strip()):
         print(__doc__, file=sys.stderr)
         return 2
     project = a[a.index("--project") + 1] if "--project" in a else None
@@ -86,6 +87,12 @@ def main():
         print(f"the skill folder's path has a character a hook command can't quote: {SKILL}", file=sys.stderr)
         return 1
     doc = {"hooks": {}}
+    if os.path.isdir(path):
+        print(f"{path} is a folder, not a hooks file; move it, then run this again", file=sys.stderr)
+        return 1
+    if a[0] == "remove" and not os.path.exists(path):
+        print(f"removed 0 jev-sources hooks from {path} (no such file)")
+        return 0
     if os.path.exists(path):
         try:
             doc = json.load(open(path, encoding="utf-8"))
@@ -99,7 +106,11 @@ def main():
         doc.setdefault("hooks", {})
     removed = strip(doc)
     if a[0] == "remove":
-        write(path, doc)
+        try:
+            write(path, doc)
+        except OSError as e:
+            print(f"could not write {path}: {e.strerror}", file=sys.stderr)
+            return 1
         print(f"removed {removed} jev-sources hook{'s' if removed != 1 else ''} from {path}")
         return 0
     for event, matcher, name, timeout in HOOKS:
@@ -109,7 +120,11 @@ def main():
         group = ({"matcher": matcher} if matcher else {})
         group["hooks"] = [hook]
         doc["hooks"].setdefault(event, []).append(group)
-    write(path, doc)
+    try:
+        write(path, doc)
+    except OSError as e:
+        print(f"could not write {path}: {e.strerror}", file=sys.stderr)
+        return 1
     print(f"installed {len(HOOKS)} jev-sources hooks into {path}")
     return 0
 

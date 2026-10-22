@@ -265,11 +265,23 @@ def test_a_quoted_heading_title_is_not_a_quote(ca):
     assert ok and "NOT FOUND" not in " ".join(rows)
 
 
-def test_the_users_own_error_or_log_line_in_quotes_is_not_a_docs_quote(ca):
-    rows, _, ok = ca.check('The error "RateLimitError: you have exceeded your quota today" comes from the 429 (`docs/one.md#Alpha`).\n')
-    assert ok and rows == []
-    rows, _, ok = ca.check(CITED + 'Your log shows "request failed after three retries with status four twenty nine".\n')
-    assert ok and verdicts(rows) == ["FOUND"]
+@pytest.mark.parametrize("lead", ["The error", "The traceback ends with", "You got", "You pasted", "When you see",
+                                  "The exception message", "The line in your log,", "Your output shows"])
+def test_an_error_line_in_quotes_is_the_users_not_a_docs_quote(ca, lead):
+    rows, _, ok = ca.check(f'{lead} "RateLimitError: you have exceeded your quota today" comes from the 429 (`docs/one.md#Alpha`).\n')
+    assert ok, rows
+
+
+@pytest.mark.parametrize("lead", ["You got", "You pasted", "When you see", "The line in your log,", "Your output shows"])
+def test_a_plain_line_the_lead_in_gives_to_the_user_is_not_a_docs_quote(ca, lead):
+    rows, _, ok = ca.check(CITED + f'{lead} "request failed after three retries with status four twenty nine".\n')
+    assert ok, rows
+
+
+@pytest.mark.parametrize("lead", ["The error says", "The output is", "The response reads"])
+def test_a_misquote_of_the_docs_is_not_excused_by_an_error_or_output_lead_in(ca, lead):
+    rows, _, ok = ca.check(f'{lead} "every box answers within five minutes" (`docs/one.md#Alpha`).\n')
+    assert not ok and verdicts(rows) == ["NOT FOUND"]
 
 
 def test_a_short_quote_holding_a_specific_fact_is_checked_not_skipped(ca):
@@ -289,3 +301,20 @@ def test_long_comma_runs_and_long_digit_runs_stay_fast(ca):
     ca.check('Jev: "every box answers within five seconds" docs/one.md#' + "a," * 3000 + "x\n")
     ca.unquoted_facts("Jev costs " + "1," * 20000 + "x\n")
     assert time.perf_counter() - t < 2
+
+
+@pytest.mark.parametrize("fake", ['"bodies over 64 MiB"', '"2M tokens of context"', '"0.042 dollars per Mtok"',
+                                  '"`max_retries` to five"', '"returns status 503 here"'])
+def test_a_short_made_up_quote_with_a_specific_never_passes_both_checks(ca, fake):
+    for text in (f'## Price\n\n- Speed: "every box answers within five seconds" (`docs/one.md#Alpha`)\n\nJev sets {fake} for each call.\n',
+                 f'Jev sets {fake} for each call.\n'):
+        rows, _, ok = ca.check(text)
+        assert not ok or ca.unquoted_facts(text), (fake, text, rows)
+
+
+def test_many_citations_on_one_line_stay_fast(ca):
+    import time
+    t = time.perf_counter()
+    ca.check("Jev " + "a.md#b; " * 2500 + "\n")
+    ca.check('Jev "every box answers within five seconds" ' + "`docs/one.md#Alpha`; " * 2000 + "\n")
+    assert time.perf_counter() - t < 3

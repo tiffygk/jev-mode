@@ -101,3 +101,18 @@ def test_bad_arguments_and_bad_shapes_exit_with_a_message_and_write_nothing(tmp_
         (tmp_path / "hooks.json").write_text(bad)
         r = run("install", home=tmp_path)
         assert r.returncode == 1 and "Traceback" not in r.stderr and (tmp_path / "hooks.json").read_text() == bad
+
+
+def test_an_empty_project_a_remove_with_no_file_and_non_object_hooks_are_handled(tmp_path):
+    assert run("install", "--project", "", home=tmp_path).returncode == 2 and not (tmp_path / "hooks.json").exists()
+    r = run("remove", home=tmp_path)
+    assert r.returncode == 0 and "removed 0" in r.stdout and not (tmp_path / "hooks.json").exists()
+    bad = '{"hooks": {"Stop": [{"hooks": [1, "s", null]}]}}'
+    (tmp_path / "hooks.json").write_text(bad)
+    assert run("install", home=tmp_path).returncode == 1 and (tmp_path / "hooks.json").read_text() == bad
+
+
+def test_a_hooks_path_that_is_a_folder_exits_with_a_message(tmp_path):
+    (tmp_path / "hooks.json").mkdir()
+    r = run("install", home=tmp_path)
+    assert r.returncode == 1 and "Traceback" not in r.stderr

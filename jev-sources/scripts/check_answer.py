@@ -25,10 +25,11 @@ import check_findings as CF
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hooks"))
 from jev_terms import JEV
 
-MIN_WORDS = 4
+MIN_WORDS = 4  # a shorter quoted string is a term or a name ("danger zone"), not a quote
 MAX_SENTENCE = 500  # characters of one sentence the unquoted-fact check reads
 MAX_CITE = 200  # characters of a bare citation tried against the index; a longer run is not a citation
-MAX_CUTS = 10  # comma cuts tried on one bare citation  # a shorter quoted string is a term or a name ("danger zone"), not a quote
+MAX_CUTS = 10  # comma cuts tried on one bare citation
+MAX_CITES = 30  # distinct citations read from one block
 UNCITED_WORDS = 8  # with no citation of its own, a shorter quoted phrase reads as a term, not a claimed quote
 KINDS = r"(?:docs|cookbooks|patterns|blog)/"
 TICKED = re.compile(r"`([^`\n]+)`")
@@ -41,16 +42,19 @@ NOFOLDER = re.compile(r"(?<![\w/`.-])([\w-]+\.(?:md|txt)#[^;()`\"*\n]*[^;()`\"*\
 NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
 UNVERIFIED = re.compile(r"\bunverified\b", re.I)
 USERS = re.compile(r"\byou(?:'re| are)?\s+(?:asked|said|say|wrote|want(?:ed)?|mentioned|described|called|put it)\b[^\"]{0,40}$"
-                   r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$"
-                   r"|\b(?:the|your|this|that)\s+(?:error|exception|traceback|stack trace|log(?: line)?|output|response)"
-                   r"(?:\s+(?:shows|says|reads|is|was|text))?\s*:?\s*$", re.I)
+                   r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$", re.I)
+# a quote not on its cited page is the user's own line when the words before it give it to the user, or when it is
+# shaped like an error or log line; a misquote of the docs gets neither
+YOURS = re.compile(r"\byou(?:r)?\b", re.I)
+LOGLINE = re.compile(r"^\s*(?:[A-Za-z_][\w.]*(?:Error|Exception|Warning)\b|Traceback\b|HTTP/\d|\[?\d{4}-\d\d-\d\d|[A-Z]+\d{3,}\b)")
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
 # unquoted facts: a Jev term and a specific in one sentence
 FACT_TERM = re.compile(r"\b(?:Jevs?|Nouls?|System One|TypeSafe|SDK|API|endpoint|rate[ -]limits?|models?|alias|"
                        r"bills?|billed|charges?|priced?|pricing|context)\b", re.I)
 FACT_NAME = re.compile(r"\b(?:Choice|Score|Box)\b")  # common words in lower case, question types when capitalized
-SPECIFIC = re.compile(r"\$\s?\d|\b\d[\d,.]{0,20}\s*(?:%|ms\b|seconds?\b|tokens?\b|requests?\b|options?\b|questions?\b|levels?\b|"
+SPECIFIC = re.compile(r"\b[a-z]+_[a-z_]+\b|\$\s?\d|\b\d[\d,.]{0,20}\s*(?:%|ms\b|seconds?\b|tokens?\b|requests?\b|options?\b|questions?\b|levels?\b|"
+                      r"[KMGB]i?B\b|[KMB]\b|[MB]tok\b|dollars?\b|cents?\b|"
                       r"characters?\b|per\b|million\b|billion\b|k\b|MB\b)|\b[45]\d\d\b|`[^`\n]+`")
 HEDGED = re.compile(r"\b(?:unconfirmed|unverified|my read|I'd|I would|you|your)\b|(?:pages?|docs|sections?) I (?:read|routed)\b"
                     r"|\bI (?:didn't|did not|haven't|have not) (?:read|check|see)|\bthe docs (?:don't|do not) (?:say|show|cover|list)", re.I)
@@ -108,13 +112,15 @@ def _bare(cite):
 def _cites(block):
     """The library citations in a block: code spans that name a library id, bare ids (plain or in italics), and links
     to a docs.typesafe.ai page (which name that page)."""
-    found = [s.strip() for s in TICKED.findall(block) if re.match(KINDS, s.strip())]
-    found += ["docs/" + u.strip("/").replace("/", "__") + ".md" for u in DOCS_URL.findall(block)]
+    def first(xs):
+        return list(dict.fromkeys(xs))[:MAX_CITES]
+    found = first(s.strip() for s in TICKED.findall(block) if re.match(KINDS, s.strip()))
+    found += first("docs/" + u.strip("/").replace("/", "__") + ".md" for u in DOCS_URL.findall(block))
     plain = TICKED.sub(" ", block)
-    found += [_bare(c) for c in BARE.findall(plain)]
-    found += [_bare(k + c) for c in NOFOLDER.findall(plain) for k in ("docs/", "cookbooks/", "patterns/", "blog/")
+    found += [_bare(c) for c in first(BARE.findall(plain))]
+    found += [_bare(k + c) for c in first(NOFOLDER.findall(plain)) for k in ("docs/", "cookbooks/", "patterns/", "blog/")
               if _resolve(_bare(k + c))]  # "models.md#Current models", written without its folder
-    return found
+    return first(found)
 
 
 _CACHE = {}
@@ -173,6 +179,17 @@ def _family(row):
 
 
 def _resolve(cite):
+    rows = _idx()
+    memo = _CACHE.setdefault("resolved", {})
+    if memo.get("of") is not rows:
+        memo.clear()
+        memo["of"] = rows
+    if cite not in memo:
+        memo[cite] = _resolve_uncached(cite)
+    return list(memo[cite])
+
+
+def _resolve_uncached(cite):
     """The rows a citation names, each with its subsections; a duplicate page (docs/patterns__x) names its twin
     (patterns/x); a heading shortened with an ellipsis names the one heading on its page that starts with what is left."""
     cite = re.sub(r"^docs/(cookbooks|patterns)__", r"\1/", cite.strip())
@@ -222,14 +239,21 @@ def _users(block, q):
     return i > 0 and bool(USERS.search(block[max(0, i - 80):i]))
 
 
+def _users_line(block, q):
+    """A quote not on its cited page that is the user's own line (an error, a log line, their paste)."""
+    i = block.find('"' + q + '"')
+    return bool(LOGLINE.match(q)) or (i > 0 and bool(YOURS.search(block[max(0, i - 80):i])))
+
+
 def _said_by_docs(block, q):
     """Is this quote given as the docs' words ("The docs say "...""), going by the words just before it?"""
     i = block.find('"' + q + '"')
     return i > 0 and bool(DOCS_SAY.search(block[max(0, i - 60):i]))
 
 
-def check(text):
-    """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev."""
+def check(text, seen=None):
+    """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev. seen, a
+    set, collects each quote given a row, so unquoted_facts reads the lines whose quotes were passed over as terms."""
     text = text.translate(CURLY)
     blocks = _blocks(text)
     if not any(_cites(b) for _, b, _ in blocks) and not JEV.search(text):
@@ -261,6 +285,8 @@ def check(text):
             if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                 continue
             if not use:
+                if _users_line(qtext, q):
+                    continue
                 held = _holder(parts, pages)
                 v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation under this heading"
                                      + (f" | found under {RD._ref(held)}" if held else ""))
@@ -276,6 +302,8 @@ def check(text):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {RD._ref(rows[0])}"
                 elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                     continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
+                elif _users_line(qtext, q):
+                    continue  # the user's error or log line, quoted beside a citation
                 elif not cites:  # it borrowed the citations around it, and none holds it
                     held = _holder(parts, pages)
                     v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation of its own, and none under this heading holds it"
@@ -288,6 +316,8 @@ def check(text):
                            + (f" | found under {RD._ref(other)}" if other else ""))
             counts[v] = counts.get(v, 0) + 1
             out.append(row)
+            if seen is not None:
+                seen.add(q)
     n = sum(counts.values())
     summary = (f"answer check: {n} quote{'s' if n != 1 else ''}, {counts.get('FOUND', 0)} found, "
                f"{counts.get('NOT FOUND', 0)} not found, {counts.get('BAD CITE', 0)} bad cite, "
@@ -301,6 +331,8 @@ def unquoted_facts(text):
     text = text.translate(CURLY)
     if not JEV.search(text) and not any(_cites(b) for _, b, _ in _blocks(text)):
         return []
+    seen = set()
+    check(text, seen)
     out, fence = [], False
     for line in text.split("\n"):
         if line.lstrip().startswith("```"):
@@ -310,8 +342,9 @@ def unquoted_facts(text):
             continue
         if MY_READ.match(line):
             break
-        if any(len(q.split()) >= MIN_WORDS for q in QUOTE.findall(line)) or _cites(line):
-            continue
+        quotes = [q for q in QUOTE.findall(_quote_text(line)) if len(q.split()) >= MIN_WORDS]
+        if (quotes and all(q in seen for q in quotes)) or (not quotes and _cites(line)):
+            continue  # its quotes were checked, or it cites a section with no quote to check
         for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*#>|")):
             s = s[:MAX_SENTENCE]  # a fact sits in an ordinary sentence; a very long run is not one
             if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(s) and not HEDGED.search(s):
