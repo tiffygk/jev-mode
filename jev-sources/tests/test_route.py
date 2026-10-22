@@ -350,6 +350,11 @@ def test_read_accepts_the_cite_as_forms(rlib, sid):
     assert r.stdout.startswith("SOURCE: docs/primitives__box.md#Response structure")
 
 
+def test_the_source_line_carries_the_page_web_address_from_its_saved_header(rlib):
+    first = read_cli(rlib[0], "docs/primitives__box.md#Response structure").stdout.split("\n")[0]
+    assert first.endswith("| URL: https://docs.typesafe.ai/x")  # the saved .md address, as a reader opens it
+
+
 def test_a_heading_ending_in_a_parenthesis_that_is_not_a_label_keeps_it(rlib):
     r = read_cli(rlib[0], "docs/primitives__box.md#Primitives (Questions)")
     assert r.returncode == 0 and "A question has one primitive." in r.stdout

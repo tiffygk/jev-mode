@@ -194,6 +194,15 @@ def elsewhere_on_page(sid, quote):
     return None
 
 
+def _url(path):
+    """' | URL: <address>' from the page's saved header (a .md address loses its .md), or '' when it has none."""
+    try:
+        m = re.match(r"<!-- saved \S+ from (https?://\S+?)(?:\.md)? (?:\||-->)", open(os.path.join(ROOT, path), encoding="utf-8").readline())
+    except OSError:
+        return ""
+    return f" | URL: {m.group(1)}" if m else ""
+
+
 def render(sid, extract_terms=None):
     """The section as text. The first line is CITE AS: <path>#<heading> (<label>); from the second line on it is
     what read.py prints. extract_terms (a list) gives an extract instead of the full section. Does not log."""
@@ -211,7 +220,8 @@ def render(sid, extract_terms=None):
         body = "\n".join(lines)
     label = LABEL[r["kind"]]
     out = [f"CITE AS: {r['path']}#{r['heading']} ({label})",
-           f"SOURCE: {r['path']}#{r['heading']} | KIND: {label} | READ: {'extract, not a full read' if extract else 'full'}"]
+           f"SOURCE: {r['path']}#{r['heading']} | KIND: {label} | READ: {'extract, not a full read' if extract else 'full'}"
+           + _url(r["path"])]
     if r["kind"] == "example":
         out.append(EXAMPLE_NOTE)
     ap = applicability.lookup(r["path"], r["heading"])
