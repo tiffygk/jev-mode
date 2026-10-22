@@ -55,13 +55,13 @@ A Jev answer has these parts, in order:
 4. **My read:** your advice for this person's case, labeled as yours and holding no Jev facts (those go in part 2): how to test on their own data before relying on it; what to do on errors, rate limits, timeouts and low confidence; a human check before any risky action; what they told you raises (their history, sensitive data, other languages, a pinned older model). Route each such topic first and quote the docs where they speak.
 5. Next steps: a short numbered list they can start on.
 
-A narrow question gets the direct answer, its quote and citation, and nothing it didn't ask for.
+A narrow question gets the direct answer, its quote and citation, and nothing it didn't ask for. A plan to confirm gets each part checked against the docs (question type and wording, the cases it must tell apart, cost and limits at their volume), then yes, no, or yes with changes.
 
-Pasted code gets a review in place of parts 1 to 3, most serious first, each fix in this shape:
+Pasted code or a pasted request gets a fix list, and a question on how to call the API gets the call, in place of parts 1 and 2 (part 3 stays), most serious first, each line in this shape:
 ```
-1. <the change>. "<verbatim quote>" `path#heading` (label)
+1. <the change or step>. "<verbatim quote>" `path#heading` (label)
 ```
-- One numbered Jev fix for each Jev call in the code, each field it reads from the result, each model ID and how to pin it, and, whatever the code does, its handling of errors and rate limits. Route them with the code's purpose: `--also "API errors and handling rate limits" --also "model aliases and pinning a version"`. Every fix carries a quote; where no section you read shows it, mark that line "unconfirmed".
+- One numbered line for each Jev call or request: its shape (auth, headers, body), each field read from the result, each model ID and how to pin it, and, whatever the code does, errors and rate limits. Route them with the code's purpose: `--also "API errors and handling rate limits" --also "model aliases and pinning a version"`. Every line carries a quote; where no section you read shows it, mark that line "unconfirmed". Code you write or adapt is labeled as yours.
 - Then **My read**, one line each: secrets in source; comparisons that break on free text. Then the corrected code, with error and rate-limit handling in it.
 
 Before sending, check every quote in the answer (in Claude Code a stop hook also does):
