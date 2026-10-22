@@ -199,16 +199,31 @@ def test_semantic_only_appends_to_keyword_routes(q):
         assert all(s["depth"] == "EXTRACT" for s in on["sections"][n:])  # meaning-matched sections are not mandatory reads
 
 @pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "sections.jsonl")), reason="no library")
+def test_a_topic_section_whose_page_moved_resolves_within_its_page_family():
+    sys.path.insert(0, os.path.join(CODE, "scripts"))
+    import route
+    rows = [{"id": "docs/api__errors#3", "path": "docs/api__errors.md", "heading": "Handling rate limits"},
+            {"id": "docs/models#4", "path": "docs/models.md", "heading": "Handling rate limits"},
+            {"id": "docs/api__system-one#1", "path": "docs/api__system-one.md", "heading": "Request"}]
+    assert route.topic_section(rows, "docs/api.md#Handling rate limits")["id"] == "docs/api__errors#3"
+    assert route.topic_section(rows, "docs/api__errors.md#Handling rate limits")["id"] == "docs/api__errors#3"
+    assert route.topic_section(rows, "docs/api.md#Nowhere") is None
+    two = rows + [{"id": "docs/api__other#2", "path": "docs/api__other.md", "heading": "Handling rate limits"}]
+    assert route.topic_section(two, "docs/api.md#Handling rate limits") is None  # ambiguous: never guess
+
+
 def test_topic_paths_resolve():
     """2026-10-14: a topic pointing at a page or heading TypeSafe renamed routes nowhere, silently."""
+    sys.path.insert(0, os.path.join(CODE, "scripts"))
+    import route
     rows = [json.loads(l) for l in open(os.path.join(DATA, "sections.jsonl"), encoding="utf-8")]
     have = {(r["path"], r["heading"]) for r in rows}
     paths = {r["path"] for r in rows}
     for t in json.load(open(os.path.join(CODE, "topics.json")))["topics"]:
         for p in t["paths"]:
             path, _, head = p.partition("#")
-            assert path in paths, f"{t['name']}: {path} is not in the library"
-            assert not head or (path, head) in have, f"{t['name']}: {p} is not a section"
+            assert head or path in paths, f"{t['name']}: {path} is not in the library"
+            assert not head or route.topic_section(rows, p), f"{t['name']}: {p} is not a section, even in its page family"
 
 
 # --- router: identifier parts, parent headings and the SDK weight, on an invented library ---

@@ -19,7 +19,7 @@ Add `--model <id>` when the project pins a model. The docs' words are the terms 
 
 - A section printed under `NOT YET READ` comes with its `read.py` command: run it before relying on that section. These leftovers are at most a third of the cap; more go to readers.
 - An `EXTRACT` line points somewhere (`read.py '<id>' --extract <word> <word>`). A claim resting on it is labeled **unverified**.
-- If it prints "no section found", say so, then run `bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory.
+- If it prints "no section found", say so, then run `bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory, even when asked to answer from memory or in a hurry: the lookup takes seconds, so run it, keep the answer to a few lines, and quote.
 
 ## Broad goals
 
@@ -29,7 +29,7 @@ A goal that spans several topics (building a whole feature, moving a system over
 python3 <skill>/scripts/jev.py "<topic 1, in your words>" --also "<topic 2>" --also "<topic 3>"
 ```
 
-- Write 3 to 8 questions, each about one thing the goal needs: what the API allows, limits and sizes, cost, errors and reliability, model versions, readiness for production, and the pattern or cookbook closest to the goal.
+- Write 3 to 8 questions, each about one thing the goal needs: what the API allows, limits and sizes, cost, errors and reliability, model versions, readiness for production, and the pattern or cookbook closest to the goal. Choosing between options (question types, models) routes each option's output, scale and limits.
 - Read the `COVERAGE:` block. Relay every `NO SOURCE FOUND` question to the user as "the docs I routed don't cover <topic>", never as an answer. More than 8 topics: split the goal into two runs.
 
 ## Over the cap
@@ -61,7 +61,7 @@ Pasted code gets a review in place of parts 1 to 3, most serious first, each fix
 ```
 1. <the change>. "<verbatim quote>" `path#heading` (label)
 ```
-- One numbered Jev fix for each Jev call in the code, each field it reads from the result, each model ID and how to pin it (`docs/models.md#Aliases`), and, whatever the code does, its handling of errors and rate limits (`docs/api.md#Errors`, `docs/api.md#Handling rate limits`). Read those sections. Every fix carries a quote; where no section you read shows it, mark that line "unconfirmed".
+- One numbered Jev fix for each Jev call in the code, each field it reads from the result, each model ID and how to pin it, and, whatever the code does, its handling of errors and rate limits. Route them with the code's purpose: `--also "API errors and handling rate limits" --also "model aliases and pinning a version"`. Every fix carries a quote; where no section you read shows it, mark that line "unconfirmed".
 - Then **My read**, one line each: secrets in source; comparisons that break on free text. Then the corrected code, with error and rate-limit handling in it.
 
 Before sending, check every quote in the answer (in Claude Code a stop hook also does):

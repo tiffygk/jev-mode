@@ -139,6 +139,23 @@ def bm25(rows, texts, base, extra, k1=1.4, b=0.75):
     return out
 
 
+
+def _page_family(path):
+    """docs/api.md, docs/api__errors.md and docs/api__system-one.md share the family docs/api."""
+    return path[:-3].split("__")[0] if path.endswith(".md") else path
+
+
+def topic_section(rows, ref):
+    """The row a topic's path#heading names. When TypeSafe moved the page, the one section with that heading in the
+    same page family stands in; two or more such sections, or none, give None (the test lists it)."""
+    path, head = ref.split("#", 1)
+    exact = next((x for x in rows if x["path"] == path and x["heading"] == head), None)
+    if exact:
+        return exact
+    fam = [x for x in rows if x["heading"] == head and _page_family(x["path"]) == _page_family(path)]
+    return fam[0] if len(fam) == 1 else None
+
+
 def route(q, model=None, limit=10, per_page=2):
     """limit caps the keyword-and-topic sections (10 today) and per_page the sections a page may add (2 today);
     map mode widens both. The defaults are the routing every other caller gets."""
@@ -182,8 +199,7 @@ def route(q, model=None, limit=10, per_page=2):
     for t in hit:
         for p in t["paths"]:
             if "#" in p:  # a named section: path#heading
-                path, head = p.split("#", 1)
-                r = next((x for x in rows if x["path"] == path and x["heading"] == head), None)
+                r = topic_section(rows, p)
                 if r and r["id"] not in {m["id"] for m in mapped}:
                     mapped.append(r)
                 continue
