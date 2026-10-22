@@ -61,8 +61,8 @@ Pasted code gets a review in place of parts 1 to 3, most serious first, each fix
 ```
 1. <the change>. "<verbatim quote>" `path#heading` (label)
 ```
-- One numbered Jev fix for each Jev call in the code, each field it reads from the result, and each model ID (route model IDs and pinning). Every fix carries a quote; where no section you read shows it, say so on that line.
-- Then **My read**, one line each, whatever the code does: secrets in source; errors, timeouts and rate limits; comparisons that break on free text. Then the corrected code.
+- One numbered Jev fix for each Jev call in the code, each field it reads from the result, each model ID and how to pin it (`docs/models.md#Aliases`), and, whatever the code does, its handling of errors and rate limits (`docs/api.md#Errors`, `docs/api.md#Handling rate limits`). Read those sections. Every fix carries a quote; where no section you read shows it, mark that line "unconfirmed".
+- Then **My read**, one line each: secrets in source; comparisons that break on free text. Then the corrected code, with error and rate-limit handling in it.
 
 Before sending, check every quote in the answer (in Claude Code a stop hook also does):
 
