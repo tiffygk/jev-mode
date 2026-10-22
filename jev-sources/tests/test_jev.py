@@ -201,7 +201,7 @@ def test_render_of_a_cookbook_section_adds_the_example_line_under_source(lib):
     text = read.render(sid_of(lib, "cookbooks/rerank_typesafe.md", "Rerank"))
     lines = text.split("\n")
     assert lines[0].endswith("(cookbook example)") and lines[1].startswith("SOURCE: ")
-    assert lines[2] == ("EXAMPLE: one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
+    assert lines[2] == ("JEV-SOURCES NOTE (not TypeSafe's words; never quote it): one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
                         "check the scope notes below and the reference rules.")
     assert "Scope notes elsewhere in this file" in text
 

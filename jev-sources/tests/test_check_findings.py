@@ -310,3 +310,21 @@ def test_a_page_only_cite_whose_quote_repeats_on_the_page_counts_the_section_in_
     import check_findings as cf
     rows, _, ok = cf.check("ppage0001", reply(1, finding("docs/five.md", "The shared rule holds in both places here"), pid="ppage0001"))
     assert rows[0].startswith("OK | b1") and ok, rows
+
+
+def test_a_cite_whose_label_carries_extra_marks_still_names_its_section(plan):
+    cf, a, b, g = plan
+    rows, _, ok = cf.check(PID, reply(1, finding("docs/one.md#Alpha (reference rule, experimental, needs jev-1.14.0+)", ALPHA))
+                           + reply(2, finding(g, GAMMA)))
+    assert rows[0].startswith("OK | b1") and ok, rows
+
+
+def test_a_quote_with_escaped_quote_marks_matches_the_page(lib):
+    (lib / "docs" / "eight.md").write_text('# Eight\n\n## Code\n\nWrite "relevance": probabilities.get(line_id(i), 0.0) for each line.\n')
+    import build_index
+    build_index.main()
+    s = sid(lib, "docs/eight.md", "Code")
+    save_plan(lib, [[s]], pid="pesc00001")
+    import check_findings as cf
+    rows, _, ok = cf.check("pesc00001", reply(1, 'FINDING: Code. | CITE AS: docs/eight.md#Code | QUOTE: "\\"relevance\\": probabilities.get(line_id(i), 0.0)"', pid="pesc00001"))
+    assert rows[0].startswith("OK | b1") and ok, rows

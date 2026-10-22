@@ -19,7 +19,7 @@ import applicability
 ROOT = DATA
 LABEL = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference",
          "vendor": "vendor claim", "other": "other"}
-EXAMPLE_NOTE = ("EXAMPLE: one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
+EXAMPLE_NOTE = ("JEV-SOURCES NOTE (not TypeSafe's words; never quote it): one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
                 "check the scope notes below and the reference rules.")
 
 
@@ -44,9 +44,9 @@ def _rows(sid):
         if not path.endswith((".md", ".txt")):
             path += ".md"
         heads = [heading]
-        for label in LABEL.values():  # a trailing label counts only when it is one of ours
-            if heading.endswith(f" ({label})"):
-                heads.append(heading[:-len(label) - 3])
+        m = re.search(r" \((?:%s)(?:,[^()]*)?\)$" % "|".join(re.escape(x) for x in LABEL.values()), heading)
+        if m:  # a trailing label counts only when it starts with one of ours ("(reference rule, experimental)" too)
+            heads.append(heading[:m.start()])
         for h in heads:  # the whole text first: a heading may really end in a parenthesis
             hit = [x for x in rows if x["path"] == path and x["heading"] == h]
             if hit:
@@ -64,7 +64,7 @@ def _row(sid):
     return r
 
 
-_ESCAPED = re.compile(r"\\([*_`\s])")
+_ESCAPED = re.compile(r"\\([*_`\s\"])")  # a backslash before markup, a space or a quote mark (a reader's \" in a QUOTE)
 _SKIP = re.compile(r"[\s*_`]")
 
 
