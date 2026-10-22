@@ -51,13 +51,13 @@ Relay only `OK` lines as checked. A batch it lists as missing or `EMPTY` is unre
 ## The answer
 
 A Jev answer has these parts, in order:
-1. The direct answer, in one or two sentences ("yes, on Jev 1.14 only").
-2. What the docs say: each fact the person would act on, as a verbatim quote with the `path#heading` from its `CITE AS:` line in backticks beside it, and that line's label: **reference rule** (what the API allows), **pattern**, **cookbook example** (one build TypeSafe published), **sdk reference** or **vendor claim**.
-3. What the docs don't cover, one line each ("the docs I read don't cover <topic>"), apart from sections you didn't read.
-4. **My read:** your advice for this person's case, labeled as yours: how to test on their own data before relying on it; what to do on errors, rate limits, timeouts and low confidence; a human check before any risky action; what their situation raises (sensitive data, other languages, a pinned older model, code they pasted). Route each such topic first and quote the docs where they speak.
+1. The direct answer, in one or two sentences ("yes, on Jev 1.14 only"). When it depends, give the answer for each case, never "it depends" alone.
+2. What the docs say: every sentence stating how Jev or TypeSafe works (a limit, price, output, retry, failure or version) goes here, as a verbatim quote with the `path#heading` from its `CITE AS:` line in backticks beside it, and that line's label: **reference rule** (what the API allows), **pattern**, **cookbook example** (one build TypeSafe published), **sdk reference** or **vendor claim**.
+3. What the docs don't cover, one line each ("the docs I read don't cover <topic>"), apart from sections you didn't read: say when the docs can't speak to the person's own model, data or numbers, and send what only TypeSafe can settle (future prices, custom training, contracts) to TypeSafe.
+4. **My read:** your advice for this person's case, labeled as yours and holding no Jev facts (those go in part 2): how to test on their own data before relying on it; what to do on errors, rate limits, timeouts and low confidence; a human check before any risky action; what they told you raises (their history, sensitive data, other languages, a pinned older model). Route each such topic first and quote the docs where they speak.
 5. Next steps: a short numbered list they can start on.
 
-A narrow question gets the direct answer, its quote and citation, and nothing it didn't ask for.
+A narrow question gets the direct answer, its quote and citation, and nothing it didn't ask for. Pasted code gets a fix list, most serious first: each Jev fix with its quote and citation (when code names a model, route model IDs and version pinning), then general fixes (secrets in source, error and retry handling, fragile comparisons) under My read.
 
 Before sending, check every quote in the answer (in Claude Code a stop hook also does):
 
