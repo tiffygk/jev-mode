@@ -292,3 +292,10 @@ def test_an_unresolved_cite_over_80_characters_echoes_80_and_one_over_200_is_too
     long_cite = f"{BETA} {BETA} {BETA} {BETA} ({a})"  # resolves by its id tail, but carries page text
     rows, _, ok = cf.check(PID, reply(1, finding(long_cite, ALPHA)) + reply(2, finding(g, GAMMA)))
     assert rows[0].startswith("TOO LONG | b1") and BETA not in rows[0] and not ok, rows
+
+
+def test_a_short_code_sample_of_the_readers_own_is_not_page_text(plan):
+    cf, a, b, g = plan
+    code = ["```python", "client.ask(state=post, questions=qs)", "```"]
+    rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), *code) + reply(2, finding(g, GAMMA)))
+    assert ok, rows

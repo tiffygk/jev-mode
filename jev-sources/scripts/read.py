@@ -68,8 +68,11 @@ _ESCAPED = re.compile(r"\\([*_`\s])")
 _SKIP = re.compile(r"[\s*_`]")
 
 
+TYPO = str.maketrans({"\u2019": "'", "\u2018": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-"})  # curly quotes, dashes
+
+
 def _squash(text):
-    return _SKIP.sub("", _ESCAPED.sub(r"\1", text))
+    return _SKIP.sub("", _ESCAPED.sub(r"\1", text.translate(TYPO)))
 
 
 def _kept(line):
@@ -78,11 +81,12 @@ def _kept(line):
     for i, ch in enumerate(line):
         if _SKIP.match(ch) or (ch == "\\" and i + 1 < len(line) and _SKIP.match(line[i + 1])):
             continue
-        keep.append(ch)
+        keep.append(ch.translate(TYPO))
         cols.append(i)
     return "".join(keep), cols
 
 
+LINK = re.compile(r'!?\[([^\]\n]*)\]\([^)\s]*(?:\s+"[^"]*")?\)')  # a Markdown link or image: matched as its text
 _ELISION = re.compile(r"\[?(?:\.\.\.|…)\]?")
 _EDGE = "\"'“”‘’.,;:!? \t\r\n"
 
@@ -90,7 +94,7 @@ _EDGE = "\"'“”‘’.,;:!? \t\r\n"
 def quote_parts(quote):
     """The quote's parts between elisions (..., … or [...]), squashed, each without the quote marks and the
     sentence punctuation a writer adds or drops at a quote's ends. [] means the quote is empty."""
-    parts = (_squash(p.strip(_EDGE)) for p in _ELISION.split(quote))
+    parts = (_squash(p.strip(_EDGE)) for p in _ELISION.split(LINK.sub(r"\1", quote)))
     return [p for p in parts if p]
 
 
@@ -127,6 +131,7 @@ def _in_row(r, parts):
     if not os.path.exists(os.path.join(ROOT, r["path"])):
         sys.exit(f"missing source {r['path']}; run {REFRESH}")
     lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+    lines = [LINK.sub(r"\1", ln) for ln in lines]  # a quote of a link's text matches the page's [text](url)
     flat, owner, cols = [], [], []
     for i, ln in enumerate(lines):
         sq, c = _kept(ln)

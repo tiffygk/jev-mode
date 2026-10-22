@@ -550,3 +550,63 @@ def test_a_printed_reader_brief_passes_the_dispatch_check(tmp_path):
     r = subprocess.run([sys.executable, f"{H}/jev-dispatch-check.py"], input=payload, capture_output=True, text=True,
                        env={**os.environ, "JEV_HOOK_LOG_DIR": str(tmp_path), "JEV_LOG": "off"})
     assert r.returncode == 0 and "deny" not in r.stdout
+
+
+# --- jev-answer-check.py (Stop) ------------------------------------------------------------------------------------
+A_GOOD = '- **Speed:** "every box answers within five seconds" (`docs/one.md#Alpha`, reference rule)\n'
+A_BAD = '- **Speed:** "every box answers within five minutes" (`docs/one.md#Alpha`, reference rule)\n'
+
+
+def answer_run(data, message, raw=None, **extra):
+    """(exit code, parsed stdout or None, seconds) for one Stop call; the hook's log lands in `data`."""
+    import time
+    e = {**os.environ, "JEV_SOURCES_DATA": str(data), "JEV_HOOK_LOG_DIR": str(data), "JEV_LOG": "on", "JEV_SEMANTIC": "off"}
+    payload = raw if raw is not None else json.dumps({"session_id": "s1", "stop_hook_active": False,
+                                                      "last_assistant_message": message, **extra})
+    t = time.monotonic()
+    r = subprocess.run([sys.executable, f"{H}/jev-answer-check.py"], input=payload, capture_output=True, text=True, env=e)
+    return r.returncode, (json.loads(r.stdout) if r.stdout.strip() else None), time.monotonic() - t
+
+
+def test_answer_hook_passes_a_checked_answer_and_logs_counts(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert answer_run(data, A_GOOD)[:2] == (0, None)
+    assert _lines(data, "answer_check")[-1]["decision"] == "clean"
+
+
+def test_answer_hook_blocks_a_wrong_quote_with_its_row_and_no_page_text(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out, _ = answer_run(data, A_BAD + f'- "{R_BETA}" (`docs/one.md#Alpha`)\n')
+    assert code == 0 and out["decision"] == "block" and "NOT FOUND" in out["reason"]
+    assert R_ALPHA not in out["reason"] and R_BETA not in out["reason"] and len(out["reason"]) <= 4000
+    assert "label it unverified" in out["reason"]
+
+
+def test_answer_hook_never_blocks_twice_in_a_row(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert answer_run(data, A_BAD, stop_hook_active=True)[:2] == (0, None)
+    assert _lines(data, "answer_check")[-1]["decision"] == "loop_guard"
+
+
+def test_answer_hook_is_silent_and_quick_on_an_answer_that_cites_no_library(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out, secs = answer_run(data, 'Fixed the CSS. She said "this is a long quoted sentence here".')
+    assert (code, out) == (0, None) and not (data / "logs" / "answer_check.jsonl").exists()
+
+
+def test_answer_hook_reads_the_transcript_when_the_message_field_is_missing(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    path = transcript(A_BAD)
+    raw = json.dumps({"session_id": "s1", "stop_hook_active": False, "transcript_path": path})
+    assert answer_run(data, None, raw=raw)[1]["decision"] == "block"
+
+
+def test_answer_hook_fails_open_on_bad_input_and_logs_it(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    assert answer_run(data, None, raw="not json")[:2] == (0, None)
+    assert answer_run(data, None, raw=json.dumps({"session_id": "s1", "last_assistant_message": 5}))[:2] == (0, None)
+    assert _lines(data, "answer_check")[-1]["decision"] == "error"
+
+
+def test_answer_hook_passes_when_the_library_is_missing(tmp_path):
+    assert answer_run(tmp_path / "nowhere", A_BAD)[:2] == (0, None)

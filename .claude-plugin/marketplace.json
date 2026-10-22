@@ -125,6 +125,17 @@
               }
             ]
           }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-answer-check.py\"",
+                "timeout": 15
+              }
+            ]
+          }
         ]
       }
     }

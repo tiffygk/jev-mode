@@ -1,6 +1,6 @@
 # Installing the hooks (optional)
 
-Four hooks go with the skill: a reminder and a dispatch check that keep Claude reading sources on Jev work, a ledger and a reader check (both below). The Claude Code plugin install adds all four automatically; don't also add them to `settings.json`, or both fire. For a copy install, add the first two to `~/.claude/settings.json` under `"hooks"`:
+Five hooks go with the skill: a reminder and a dispatch check that keep Claude reading sources on Jev work, a ledger, a reader check and an answer check (all below). The Claude Code plugin install adds all five automatically; don't also add them to `settings.json`, or both fire. For a copy install, add the first two to `~/.claude/settings.json` under `"hooks"`:
 
 ```json
 "UserPromptSubmit": [
@@ -29,6 +29,14 @@ A fourth hook, `jev-reader-check.py`, runs when a subagent stops. A reader subag
 ```json
 "SubagentStop": [
   {"hooks": [{"type": "command", "command": "python3 ~/.claude/skills/jev-sources/hooks/jev-reader-check.py", "timeout": 15}]}
+]
+```
+
+A fifth hook, `jev-answer-check.py`, runs when the main session finishes a reply. If the reply cites a section of the library (`docs/`, `cookbooks/`, `patterns/` or `blog/`), it runs `scripts/check_answer.py` on it: each quote in double quotes is checked against the section cited beside it, or, when it has no citation of its own, against its parent bullet's citation and the other citations under the same heading. A quote not on its cited section, a citation that names no section, or a quote of 8 or more words that no citation around it holds blocks the stop once with those lines (never page text), so the model corrects the quote, cites the section that holds it, or labels it unverified. The next stop passes. A reply that cites no section passes with no output and no log. It logs counts to `<data>/logs/answer_check.jsonl`; `JEV_LOG=off` turns the log off. Any fault passes and is logged. The plugin install adds it. For a copy install, add it by hand:
+
+```json
+"Stop": [
+  {"hooks": [{"type": "command", "command": "python3 ~/.claude/skills/jev-sources/hooks/jev-answer-check.py", "timeout": 15}]}
 ]
 ```
 
