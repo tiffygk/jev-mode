@@ -698,3 +698,20 @@ def test_map_with_also_exits_2(J, monkeypatch, capsys):
     assert run_main(J, monkeypatch, "--map", "q", "--also", "q2") == 2
     cap = capsys.readouterr()
     assert "--map takes one goal; run --also without --map" in cap.err and cap.out == ""
+
+
+def test_a_section_one_question_reached_only_as_extract_is_not_counted_read_for_it(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("s")]}, "q2": {"sections": [sec("s", depth="EXTRACT")]}})
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--json")
+    cov = json.loads(capsys.readouterr().out)["coverage"]
+    assert cov[0]["read"] == ["s"] and cov[1]["read"] == [] and cov[1]["extract"] == ["s"]
+
+
+def test_a_saved_plan_makes_every_missing_folder_owner_only(tmp_path, monkeypatch):
+    for name in ("jev", "route", "read", "usage_log", "paths", "applicability", "semantic"):
+        sys.modules.pop(name, None)
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(tmp_path / "x" / "data"))
+    import jev
+    jev.save_plan(["q"], [[{"id": "a", "tokens": 1}]])
+    for d in (tmp_path / "x", tmp_path / "x" / "data", tmp_path / "x" / "data" / "plans"):
+        assert oct(os.stat(d).st_mode & 0o777) == "0o700", d

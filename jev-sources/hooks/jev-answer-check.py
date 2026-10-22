@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Stop: before the main session's answer reaches the user, every docs quote in it is checked against the section it
-cites (scripts/check_answer.py). An answer that cites no library section passes untouched and unlogged. A quote that
+cites (scripts/check_answer.py). An answer that neither cites a library section nor mentions Jev passes untouched and
+unlogged; one that mentions Jev but cites nothing has only the quotes it gives as the docs' words checked. A quote that
 is not on its cited section, a citation that names no section, or a quote with no citation in reach blocks the stop
 once, with the failing rows (never page text), so the model corrects the quote, cites the section that holds it, or
 labels it unverified. The next stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
 A quality check, not a security boundary. Logs counts to <data>/logs/answer_check.jsonl unless JEV_LOG=off."""
 import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from jev_terms import ROOT, data_dir, log_event
+from jev_terms import ROOT, JEV, data_dir, log_event
 
 CITES = re.compile(r"(?:docs|cookbooks|patterns|blog)/")
 REASON_CAP = 4000
@@ -60,8 +61,8 @@ def main():
             return 0
         if not isinstance(msg, str):
             raise ValueError("last_assistant_message is not text")
-        if not CITES.search(msg):
-            return 0  # not an answer that cites the library: say nothing, log nothing
+        if not CITES.search(msg) and not JEV.search(msg):
+            return 0  # neither cites the library nor mentions Jev: say nothing, log nothing
         if not os.path.exists(os.path.join(data_dir(), "sections.jsonl")):
             return 0
         if p.get("stop_hook_active"):

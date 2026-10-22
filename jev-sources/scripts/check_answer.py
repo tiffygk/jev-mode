@@ -19,6 +19,8 @@ import os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import read as RD
 import check_findings as CF
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "hooks"))
+from jev_terms import JEV
 
 MIN_WORDS = 4  # a shorter quoted string is a term or a name ("danger zone"), not a quote
 UNCITED_WORDS = 8  # with no citation of its own, a shorter quoted phrase reads as a term, not a claimed quote
@@ -31,6 +33,10 @@ ITEM = re.compile(r"^\s{0,3}(?:[-*+]|\d+[.)])\s")
 NOFOLDER = re.compile(r"(?<![\w/`.-])([\w-]+\.(?:md|txt)#[^;()`\"*\n]*[^;()`\"*\s,])")
 NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
 UNVERIFIED = re.compile(r"\bunverified\b", re.I)
+USERS = re.compile(r"\byou(?:'re| are)?\s+(?:asked|said|say|wrote|want(?:ed)?|mentioned|described|called|put it)\b[^\"]{0,40}$"
+                   r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$", re.I)
+DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
+SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
 ESCAPE = re.compile(r"\\([^\w\s])")
 CURLY = str.maketrans({"\u201c": '"', "\u201d": '"', "\u201e": '"'})
 
@@ -101,9 +107,39 @@ def _short(quote):
 ELLIPSIS = re.compile(r"\s*(?:…|\.\.\.)\s*(?:\([^()]*\))?\s*$")
 
 
+def _family(row):
+    """A section and its subsections: the rows after it on its page, up to the next heading at its level or above."""
+    out, inside = [], False
+    for x in RD._index():
+        if x["path"] != row["path"]:
+            if inside:
+                break
+            continue
+        if x is row or x["id"] == row["id"]:
+            inside = True
+            out.append(x)
+        elif inside:
+            if x.get("level", 9) <= row.get("level", 0):
+                break
+            out.append(x)
+    return out or [row]
+
+
 def _resolve(cite):
-    """The rows a citation names; a heading shortened with an ellipsis names the one heading on its page that starts
-    with what is left."""
+    """The rows a citation names, each with its subsections; a duplicate page (docs/patterns__x) names its twin
+    (patterns/x); a heading shortened with an ellipsis names the one heading on its page that starts with what is left."""
+    cite = re.sub(r"^docs/(cookbooks|patterns)__", r"\1/", cite.strip())
+    r = _resolve_one(cite)
+    out, ids = [], set()
+    for x in r:
+        for y in _family(x):
+            if y["id"] not in ids:
+                ids.add(y["id"])
+                out.append(y)
+    return out
+
+
+def _resolve_one(cite):
     r = CF._cited(cite)
     if r or "#" not in cite or not ELLIPSIS.search(cite):
         return r
@@ -130,12 +166,25 @@ def _rows_for(cites):
     return rows, bad
 
 
+def _users(block, q):
+    """Is this quote the user's own words ("You asked "...""), going by the words just before it?"""
+    i = block.find('"' + q + '"')
+    return i > 0 and bool(USERS.search(block[max(0, i - 80):i]))
+
+
+def _said_by_docs(block, q):
+    """Is this quote given as the docs' words ("The docs say "...""), going by the words just before it?"""
+    i = block.find('"' + q + '"')
+    return i > 0 and bool(DOCS_SAY.search(block[max(0, i - 60):i]))
+
+
 def check(text):
-    """(rows, summary, ok). summary is None when the answer cites no library section."""
+    """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev."""
     text = text.translate(CURLY)
     blocks = _blocks(text)
-    if not any(_cites(b) for _, b, _ in blocks):
+    if not any(_cites(b) for _, b, _ in blocks) and not JEV.search(text):
         return [], None, True
+    any_cite = any(_cites(b) for _, b, _ in blocks)
     out, counts = [], {}
     pages = {x["path"] for _, b, _ in blocks for c in _cites(b) for x in _resolve(c)}  # pages this answer cites
     items = []  # (indent, cites) of the bullets so far under this heading, for a nested bullet's parent
@@ -149,13 +198,15 @@ def check(text):
         parent = next((c for i, c in reversed(items) if indent is not None and i < indent and c), [])
         if indent is not None:
             items.append((indent, cites))
-        quotes = [q for q in QUOTE.findall(_quote_text(block)) if len(q.split()) >= MIN_WORDS]
+        qtext = _quote_text(block)
+        quotes = [q for q in QUOTE.findall(qtext) if len(q.split()) >= MIN_WORDS and not _users(qtext, q)
+                  and (any_cite or _said_by_docs(qtext, q))]  # with no citation anywhere, only quotes given as the docs' words
         for q in quotes:
             use = cites or parent + [c for c in under.get(head, []) if c not in parent]
             q2 = ESCAPE.sub(r"\1", q)
             parts = RD.quote_parts(q2)
             rows, bad = _rows_for(use)
-            if not use and len(q.split()) < UNCITED_WORDS:
+            if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()):
                 continue
             if not use:
                 held = _holder(parts, pages)
@@ -169,8 +220,8 @@ def check(text):
                     v, row = "FOUND", f"FOUND | {_short(q)} | {RD._ref(hit)}"
                 elif UNVERIFIED.search(block):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {RD._ref(rows[0])}"
-                elif not cites and len(q.split()) < UNCITED_WORDS:
-                    continue  # a short phrase with no citation of its own, not on a page around it, reads as a term
+                elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()):
+                    continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
                 elif not cites:  # it borrowed the citations around it, and none holds it
                     held = _holder(parts, pages)
                     v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation of its own, and none under this heading holds it"

@@ -162,3 +162,41 @@ def test_a_citation_after_the_quotes_and_one_without_its_folder_both_count(ca):
               'All three: *docs/two.md#Gamma (reference rule)* and (one.md#Alpha)\n')
     rows, _, ok = ca.check(answer)
     assert verdicts(rows) == ["FOUND", "FOUND"] and ok, rows
+
+
+def _lib_page(name, text):
+    import build_index
+    with open(os.path.join(os.environ["JEV_SOURCES_DATA"], "docs", name), "w") as f:
+        f.write(text)
+    build_index.main()
+
+
+def test_a_citation_to_a_section_covers_its_subsections(ca):
+    _lib_page("six.md", "# Six\n\n## Context length\n\nThe default rule.\n\n### Long context\n\nLong context is off by default here.\n\n## Other\n\nElse.\n")
+    rows, _, ok = ca.check('- "Long context is off by default here." (`docs/six.md#Context length`)\n')
+    assert verdicts(rows) == ["FOUND"] and ok, rows
+    rows, _, ok = ca.check('- "Long context is off by default here." (`docs/six.md#Other`)\n')
+    assert verdicts(rows) == ["NOT FOUND"] and not ok, rows
+
+
+def test_the_users_own_words_in_quotes_are_not_checked(ca):
+    rows, _, ok = ca.check('You asked "should I fan out or send one question at a time here?" and the docs answer.\n\n'
+                           '- "every box answers within five seconds" (`docs/one.md#Alpha`)\n')
+    assert verdicts(rows) == ["FOUND"] and ok, rows
+
+
+def test_a_short_full_sentence_quote_under_a_source_line_that_lacks_it_fails(ca):
+    rows, _, ok = ca.check("Source: `docs/one.md#Alpha`\n\n\"A state carries at most nine fields.\"\n")
+    assert verdicts(rows) == ["UNCITED"] and "found under docs/one.md#Beta" in rows[0] and not ok, rows
+
+
+def test_a_jev_answer_quoting_the_docs_with_no_citation_at_all_fails(ca):
+    rows, summary, ok = ca.check('The docs say "Jev answers every box question within five seconds flat."\n')
+    assert verdicts(rows) == ["UNCITED"] and not ok and summary
+    rows, summary, ok = ca.check('The React docs say "effects run after every completed render by default here."\n')
+    assert rows == [] and ok and summary is None
+
+
+def test_a_jev_reply_with_no_citation_checks_only_quotes_given_as_the_docs_words(ca):
+    rows, summary, ok = ca.check('I set the Jev client error to "Jev request failed after three retries, giving up now".\n')
+    assert rows == [] and ok

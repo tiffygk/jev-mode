@@ -107,6 +107,12 @@ def _judge(cite, quote, batch_ids):
     m = ID_TAIL.search(cite)
     if m and _cited(m.group(1)):
         cite = m.group(1)
+    page = RD._page_rows(cite)
+    if page:  # a page-only cite: the section in this batch that holds the quote, when one does
+        parts = RD.quote_parts(quote)
+        hit = next((r for r in page if r["id"] in batch_ids and RD._in_row(r, parts)), None)
+        if hit:
+            return "OK", ""
     found, row, _, _ = RD.check_quote(cite, quote)
     if not found:
         other = RD.elsewhere_on_page(cite, quote)

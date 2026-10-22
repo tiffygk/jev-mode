@@ -60,8 +60,7 @@ def save_plan(qs, batches):
     created = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     plan_id = "p" + hashlib.sha256((json.dumps(qs) + created + str(os.getpid())).encode()).hexdigest()[:8]
     d = os.path.join(paths.DATA, "plans")
-    os.makedirs(d, mode=0o700, exist_ok=True)
-    os.chmod(d, 0o700)  # a folder made earlier with looser permissions is tightened
+    paths.private_dirs(d)  # every folder it creates is owner-only; one made earlier with looser permissions is tightened
     plan = {"plan_id": plan_id, "created": created, "goal": list(qs),
             "batches": [{"n": n, "ids": [s["id"] for s in b], "tokens": sum(s["tokens"] for s in b)} for n, b in enumerate(batches, 1)]}
     fd, tmp = tempfile.mkstemp(dir=d, prefix=".tmp-", suffix=".json")  # mkstemp makes the file 0600
@@ -101,7 +100,7 @@ def bundle(questions, model=None, cap=CAP, log=True, coverage=True):
     dedupe cover them all; coverage says, per question, which READ FULL sections it reached and where each one went."""
     groups = [[q] if isinstance(q, str) else list(q) for q in questions]
     flat = [p for g in groups for p in g]
-    seen, sem, reached = {}, "off", [[] for _ in groups]
+    seen, sem, reached, full_for = {}, "off", [[] for _ in groups], [set() for _ in groups]
     model = model or applicability.find_model(" ".join(flat))  # found once, from every phrasing; the oldest wins
     used_model = model
     for gi, g in enumerate(groups):
@@ -116,6 +115,8 @@ def bundle(questions, model=None, cap=CAP, log=True, coverage=True):
             for d in res["sections"] + defs:
                 if d["id"] not in reached[gi]:
                     reached[gi].append(d["id"])
+                if d["depth"] == "READ FULL":
+                    full_for[gi].add(d["id"])  # this question reached it in full, not only as a pointer
                 if d["id"] not in seen or (d["depth"] == "READ FULL" and seen[d["id"]]["depth"] != "READ FULL"):
                     seen[d["id"]] = d  # the deeper depth wins when two phrasings disagree
     full = [s for s in seen.values() if s["depth"] == "READ FULL"]
@@ -151,9 +152,9 @@ def bundle(questions, model=None, cap=CAP, log=True, coverage=True):
            "too_broad": too_broad}
     if coverage:
         rd, nr = set(read_ids), {s["id"] for s in not_read}
-        out["coverage"] = [{"q": g[0], "read": [i for i in ids if i in rd], "planned": [i for i in ids if i in nr],
-                            "extract": [i for i in ids if seen[i]["depth"] != "READ FULL"]}
-                           for g, ids in zip(groups, reached)]
+        out["coverage"] = [{"q": g[0], "read": [i for i in ids if i in rd and i in ff], "planned": [i for i in ids if i in nr and i in ff],
+                            "extract": [i for i in ids if i not in ff]}
+                           for g, ids, ff in zip(groups, reached, full_for)]
     return out
 
 

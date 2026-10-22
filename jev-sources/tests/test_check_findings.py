@@ -299,3 +299,14 @@ def test_a_short_code_sample_of_the_readers_own_is_not_page_text(plan):
     code = ["```python", "client.ask(state=post, questions=qs)", "```"]
     rows, _, ok = cf.check(PID, reply(1, finding(a, ALPHA), *code) + reply(2, finding(g, GAMMA)))
     assert ok, rows
+
+
+def test_a_page_only_cite_whose_quote_repeats_on_the_page_counts_the_section_in_the_batch(lib):
+    (lib / "docs" / "five.md").write_text("# Five\n\n## First\n\nThe shared rule holds in both places here.\n\n## Second\n\nThe shared rule holds in both places here.\n")
+    import build_index
+    build_index.main()
+    second = sid(lib, "docs/five.md", "Second")
+    save_plan(lib, [[second]], pid="ppage0001")
+    import check_findings as cf
+    rows, _, ok = cf.check("ppage0001", reply(1, finding("docs/five.md", "The shared rule holds in both places here"), pid="ppage0001"))
+    assert rows[0].startswith("OK | b1") and ok, rows

@@ -11,7 +11,7 @@ try:
 except ImportError:  # Windows: no lock; the guard may then miss a record when readers stop together
     fcntl = None
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from jev_terms import ROOT, data_dir, log_event
+from jev_terms import ROOT, data_dir, log_event, private_dirs
 
 HEADER = re.compile(r"^JEV-READER:\s*plan\s+([A-Za-z0-9_-]+)\s+batch\s+(\d+)(?=[\s).:]|$)")  # same as check_findings.HEADER
 MARKS = re.compile(r"[*`]|^_+|_+$")  # underscores only at the line's ends, so a plan id keeps its own
@@ -38,9 +38,7 @@ def _first_block(agent_id):
     """True, and agent_id recorded, when this agent has not been sent back before. The check and the record happen
     under one lock, with a uniquely named temp file, so readers stopping together each get exactly one block."""
     d = os.path.dirname(_state_path())
-    os.makedirs(os.path.dirname(d), mode=0o700, exist_ok=True)
-    os.makedirs(d, mode=0o700, exist_ok=True)
-    os.chmod(d, 0o700)
+    private_dirs(d)
     lock = os.open(os.path.join(d, "reader_check_state.lock"), os.O_WRONLY | os.O_CREAT, 0o600)
     try:
         if fcntl:

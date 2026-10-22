@@ -610,3 +610,11 @@ def test_answer_hook_fails_open_on_bad_input_and_logs_it(tmp_path, monkeypatch):
 
 def test_answer_hook_passes_when_the_library_is_missing(tmp_path):
     assert answer_run(tmp_path / "nowhere", A_BAD)[:2] == (0, None)
+
+
+def test_every_folder_the_logs_create_is_owner_only(tmp_path):
+    data = tmp_path / "a" / "b" / "data"
+    run("jev-prompt-reminder.py", {"prompt": "is a Noul right here?", "session_id": "s1", "cwd": "/w"},
+        JEV_LOG="on", JEV_SOURCES_DATA=str(data))
+    for d in (tmp_path / "a", tmp_path / "a" / "b", data, data / "logs"):
+        assert oct(os.stat(d).st_mode & 0o777) == "0o700", d
