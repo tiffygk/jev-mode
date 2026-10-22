@@ -45,7 +45,9 @@ USERS = re.compile(r"\byou(?:'re| are)?\s+(?:asked|said|say|wrote|want(?:ed)?|me
                    r"|\byour\s+(?:question|words|message|request|note)\b[^\"]{0,40}$", re.I)
 # a quote not on its cited page is the user's own line when the words before it give it to the user, or when it is
 # shaped like an error or log line; a misquote of the docs gets neither
-YOURS = re.compile(r"\byou(?:r)?\b", re.I)
+YOURS = re.compile(r"\byou\s+(?:got|get|see|saw|pasted|posted|shared|ran|hit|copied)\b"
+                   r"|\byour\s+(?:logs?|errors?|output|traceback|terminal|console|stack trace|message|paste|run)\b", re.I)
+DOCS_NAMED = re.compile(r"\b(?:docs?|documentation|page|reference|guide|cookbook|TypeSafe)\b", re.I)
 LOGLINE = re.compile(r"^\s*(?:[A-Za-z_][\w.]*(?:Error|Exception|Warning)\b|Traceback\b|HTTP/\d|\[?\d{4}-\d\d-\d\d|[A-Z]+\d{3,}\b)")
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
@@ -56,7 +58,8 @@ FACT_NAME = re.compile(r"\b(?:Choice|Score|Box)\b")  # common words in lower cas
 SPECIFIC = re.compile(r"\b[a-z]+_[a-z_]+\b|\$\s?\d|\b\d[\d,.]{0,20}\s*(?:%|ms\b|seconds?\b|tokens?\b|requests?\b|options?\b|questions?\b|levels?\b|"
                       r"[KMGB]i?B\b|[KMB]\b|[MB]tok\b|dollars?\b|cents?\b|"
                       r"characters?\b|per\b|million\b|billion\b|k\b|MB\b)|\b[45]\d\d\b|`[^`\n]+`")
-HEDGED = re.compile(r"\b(?:unconfirmed|unverified|my read|I'd|I would|you|your)\b|(?:pages?|docs|sections?) I (?:read|routed)\b"
+YOU_HEDGE = re.compile(r"\b(?:you|your)\b", re.I)  # about the person's own case, unless the sentence quotes a specific
+HEDGED = re.compile(r"\b(?:unconfirmed|unverified|my read|I'd|I would)\b|(?:pages?|docs|sections?) I (?:read|routed)\b"
                     r"|\bI (?:didn't|did not|haven't|have not) (?:read|check|see)|\bthe docs (?:don't|do not) (?:say|show|cover|list)", re.I)
 MY_READ = re.compile(r"^\s*(?:#+\s*|\*\*)My read\b", re.I)
 ESCAPE = re.compile(r"\\([^\w\s])")
@@ -239,10 +242,16 @@ def _users(block, q):
     return i > 0 and bool(USERS.search(block[max(0, i - 80):i]))
 
 
+def _claimed(q):
+    """A quoted string read as a claimed quote: 4 or more words, or any length when it holds a specific fact."""
+    return len(q.split()) >= MIN_WORDS or bool(SPECIFIC.search(q))
+
+
 def _users_line(block, q):
     """A quote not on its cited page that is the user's own line (an error, a log line, their paste)."""
     i = block.find('"' + q + '"')
-    return bool(LOGLINE.match(q)) or (i > 0 and bool(YOURS.search(block[max(0, i - 80):i])))
+    lead = block[max(0, i - 80):i] if i > 0 else ""
+    return bool(YOURS.search(lead)) or (bool(LOGLINE.match(q)) and not DOCS_NAMED.search(lead))
 
 
 def _said_by_docs(block, q):
@@ -273,7 +282,7 @@ def check(text, seen=None):
         if indent is not None:
             items.append((indent, cites))
         qtext = _quote_text(block)
-        quotes = [q for q in QUOTE.findall(qtext) if len(q.split()) >= MIN_WORDS and not _users(qtext, q)
+        quotes = [q for q in QUOTE.findall(qtext) if _claimed(q) and not _users(qtext, q)
                   and (any_cite or _said_by_docs(qtext, q))]  # with no citation anywhere, only quotes given as the docs' words
         for q in quotes:
             if _norm(q) in _headings():
@@ -293,7 +302,8 @@ def check(text, seen=None):
             elif not rows:
                 v, row = "BAD CITE", f"BAD CITE | {_short(q)} | {RD._safe(bad[0])[:80]}"
             else:
-                hit = next((r for r in rows if parts and RD._in_row(r, parts)), None)
+                raw = RD.quote_parts(q) if q2 != q else None  # the page may keep the escapes ("\\$42") the quote was read without
+                hit = next((r for r in rows if parts and (RD._in_row(r, parts) or (raw and RD._in_row(r, raw)))), None)
                 if hit:
                     v, row = "FOUND", f"FOUND | {_short(q)} | {RD._ref(hit)}"
                 elif q.strip().endswith("?"):
@@ -342,12 +352,13 @@ def unquoted_facts(text):
             continue
         if MY_READ.match(line):
             break
-        quotes = [q for q in QUOTE.findall(_quote_text(line)) if len(q.split()) >= MIN_WORDS]
+        quotes = [q for q in QUOTE.findall(_quote_text(line)) if _claimed(q)]
         if (quotes and all(q in seen for q in quotes)) or (not quotes and _cites(line)):
             continue  # its quotes were checked, or it cites a section with no quote to check
         for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*#>|")):
             s = s[:MAX_SENTENCE]  # a fact sits in an ordinary sentence; a very long run is not one
-            if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(s) and not HEDGED.search(s):
+            hedged = HEDGED.search(s) or (YOU_HEDGE.search(s) and not any(SPECIFIC.search(q) for q in QUOTE.findall(s)))
+            if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(s) and not hedged:
                 out.append(f"UNQUOTED | {_short(s)}")
     return out
 

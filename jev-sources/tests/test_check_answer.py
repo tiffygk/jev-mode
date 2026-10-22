@@ -11,7 +11,7 @@ GAMMA = "Gamma says the body is over 32 MiB when it is rejected."
 PAGES = {
     "docs/one.md": f"# One\n\nIntro.\n\n## Alpha\n\n{ALPHA}\n\n## Beta\n\n{BETA}\n",
     "docs/two.md": f"# Two\n\n## Gamma\n\n{GAMMA}\n",
-    "docs/three.md": "# Three\n\n## How to build with the box\n\nBuild steps go here in order.\n",
+    "docs/three.md": "# Three\n\n## How to build with the box\n\nBuild steps go here in order.\n\n## Price\n\n| Price | \\$42 / \\$0.042 |\n",
 }
 
 
@@ -318,3 +318,31 @@ def test_many_citations_on_one_line_stay_fast(ca):
     ca.check("Jev " + "a.md#b; " * 2500 + "\n")
     ca.check('Jev "every box answers within five seconds" ' + "`docs/one.md#Alpha`; " * 2000 + "\n")
     assert time.perf_counter() - t < 3
+
+
+@pytest.mark.parametrize("lead", ["The docs tell you", "You'd see", "If you go over, the docs say", "As you'd expect,",
+                                  "Your limit works like this:", "You should know that"])
+def test_a_bare_you_before_a_misquote_does_not_excuse_it(ca, lead):
+    rows, _, ok = ca.check(f'{lead} "every box answers within five minutes" (`docs/one.md#Alpha`).\n')
+    assert not ok and verdicts(rows) == ["NOT FOUND"]
+
+
+def test_an_error_shaped_misquote_attributed_to_a_docs_page_is_checked(ca):
+    rows, _, ok = ca.check('The page says "AlphaError is raised only for five second waits" (`docs/one.md#Alpha`).\n')
+    assert not ok
+
+
+@pytest.mark.parametrize("fake", ['"$0.40 per Mtok"', '"16 MiB"', '"2M tokens"', '"returns 503"', '"`max_batch`"'])
+def test_a_quote_under_four_words_holding_a_specific_is_checked(ca, fake):
+    for text in (f"Jev's body limit is {fake} (`docs/one.md#Alpha`).\n", f"For your requests, Jev's body limit is {fake} (`docs/one.md#Alpha`).\n"):
+        rows, _, ok = ca.check(text)
+        assert not ok or ca.unquoted_facts(text), (text, rows)
+
+
+def test_a_price_quoted_with_the_pages_own_escapes_is_found(ca):
+    rows, _, ok = ca.check('Price: "\\$42 / \\$0.042" (`docs/three.md#Price`)\n')
+    assert ok and verdicts(rows) == ["FOUND"], rows
+
+
+def test_a_line_labeled_unverified_is_not_an_unquoted_fact_even_with_a_specific_quote(ca):
+    assert ca.unquoted_facts(CITED + 'Unverified: "Jev answers in under 50 ms" (a blog figure I did not find in the docs).\n') == []
