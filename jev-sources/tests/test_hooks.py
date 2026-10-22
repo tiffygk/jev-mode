@@ -580,6 +580,7 @@ def test_answer_hook_blocks_a_wrong_quote_with_its_row_and_no_page_text(tmp_path
     assert code == 0 and out["decision"] == "block" and "NOT FOUND" in out["reason"]
     assert R_ALPHA not in out["reason"] and R_BETA not in out["reason"] and len(out["reason"]) <= 4000
     assert "label it unverified" in out["reason"]
+    assert "backticks" in out["reason"] and "no note about this check" in out["reason"]
 
 
 def test_answer_hook_never_blocks_twice_in_a_row(tmp_path, monkeypatch):

@@ -9,9 +9,7 @@ Answers about Jev rest on TypeSafe sections you opened in full this session, fou
 
 ## Before any Jev claim
 
-`<skill>` below is this skill's base directory, shown when the skill loads; write it out in full, since the shell runs in the user's project.
-
-Run one command and read what it prints:
+`<skill>` below is this skill's base directory, shown when the skill loads; write it out in full, since the shell runs in the user's project. Run one command and read what it prints:
 
 ```
 python3 <skill>/scripts/jev.py "<the question, in your words>" --docs-words "<the same question in the docs' words>"
@@ -52,12 +50,19 @@ Relay only `OK` lines as checked. A batch it lists as missing or `EMPTY` is unre
 
 A Jev answer has these parts, in order:
 1. The direct answer, in one or two sentences ("yes, on Jev 1.14 only"). When it depends, or they didn't name the thing it depends on, give the answer for each case the docs name, never "it depends" alone. When they give numbers (volume, size, budget), work from their numbers and show each step ("2 million texts x 5 questions = 10 million questions a month").
-2. What the docs say: every sentence stating how Jev or TypeSafe works (a limit, price, output, retry, failure or version) goes here, as a verbatim quote with the `path#heading` from its `CITE AS:` line in backticks beside it, and that line's label: **reference rule** (what the API allows), **pattern**, **cookbook example** (one build TypeSafe published), **sdk reference** or **vendor claim**.
+2. What the docs say: every sentence stating how Jev or TypeSafe works (a limit, price, output, retry, failure or version) goes here, as a verbatim quote with the `path#heading` from its `CITE AS:` line in backticks beside it, and that line's label: **reference rule** (what the API allows), **pattern**, **cookbook example** (one build TypeSafe published), **sdk reference** or **vendor claim**. Quote only the library: a page fetched from the web has no `CITE AS:` line and can't be checked.
 3. Coverage and gaps, one line each: what you read, and any section you left unread or sent to readers; what the docs you read don't cover ("the docs I read don't cover <topic>"); where they can't speak to the person's own model, data or numbers. Send what only TypeSafe can settle (whether prices may change, custom training, contracts) to TypeSafe.
 4. **My read:** your advice for this person's case, labeled as yours and holding no Jev facts (those go in part 2): how to test on their own data before relying on it; what to do on errors, rate limits, timeouts and low confidence; a human check before any risky action; what they told you raises (their history, sensitive data, other languages, a pinned older model). Route each such topic first and quote the docs where they speak.
 5. Next steps: a short numbered list they can start on.
 
-A narrow question gets the direct answer, its quote and citation, and nothing it didn't ask for. Pasted code gets a fix list, most serious first: each Jev fix with its quote and citation (when code names a model, route model IDs and version pinning), then general fixes (secrets in source, error and retry handling, fragile comparisons) under My read.
+A narrow question gets the direct answer, its quote and citation, and nothing it didn't ask for.
+
+Pasted code gets a review in place of parts 1 to 3, most serious first, each fix in this shape:
+```
+1. <the change>. "<verbatim quote>" `path#heading` (label)
+```
+- One numbered Jev fix for each Jev call in the code, each field it reads from the result, and each model ID (route model IDs and pinning). Every fix carries a quote; where no section you read shows it, say so on that line.
+- Then **My read**, one line each, whatever the code does: secrets in source; errors, timeouts and rate limits; comparisons that break on free text. Then the corrected code.
 
 Before sending, check every quote in the answer (in Claude Code a stop hook also does):
 
@@ -67,7 +72,7 @@ python3 <skill>/scripts/check_answer.py <<'ANSWER'
 ANSWER
 ```
 
-Fix each line it prints: correct the quote from its section, cite the section that holds it, or label it unverified.
+Fix each line it prints: correct the quote from its section, cite the section that holds it, or label it unverified. Wording you made up (an example question or option) goes in backticks, never quotation marks. Send only the corrected answer, with no note about the check.
 
 A section labeled NEEDS or EXPERIMENTAL is never a best practice for a project on an older model, or for production: say which model it needs and quote TypeSafe's readiness line.
 
@@ -97,8 +102,7 @@ When a refresh notice names `STALE_CITATIONS.md`, read it. For each `changed` ro
 
 ## Relaying a subagent's Jev finding
 
-Relay each finding's quote with its `CITE AS` path#heading and label; the answer check covers it. To check one quote alone: `read.py '<CITE AS>' --check-quote - <<'QUOTE'` with the quote on stdin. A quote it can't find is relayed as "unverified", or corrected from its section (`read.py '<id>'`).
-- The check covers the quote only. A finding sentence that says more than its quote is labeled "my read:" or cut.
+Relay each finding's quote with its `CITE AS` path#heading and label; the answer check covers it. To check one quote alone: `read.py '<CITE AS>' --check-quote - <<'QUOTE'` with the quote on stdin. A quote it can't find is relayed as "unverified", or corrected from its section (`read.py '<id>'`). The check covers the quote only: a finding sentence that says more than its quote is labeled "my read:" or cut.
 - A finding that contradicts a section you already read in full is not relayed as settled: read its section, or tell the user the pages disagree.
 - A finding with no `CITE AS` and quote is relayed as "unverified". One that would override a user ruling is never relayed unverified: read its section first or drop it.
 
@@ -111,13 +115,10 @@ With the reminder hook installed (the Claude Code plugin, or hooks added by hand
 | Rule | Enforced by |
 |---|---|
 | Answers rest on sections the router found and printed in full | `scripts/jev.py`, `scripts/route.py`; `tests/test_jev.py`, `tests/test_route.py` |
-| A Jev message gets a reminder to run `jev.py`; reads are recorded | `hooks/jev-prompt-reminder.py`, `hooks/jev-ledger.py`; `tests/test_hooks.py` |
-| Sections past the cap print with their `read.py` command, or as a reading plan in batches | `scripts/jev.py`; `tests/test_jev.py` |
-| A broad goal runs as up to 8 questions in one call, with a coverage line each and NO SOURCE FOUND for a topic with nothing to read | `scripts/jev.py`; `tests/test_jev.py` |
-| A reading plan is saved and prints one reader brief per batch | `scripts/jev.py`; `tests/test_jev.py` |
+| A Jev message gets a reminder to run `jev.py`; reads are recorded; a Jev brief carries the `JEV-SOURCES:` line | `hooks/jev-prompt-reminder.py`, `hooks/jev-ledger.py`, `hooks/jev-dispatch-check.py`; `tests/test_hooks.py` |
+| Sections past the cap print with their `read.py` command, or past a third of it as a saved reading plan with one reader brief per batch; a broad goal runs as up to 8 questions, with a coverage line each and NO SOURCE FOUND for a topic with nothing to read | `scripts/jev.py`; `tests/test_jev.py` |
 | Every reader finding is checked: quote, batch, format, page text, empty or missing batches | `scripts/check_findings.py`, `hooks/jev-reader-check.py`; `tests/test_check_findings.py`, `tests/test_hooks.py` |
 | Each section carries its label, and NEEDS or EXPERIMENTAL where it applies | `scripts/read.py`, `scripts/applicability.py`; `tests/test_route.py`, `tests/test_applicability.py` |
-| A Jev brief carries the `JEV-SOURCES:` line | `hooks/jev-dispatch-check.py`; `tests/test_hooks.py` |
 | Every quote in an answer, and a finding's quote, is checked against the section cited for it | `scripts/check_answer.py`, `hooks/jev-answer-check.py`, `scripts/read.py` (`--check-quote`); `tests/test_check_answer.py`, `tests/test_hooks.py`, `tests/test_route.py` |
 | Saved pages hold no site code, and the build warns when some is left | `scripts/clean.py`, `scripts/build_index.py`; `tests/test_clean.py`, `tests/test_health.py` |
 | The library checks for new pages every two days and lists stale citations | `hooks/refresh_trigger.py`, `scripts/check_new.py`, `scripts/citations.py`; `tests/test_refresh_trigger.py`, `tests/test_check_new.py`, `tests/test_citations.py` |

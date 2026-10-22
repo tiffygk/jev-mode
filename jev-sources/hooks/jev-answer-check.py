@@ -13,7 +13,8 @@ from jev_terms import ROOT, JEV, data_dir, log_event
 CITES = re.compile(r"(?:docs|cookbooks|patterns|blog)/")
 REASON_CAP = 4000
 TAIL = ("fix each line: correct the quote from its section (read.py '<id>'), cite the section that holds it, or label "
-        "it unverified; then send the answer again")
+        "it unverified; wording you made up (an example question or option) goes in backticks, not quotation marks. "
+        "Then send the whole corrected answer, with no note about this check.")
 
 
 def _from_transcript(path):
