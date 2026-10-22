@@ -108,14 +108,14 @@ Relay each finding's quote with its `CITE AS` path#heading and label; the answer
 
 ## Refresh
 
-With the reminder hook installed (the Claude Code plugin, or hooks added by hand), the library checks TypeSafe's pages every two days and fetches only new or re-dated pages and new posts. Without it, including in Codex, nothing refreshes on its own: run `bash <skill>/refresh.sh --fetch` on first install, and again when a source is missing or older than the question needs. That command downloads every page TypeSafe lists (the docs sitemap, llms.txt, the cookbook list and typesafe.ai's blog) and rebuilds the index. `SOURCES.md` in the data folder lists every page held and when it was saved. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`).
+With the reminder hook installed (the Claude Code plugin, or hooks added by hand), the library checks TypeSafe's pages every two days and fetches only new or re-dated pages and new posts. Codex runs no hooks from a plugin: run `python3 <skill>/scripts/codex_hooks.py install` once (again after moving the skill folder). Without the hooks, nothing refreshes on its own: run `bash <skill>/refresh.sh --fetch` on first install, and again when a source is missing or older than the question needs. That command downloads every page TypeSafe lists (the docs sitemap, llms.txt, the cookbook list and typesafe.ai's blog) and rebuilds the index. `SOURCES.md` in the data folder lists every page held and when it was saved. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`).
 
 ## Enforced by
 
 | Rule | Enforced by |
 |---|---|
 | Answers rest on sections the router found and printed in full | `scripts/jev.py`, `scripts/route.py`; `tests/test_jev.py`, `tests/test_route.py` |
-| A Jev message gets a reminder to run `jev.py`; reads are recorded; a Jev brief carries the `JEV-SOURCES:` line | `hooks/jev-prompt-reminder.py`, `hooks/jev-ledger.py`, `hooks/jev-dispatch-check.py`; `tests/test_hooks.py` |
+| A Jev message gets a reminder to run `jev.py`; reads are recorded; a Jev brief carries the `JEV-SOURCES:` line | `hooks/jev-prompt-reminder.py`, `hooks/jev-ledger.py`, `hooks/jev-dispatch-check.py` (in Codex, installed by `scripts/codex_hooks.py`); `tests/test_hooks.py`, `tests/test_codex_hooks.py` |
 | Sections past the cap print with their `read.py` command, or past a third of it as a saved reading plan with one reader brief per batch; a broad goal runs as up to 8 questions, with a coverage line each and NO SOURCE FOUND for a topic with nothing to read | `scripts/jev.py`; `tests/test_jev.py` |
 | Every reader finding is checked: quote, batch, format, page text, empty or missing batches | `scripts/check_findings.py`, `hooks/jev-reader-check.py`; `tests/test_check_findings.py`, `tests/test_hooks.py` |
 | Each section carries its label, and NEEDS or EXPERIMENTAL where it applies | `scripts/read.py`, `scripts/applicability.py`; `tests/test_route.py`, `tests/test_applicability.py` |
