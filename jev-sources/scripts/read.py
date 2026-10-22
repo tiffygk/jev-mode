@@ -126,19 +126,35 @@ def _find(text, lines, owner, cols, want, start):
     return best
 
 
+_FLAT = {}
+
+
+def _flat(r):
+    """(lines, squashed text, line of each character, column of each character) of section r, kept per file version,
+    since one answer check matches many quotes against the same sections."""
+    path = os.path.join(ROOT, r["path"])
+    if not os.path.exists(path):
+        sys.exit(f"missing source {r['path']}; run {REFRESH}")
+    key = (path, r["line_start"], r["line_end"], os.path.getmtime(path))
+    if key not in _FLAT:
+        if len(_FLAT) > 2000:
+            _FLAT.clear()
+        lines = open(path, encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+        lines = [LINK.sub(r"\1", ln) for ln in lines]  # a quote of a link's text matches the page's [text](url)
+        flat, owner, cols = [], [], []
+        for i, ln in enumerate(lines):
+            sq, c = _kept(ln)
+            flat.append(sq)
+            owner += [i] * len(sq)
+            cols += c
+        _FLAT[key] = (lines, "".join(flat), owner, cols)
+    return _FLAT[key]
+
+
 def _in_row(r, parts):
     """(line_no, line) where the quote's parts start in section r, all found in order; None if they are not."""
-    if not os.path.exists(os.path.join(ROOT, r["path"])):
-        sys.exit(f"missing source {r['path']}; run {REFRESH}")
-    lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
-    lines = [LINK.sub(r"\1", ln) for ln in lines]  # a quote of a link's text matches the page's [text](url)
-    flat, owner, cols = [], [], []
-    for i, ln in enumerate(lines):
-        sq, c = _kept(ln)
-        flat.append(sq)
-        owner += [i] * len(sq)
-        cols += c
-    text, start, spans = "".join(flat), 0, []
+    lines, text, owner, cols = _flat(r)
+    start, spans = 0, []
     for want in parts:
         span = _find(text, lines, owner, cols, want, start)
         if span is None:

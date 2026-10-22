@@ -10,11 +10,13 @@ its lead-in line, a "Sources:" line after a list). Prints one row per quote:
   NOT FOUND | <first words> | cited <section>[ | found under <section>]
   BAD CITE | <first words> | <citation>          (no section has that id)
   UNCITED | <first words> | no citation under this heading
-  LABELED | <first words> | <section>           (not found, but its own clause calls it unverified or unconfirmed)
+  LABELED | <first words> | <section>           (not found, but labeled unverified or unconfirmed beside it)
 then one summary line. A quote not on its page is the user's own line, and is not checked, only when the session
-record holds it (--transcript, or the Stop hook's transcript_path: the user's messages and command output); with no
-record, only when the words right before it give it to the user ("you got", "your log shows") or it is an error
-line in a block that names no docs page. With no citation anywhere, a quote holding a specific fact is still checked. An answer with no library citation is not a Jev answer: nothing is printed and it passes.
+record holds it as whole words (--transcript, or the Stop hook's transcript_path: the user's messages and the output
+of shell commands that did not run this skill; never a quote under 4 words holding a specific); with no record, only
+when the words right before it give it to the user ("you got", "your log shows") after nothing but connecting words,
+or it is an error line in a block that names no docs page and has no citation in its clause. With no citation
+anywhere, a quote holding a specific fact is still checked. An answer with no library citation is not a Jev answer: nothing is printed and it passes.
 unquoted_facts(text) lists, apart from the quote check, each sentence that states a specific Jev fact (a price, a
 number with a unit, a status code, a backticked name) with no quote or citation on its line, before "My read" and
 not marked unconfirmed: UNQUOTED | <first words>. They never change the exit code; the Stop hook asks once.
@@ -48,17 +50,30 @@ LABEL = re.compile(r"\b(?:unverified|unconfirmed)\b", re.I)
 LABEL_NEXT = re.compile(r"^\s*(?:This|That|The) (?:quote|wording|line|figure)s? (?:is|are) (?:unverified|unconfirmed)\b", re.I)
 CLAUSE_END = re.compile(r"[;.!?](?=\s|$)")
 # Without the session record, a quote not on its cited page is the user's own words only when the words right before
-# it give it to the user ("You asked", "you got", "your log shows"), with nothing after them; with the record, only when
-# the user's messages or a command's output in the session hold it.
+# it give it to the user ("You asked", "you got", "your log shows") after nothing but connecting words; with the record,
+# only when the user's messages or the output of a shell command that did not run this skill hold it.
 USERS = re.compile(r"\byou\s+(?:(?:asked|said|wrote|mentioned|described|called it|put it)(?:\s+me)?"
                    r"(?:\s+(?:you\s+)?(?:want(?:ed)?|need(?:ed)?|plan(?:ned)?)\s+to)?|(?:want(?:ed)?|need(?:ed)?)\s+to)\s*[:,]?\s*$"
                    r"|\byour\s+(?:question|words|message|request|note)(?:\s+(?:was|is|reads|says))?\s*[:,]?\s*$", re.I)
 YOURS = re.compile(r"\byou\s+(?:got|see|saw|pasted|posted|shared|copied)\s*[:,]?\s*$"
                    r"|\byour\s+(?:logs?|errors?|output|traceback|terminal|console|stack trace|paste|run)"
                    r"(?:\s+(?:shows?|showed|reads?|says?|said|prints?|printed|is|was|has|had|contains?|ends with))?\s*[:,]?\s*$", re.I)
+LEAD_OK = set("when whenever if after before since because as so and but then here here's heres what that this is it "
+              "you ran run tried earlier above below last time the a an error same also just again now still which "
+              "where once first line message all of in your me i we said there".split())  # words a lead-in may follow
+DOCS_LEAD = re.compile(r"\b(?:docs?|documentation|page|reference|guide|cookbook|TypeSafe|sections?|headings?|tables?)\b"
+                       r"|\.(?:md|txt)\b", re.I)  # a sentence that names where its quote comes from
+NOT_LABEL = re.compile(r"\b(?:not|no|nothing|never|none|isn't|aren't|without)\b[^.;:]{0,30}\b(?:unverified|unconfirmed)\b",
+                       re.I)  # "Nothing here is unverified" labels nothing
 DOCS_NAMED = re.compile(r"\b(?:docs?|documentation|page|reference|guide|cookbook|TypeSafe)\b", re.I)
-RECORD_ROW = re.compile(r"^(?:FOUND|NOT FOUND|BAD CITE|UNCITED|LABELED|UNQUOTED) \|.*$|^answer check: .*$", re.M)
+RECORD_ROW = re.compile(r"^[^|\n]{0,40}?\b(?:FOUND|NOT FOUND|BAD CITE|UNCITED|LABELED|UNQUOTED|TOO MANY) \|.*$"
+                        r"|^.{0,40}?answer check: .*$", re.M)
 MAX_RECORD = 20_000_000  # bytes of a session record read for the user's lines (the end, when longer)
+CANDIDATE = re.compile(r'"type":\s*"user"|"Bash"|"payload"|"command_execution"')  # record lines worth parsing
+RESULT_ID = re.compile(r'"tool_use_id":\s*"([^"]+)"')
+OWN_COMMAND = re.compile(r"jev-sources|\b(?:jev|read|route|check_answer|check_findings)\.py\b|sections\.jsonl")
+SHELL_TOOLS = {"shell", "exec_command", "local_shell", "shell_command", "container.exec", "exec"}
+SKILL_BODY = "Base directory for this skill:"
 LOGLINE = re.compile(r"^\s*(?:[A-Za-z_][\w.]*(?:Error|Exception|Warning)\b|Traceback\b|HTTP/\d|\[?\d{4}-\d\d-\d\d|[A-Z]+\d{3,}\b)")
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
@@ -257,16 +272,63 @@ def _lead(block, q):
 
 
 def _in_record(q, record):
-    """Does the session record (the user's messages and command output, normalized) hold this quote?"""
-    words = _norm(ESCAPE.sub(r"\1", q))
-    return bool(words) and words in record
+    """Does the session record (the user's messages and shell output, normalized, space-padded) hold this quote, as
+    whole words, each part between elisions in order? A quote under 4 words holding a specific ("$40", "429") is never
+    excused by the record: a short number turns up in most sessions."""
+    q = ESCAPE.sub(r"\1", q)
+    if not record or (SPECIFIC.search(q) and len(q.split()) < MIN_WORDS):
+        return False
+    if not record.startswith(" "):
+        record = " " + record + " "
+    parts = [p for p in (_norm(x) for x in RD._ELISION.split(q)) if p]
+    at = 0
+    for p in parts:
+        at = record.find(" " + p + " ", at)
+        if at < 0:
+            return False
+        at += len(p) + 1
+    return bool(parts)
+
+
+def _plain_lead(lead, m):
+    """Are the words before a lead-in match m in its clause only connecting words ("When", "and", "here is what")? Then
+    the clause names no section, heading, file or table ("Under Rate limits you see" is the docs' line)."""
+    return all(w.strip("'") in LEAD_OK for w in re.findall(r"[\w'.$#/`]+", lead[:m.start()].lower()))
 
 
 def _users(block, q, record=None):
     """Is this quote the user's own words ("You asked "...")? With the session record, only if the record holds it."""
-    if record is not None:
-        return bool(USERS.search(_lead(block, q))) and _in_record(q, record)
-    return bool(USERS.search(_lead(block, q)))
+    lead = _lead(block, q)
+    m = USERS.search(lead)
+    if not m:
+        return False
+    return _in_record(q, record) if record is not None else _plain_lead(lead, m)
+
+
+def _clause(block, q):
+    """(start, end) of the clause around the quote's first appearance: back to the last sentence end within 400
+    characters, forward to the next one within 400; None when the quote is not in the block."""
+    i = block.find('"' + q + '"')
+    if i < 0:
+        return None
+    lo = max(0, i - 400)
+    ends = list(CLAUSE_END.finditer(block[lo:i]))
+    after = CLAUSE_END.search(block, i + len(q) + 2, i + len(q) + 402)
+    return (lo + ends[-1].end() if ends else lo), (after.start() if after else min(len(block), i + len(q) + 402))
+
+
+def _cited_beside(block, q):
+    """Is the quote given a page: a citation in its clause before it, or right after it ("..." (docs/x.md#y))? A
+    citation later in the clause backs the claim, not the quote."""
+    span = _clause(block, q)
+    if span is None:
+        return False
+    i = block.find('"' + q + '"')
+    lead = block[span[0]:i]
+    if BARE.search(lead) or NOFOLDER.search(lead) or DOCS_URL.search(lead):
+        return True
+    return bool(re.match(r"\s*[(\[]?\s*(?:`|\[)?\s*(?:" + KINDS + r"|https?://docs\.typesafe\.ai|[\w-]+\.(?:md|txt)#)",
+                         block[i + len(q) + 2:span[1]]))
 
 
 def _claimed(q):
@@ -274,37 +336,95 @@ def _claimed(q):
     return len(q.split()) >= MIN_WORDS or bool(SPECIFIC.search(q))
 
 
-def _users_line(block, q, record=None):
+def _users_line(block, q, record=None, around=None):
     """A quote not on its cited page that is the user's own line (an error, a log line, their paste). With the session
-    record, the record must hold it; without, the words right before it give it to the user, or it is shaped like an
-    error line in a block that names no docs page outside its citations."""
+    record, the record must hold it; without, the words right before it give it to the user in a sentence that names no
+    docs page or section and the quote is not given a page of its own, or it is shaped like an error line in a block that names no docs page outside its citations
+    and is not given a page of its own. around: the text the quote's borrowed citations come from (its heading's
+    blocks), read for a named docs page in place of the block."""
     if record is not None:
         return _in_record(q, record)
-    bare = BARE.sub(" ", TICKED.sub(" ", block.replace('"' + q + '"', " ")))
-    return bool(YOURS.search(_lead(block, q))) or (bool(LOGLINE.match(q)) and not DOCS_NAMED.search(bare))
+    i = block.find('"' + q + '"')
+    sentence = re.split(r"[.!?](?=\s)", block[max(0, i - 400):max(i, 0)])[-1]
+    lead = _lead(block, q)
+    m = YOURS.search(lead)
+    if (m and _plain_lead(lead, m) and not DOCS_LEAD.search(BARE.sub(" ", TICKED.sub(" ", sentence)))
+            and not _cited_beside(block, q)):
+        return True
+    return bool(LOGLINE.match(q)) and not _names_docs(around or block) and not _cited_beside(block, q)
+
+
+def _names_docs(text):
+    """Does the text, outside its quotes, code spans and citations, name a docs page? Kept per text: one answer asks
+    about the same block for each of its quotes."""
+    memo = _CACHE.setdefault("names_docs", {})
+    if text not in memo:
+        if len(memo) > 500:
+            memo.clear()
+        memo[text] = bool(DOCS_NAMED.search(QUOTE.sub(" ", BARE.sub(" ", TICKED.sub(" ", text)))))
+    return memo[text]
+
+
+def _ref(row):
+    """RD._ref, kept per index: it reads the index to number a section."""
+    rows = _idx()
+    memo = _CACHE.setdefault("refs", {})
+    if memo.get("of") is not rows:
+        memo.clear()
+        memo["of"] = rows
+    if row["id"] not in memo:
+        memo[row["id"]] = RD._ref(row)
+    return memo[row["id"]]
 
 
 def _labeled(block, q):
-    """Is this quote labeled unverified or unconfirmed in its own clause (its citation's parentheses included), or by a
-    next sentence that names it ("This quote is unverified")?"""
-    i = block.find('"' + q + '"')
-    if i < 0:
+    """Is this quote labeled unverified or unconfirmed beside it: in its clause before it, in the parentheses right
+    after it, or after it up to the next comma or "and"/"but"; or by a next sentence that names it ("This quote is
+    unverified")? A label further along the clause is about something else."""
+    span = _clause(block, q)
+    if span is None:
         return False
-    j = i + len(q) + 2
-    lo = max(0, i - 400)
-    ends = list(CLAUSE_END.finditer(block[lo:i]))
-    start = lo + ends[-1].end() if ends else lo
-    after = CLAUSE_END.search(block, j, j + 400)
-    end = after.start() if after else min(len(block), j + 400)
-    if LABEL.search(block[start:i] + " " + block[j:end]):
+    i = block.find('"' + q + '"')
+    j, end = i + len(q) + 2, span[1]
+    before = re.split(r",|;|\b(?:and|but|while|whereas)\b", block[span[0]:i])[-1]
+    paren = re.match(r"\s*\([^()]*\)", block[j:end])
+    k = j + (paren.end() if paren else 0)
+    tail = re.split(r",|\b(?:and|but|while|whereas)\b", block[k:end])[0]
+    near = before + " " + (paren.group() if paren else "") + " " + tail
+    if LABEL.search(near) and not NOT_LABEL.search(near):
         return True
-    return bool(after and block[after.end():after.end() + 1].isspace() and LABEL_NEXT.match(block[after.end():]))
+    nxt = block[end:end + 1] if end < len(block) else ""
+    return bool(nxt and CLAUSE_END.match(block, end) and block[end + 1:end + 2].isspace()
+                and LABEL_NEXT.match(block[end + 1:]))
+
+
+def _own_command(cmd):
+    """Does a shell command run this skill or read its library? Its output is page text, not the user's."""
+    s = json.dumps(cmd) if not isinstance(cmd, str) else cmd
+    return bool(OWN_COMMAND.search(s))
+
+
+def _strings(x, out, depth=0):
+    """Every text in a message's content, skipping tool calls and thinking."""
+    if depth > 6:
+        return
+    if isinstance(x, str):
+        out.append(x)
+    elif isinstance(x, list):
+        for y in x:
+            _strings(y, out, depth + 1)
+    elif isinstance(x, dict) and x.get("type") not in ("tool_use", "tool_result", "thinking", "redacted_thinking"):
+        for k in ("text", "content", "output", "message", "stdout", "stderr", "aggregated_output"):
+            if k in x:
+                _strings(x[k], out, depth + 1)
 
 
 def transcript_context(path):
-    """The user's messages and every command's output in a session record (Claude Code or Codex JSON lines),
-    normalized for quote lookup, or None when the record can't be read or holds neither. The checker's own rows are left
-    out, so a sent-back answer can't excuse its quote by the row that named it."""
+    """What the user brought to the session, normalized and space-padded for quote lookup: their own messages and the
+    output of shell commands that did not run this skill or read its library. Left out: the assistant's words, thinking,
+    tool calls, skill bodies, compaction summaries, results of other tools (file reads, subagents, web fetches) and the
+    checker's own rows. None when the record can't be read or holds none of this. Only the last MAX_RECORD bytes are
+    read."""
     try:
         size = os.path.getsize(path)
         with open(path, "rb") as f:
@@ -314,42 +434,59 @@ def transcript_context(path):
             raw = f.read().decode("utf-8", errors="replace")
     except (OSError, TypeError, ValueError):
         return None
-    texts, seen_any = [], False
-    def strings(x, depth=0):
-        if depth > 6:
-            return
-        if isinstance(x, str):
-            texts.append(x)
-        elif isinstance(x, list):
-            for y in x:
-                strings(y, depth + 1)
-        elif isinstance(x, dict):
-            if x.get("type") in ("tool_use", "thinking", "redacted_thinking"):
-                return
-            for k in ("text", "content", "output", "message", "stdout", "stderr"):
-                if k in x:
-                    strings(x[k], depth + 1)
+    texts, seen_any, shell = [], False, {}  # shell: tool call id -> True when its output counts
     for line in raw.split("\n"):
+        if not CANDIDATE.search(line):
+            continue  # most of a long record is assistant text and file reads: skip them unparsed
+        if '"tool_result"' in line and not any(shell.get(i) for i in RESULT_ID.findall(line)):
+            continue
         try:
             e = json.loads(line)
         except ValueError:
             continue
-        if not isinstance(e, dict):
+        if not isinstance(e, dict) or e.get("isMeta") or e.get("isCompactSummary") or e.get("isSidechain"):
             continue
+        msg = e.get("message") if isinstance(e.get("message"), dict) else None
         pay = e.get("payload") if isinstance(e.get("payload"), dict) else None
-        if e.get("type") == "user" and isinstance(e.get("message"), dict):  # Claude Code: a user turn or tool results
+        item = e.get("item") if isinstance(e.get("item"), dict) else None
+        if e.get("type") == "assistant" and msg and isinstance(msg.get("content"), list):  # Claude Code tool calls
+            for c in msg["content"]:
+                if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Bash":
+                    shell[c.get("id")] = not _own_command((c.get("input") or {}).get("command", ""))
+        elif e.get("type") == "user" and msg:  # Claude Code: a user turn, or tool results
             seen_any = True
-            strings(e["message"].get("content"))
-        elif pay is not None and (pay.get("role") == "user" or pay.get("type") in (
-                "function_call_output", "custom_tool_call_output", "user_message", "exec_command_end")):  # Codex
+            content = msg.get("content")
+            for c in content if isinstance(content, list) else [content]:
+                if isinstance(c, dict) and c.get("type") == "tool_result":
+                    if shell.get(c.get("tool_use_id")):
+                        _strings(c.get("content"), texts)
+                elif not (isinstance(c, str) and c.startswith(SKILL_BODY)) and not (
+                        isinstance(c, dict) and str(c.get("text", "")).startswith(SKILL_BODY)):
+                    _strings(c, texts)
+        elif pay is not None:  # Codex rollout
+            t = pay.get("type")
+            if t in ("function_call", "custom_tool_call", "local_shell_call"):
+                args = pay.get("arguments") or pay.get("input") or pay.get("action") or ""
+                shell[pay.get("call_id")] = ((t == "local_shell_call" or pay.get("name") in SHELL_TOOLS)
+                                             and not _own_command(args))
+            elif t in ("function_call_output", "custom_tool_call_output"):
+                seen_any = True
+                if shell.get(pay.get("call_id")):
+                    _strings({"output": pay.get("output")}, texts)
+            elif t == "exec_command_end":
+                seen_any = True
+                if not _own_command(pay.get("command", "")):
+                    _strings({k: pay.get(k) for k in ("stdout", "stderr", "aggregated_output")}, texts)
+            elif t == "user_message" or (pay.get("role") == "user" and t == "message"):
+                seen_any = True
+                _strings({k: pay.get(k) for k in ("content", "message")}, texts)
+        elif item is not None and item.get("type") == "command_execution":  # codex exec --json
             seen_any = True
-            strings({k: pay.get(k) for k in ("content", "output", "message", "stdout", "stderr")})
-        elif isinstance(e.get("item"), dict) and e["item"].get("type") == "command_execution":  # codex exec --json
-            seen_any = True
-            strings({"output": e["item"].get("aggregated_output")})
+            if not _own_command(item.get("command", "")):
+                _strings({"output": item.get("aggregated_output")}, texts)
     if not seen_any:
         return None
-    return _norm(RECORD_ROW.sub(" ", "\n".join(texts)))
+    return " " + _norm(RECORD_ROW.sub(" ", "\n".join(texts))) + " "
 
 
 def _said_by_docs(block, q):
@@ -379,9 +516,10 @@ def check(text, seen=None, context=None):
     skipped = [0, 0]  # quotes looked at, quotes past MAX_QUOTES
     pages = {x["path"] for _, b, _ in blocks for c in _cites(b) for x in _resolve(c)}  # pages this answer cites
     items = []  # (indent, cites) of the bullets so far under this heading, for a nested bullet's parent
-    under = {}  # every citation under each heading
+    under, texts = {}, {}  # every citation, and the text, under each heading
     for h, b, _ in blocks:
         under.setdefault(h, []).extend(c for c in _cites(b) if c not in under.get(h, []))
+        texts[h] = texts.get(h, "") + "\n" + b
     for head, block, indent in blocks:
         cites = _cites(block)
         if indent is None and not block.startswith("|"):
@@ -425,7 +563,7 @@ def check(text, seen=None, context=None):
                     continue
                 held = _holder(parts, pages)
                 v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation under this heading"
-                                     + (f" | found under {RD._ref(held)}" if held else ""))
+                                     + (f" | found under {_ref(held)}" if held else ""))
             elif not rows:
                 v, row = "BAD CITE", f"BAD CITE | {_short(q)} | {RD._safe(bad[0])[:80]}"
             else:
@@ -434,27 +572,27 @@ def check(text, seen=None, context=None):
                 hit = next((r for r in rows if parts and (RD._in_row(r, parts) or (raw and RD._in_row(r, raw))
                                                           or (esc and RD._in_row(r, esc)))), None)
                 if hit:
-                    v, row = "FOUND", f"FOUND | {_short(q)} | {RD._ref(hit)}"
+                    v, row = "FOUND", f"FOUND | {_short(q)} | {_ref(hit)}"
                 elif q.strip().endswith("?") and not _said_by_docs(qtext, q):
                     continue  # a quoted question not on the page is the answer's own example question
                 elif _labeled(qtext, q):
-                    v, row = "LABELED", f"LABELED | {_short(q)} | {RD._ref(rows[0])}"
+                    v, row = "LABELED", f"LABELED | {_short(q)} | {_ref(rows[0])}"
                 elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                     continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
-                elif _users_line(qtext, q, record()):
+                elif _users_line(qtext, q, record(), None if cites else texts[head]):
                     if seen is not None:
                         seen.add(q)
                     continue  # the user's error or log line, quoted beside a citation
                 elif not cites:  # it borrowed the citations around it, and none holds it
                     held = _holder(parts, pages)
                     v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation of its own, and none under this heading holds it"
-                                         + (f" | found under {RD._ref(held)}" if held else ""))
+                                         + (f" | found under {_ref(held)}" if held else ""))
                 else:
                     other = next((r for r in _idx() if parts and r["path"] in {x["path"] for x in rows}
                                   and r not in rows and RD._in_row(r, parts)), None)
                     v = "NOT FOUND"
-                    row = (f"NOT FOUND | {_short(q)} | cited {RD._ref(rows[0])}"
-                           + (f" | found under {RD._ref(other)}" if other else ""))
+                    row = (f"NOT FOUND | {_short(q)} | cited {_ref(rows[0])}"
+                           + (f" | found under {_ref(other)}" if other else ""))
             counts[v] = counts.get(v, 0) + 1
             out.append(row)
             if seen is not None:
@@ -470,13 +608,15 @@ def check(text, seen=None, context=None):
     return out, summary, ok
 
 
-def unquoted_facts(text, context=None):
-    """Rows for sentences stating a specific Jev fact with no quote or citation on their line (module docstring)."""
+def unquoted_facts(text, context=None, seen=None):
+    """Rows for sentences stating a specific Jev fact with no quote or citation on their line (module docstring). seen,
+    when given, is the set check() already filled for this text, so the quotes are not checked twice."""
     text = text.translate(CURLY)
     if not JEV.search(text) and not any(_cites(b) for _, b, _ in _blocks(text)):
         return []
-    seen = set()
-    check(text, seen, context)
+    if seen is None:
+        seen = set()
+        check(text, seen, context)
     out, fence = [], False
     for line in text.split("\n"):
         if line.lstrip().startswith("```"):
@@ -504,8 +644,9 @@ def main(argv=None):
         return 2
     text = sys.stdin.buffer.read().decode("utf-8", errors="replace")
     ctx = (lambda: transcript_context(argv[1])) if argv else None
-    rows, summary, ok = check(text, context=ctx)
-    for r in rows + unquoted_facts(text, ctx):
+    seen = set()
+    rows, summary, ok = check(text, seen, ctx)
+    for r in rows + unquoted_facts(text, ctx, seen):
         print(r)
     if summary:
         print(summary)

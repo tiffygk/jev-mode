@@ -421,3 +421,96 @@ def test_many_quotes_stay_fast_and_past_the_cap_fail_once(ca):
 def test_the_users_stated_wish_is_theirs_but_not_when_the_docs_are_said_to_say_it(ca):
     assert ca.check(CITED + 'You said you want to "try the longer context for a contract review", so here is how.\n')[2]
     assert not ca.check(f'- The docs say you want to "{MIS}" (`docs/one.md#Alpha`)\n')[2]
+
+
+# --- re-gate 4 must-fixes ---------------------------------------------------------------------------------------
+
+def _record(tmp_path, entries):
+    p = tmp_path / "session.jsonl"
+    p.write_text("\n".join(json.dumps(e) for e in entries) + "\n")
+    return str(p)
+
+
+def _bash(i, cmd, out):
+    return [{"type": "assistant", "message": {"content": [{"type": "tool_use", "id": i, "name": "Bash", "input": {"command": cmd}}]}},
+            {"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": i, "content": out}]}}]
+
+
+@pytest.mark.parametrize("lead", ["Under Alpha you see", "Per one.md you see", "In the limits table, you see",
+                                  "That section is clear; you see", "As you see,", "Here is what you see:",
+                                  "Look at Alpha and you see", "From the Jev limits you got"])
+def test_with_no_record_a_lead_in_after_a_named_section_or_a_cited_quote_is_the_docs(ca, lead):
+    rows, _, ok = ca.check(f'- {lead} "{MIS}" (`docs/one.md#Alpha`)\n')
+    assert not ok and verdicts(rows) == ["NOT FOUND"], rows
+
+
+def test_with_no_record_the_users_line_after_plain_connecting_words_still_passes(ca):
+    for t in (f'- When you ran it, you got "{MIS}", which the page does not cover (`docs/one.md#Alpha`)\n',
+              f'- Here you pasted "{MIS}", and the fix is in `docs/one.md#Alpha`.\n'):
+        assert ca.check(t)[2], t
+
+
+def test_an_error_line_given_a_page_is_checked(ca):
+    err = "RateLimitError: too many calls, retry in 60 seconds"
+    assert not ca.check(f'- The SDK error text: "{err}" (`docs/one.md#Alpha`)\n')[2]
+    assert not ca.check(f'# Errors\n\n- The SDK error text: "{err}"\n\nSource: the docs page `docs/one.md#Alpha`.\n')[2]
+
+
+def test_the_record_excuses_only_whole_words_and_never_a_short_specific(ca):
+    rec = ca._norm("I pay $400 a month and got 4290 errors; the run said every box answers within six seconds flat")
+    for q in ("$40", "429", "$400", "6 seconds"):
+        assert not ca.check(f'- The limit is "{q}" (`docs/one.md#Alpha`)\n', context=lambda: rec)[2], q
+    assert not ca.check('- It said "box answers within six sec" (`docs/one.md#Alpha`)\n', context=lambda: rec)[2]
+    assert ca.check(f'- It said "{MIS}" (`docs/one.md#Alpha`)\n', context=lambda: rec)[2]
+
+
+def test_the_record_matches_a_quote_shortened_with_an_ellipsis(ca):
+    rec = ca._norm("TypeError: cannot read properties of undefined (reading 'answers')")
+    t = "- You got \"TypeError: cannot read properties … (reading 'answers')\" (`docs/one.md#Alpha`)\n"
+    assert ca.check(t, context=lambda: rec)[2]
+
+
+def test_the_record_holds_only_the_users_messages_and_their_own_shell_output(ca, tmp_path):
+    line = "every box answers within six seconds"
+    user = {"type": "user", "message": {"role": "user", "content": "hi"}}
+    t = f'- It printed "{line}" (`docs/one.md#Alpha`)\n'
+    def passes(entries):
+        p = _record(tmp_path, [user] + entries)
+        return ca.check(t, context=lambda: ca.transcript_context(p))[2]
+    assert passes(_bash("b1", "python3 app.py", f"Traceback\n{line}"))
+    assert not passes(_bash("b2", "python3 ~/.claude/skills/jev-sources/scripts/read.py 'docs/one#0'", line))
+    assert not passes([{"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "r1", "name": "Read", "input": {}}]}},
+                       {"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "r1", "content": line}]}}])
+    assert not passes([{"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "content": line}]}}])
+    assert not passes([{"type": "user", "isCompactSummary": True, "message": {"role": "user", "content": line}}])
+    assert not passes([{"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": "Base directory for this skill: x\n" + line}]}}])
+    assert not passes([{"type": "user", "message": {"role": "user", "content": "Stop hook feedback:\n- NOT FOUND | " + line + " | cited docs/one.md#Alpha"}}])
+    codex = lambda name, args: [{"type": "response_item", "payload": {"type": "function_call", "name": name, "call_id": "c", "arguments": json.dumps(args)}},
+                                {"type": "response_item", "payload": {"type": "function_call_output", "call_id": "c", "output": line}}]
+    assert passes(codex("shell", {"command": ["python3", "app.py"]}))
+    assert not passes(codex("shell", {"command": ["python3", ".agents/skills/jev-sources/scripts/read.py", "docs/one#0"]}))
+    assert not passes(codex("web_fetch", {"url": "https://docs.typesafe.ai"}))
+
+
+def test_a_label_counts_only_beside_its_quote_and_not_when_negated(ca):
+    assert not ca.check(f'- The speed is "{MIS}" (`docs/one.md#Alpha`) and the retry header name is unverified.\n')[2]
+    assert not ca.check(f'- Nothing here is unverified: the speed is "{MIS}" (`docs/one.md#Alpha`).\n')[2]
+    assert ca.check(f'- The speed is "{MIS}" (unverified, `docs/one.md#Alpha`).\n')[2]
+
+
+def test_unquoted_facts_reuses_the_checks_seen_quotes(ca, monkeypatch):
+    t = f'- The limit is "{MIS}" (`docs/one.md#Alpha`)\n'
+    seen = set()
+    ca.check(t, seen)
+    monkeypatch.setattr(ca, "check", lambda *a, **k: (_ for _ in ()).throw(AssertionError("checked twice")))
+    ca.unquoted_facts(t, None, seen)
+
+
+def test_a_long_record_is_read_fast(ca, tmp_path):
+    import time
+    filler = json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "x " * 5000}]}})
+    p = tmp_path / "long.jsonl"
+    p.write_text("\n".join([filler] * 1500) + "\n" + "\n".join(json.dumps(e) for e in _bash("b", "python3 app.py", MIS)) + "\n")
+    t = time.perf_counter()
+    assert ca.check(f'- It printed "{MIS}" (`docs/one.md#Alpha`)\n', context=lambda: ca.transcript_context(str(p)))[2]
+    assert time.perf_counter() - t < 1

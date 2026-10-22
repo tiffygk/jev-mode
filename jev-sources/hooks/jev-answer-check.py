@@ -4,8 +4,8 @@ cites (scripts/check_answer.py). An answer that neither cites a library section 
 unlogged; one that mentions Jev but cites nothing has only the quotes it gives as the docs' words checked. A quote that
 is not on its cited section, a citation that names no section, or a quote with no citation in reach blocks the stop
 once, with the failing rows (never page text), so the model corrects the quote, cites the section that holds it, or
-labels it unverified. A quote is the user's own line only when the session record (the user's messages and command
-output, from transcript_path) holds it. The next stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
+labels it unverified. A quote is the user's own line only when the session record (the user's messages and the output
+of their own shell commands, from transcript_path) holds it. The next stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
 A quality check, not a security boundary. Logs counts to <data>/logs/answer_check.jsonl unless JEV_LOG=off."""
 import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -80,11 +80,12 @@ def main():
                 memo.append(check_answer.transcript_context(tp))
             return memo[0]
         ctx = record if tp else None
-        rows, summary, ok = check_answer.check(msg, context=ctx)
+        seen = set()
+        rows, summary, ok = check_answer.check(msg, seen, ctx)
         if summary is None:
             return 0
         bad = [r for r in rows if not r.startswith(("FOUND", "LABELED"))]
-        loose = check_answer.unquoted_facts(msg, ctx)
+        loose = check_answer.unquoted_facts(msg, ctx, seen)
         counts = dict(quotes=len(rows), failed=len(bad), unquoted=len(loose))
         if not bad and not loose:
             log_event("answer_check", decision="clean", session=sid, **counts)

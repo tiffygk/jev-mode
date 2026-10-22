@@ -633,8 +633,10 @@ def _session(tmp_path, user_text, tool_output, final):
     p = tmp_path / "session.jsonl"
     with open(p, "w") as f:
         f.write(json.dumps({"type": "user", "message": {"role": "user", "content": user_text}}) + "\n")
+        f.write(json.dumps({"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": "python3 app.py"}}]}}) + "\n")
         f.write(json.dumps({"type": "user", "message": {"role": "user", "content": [
-            {"type": "tool_result", "content": [{"type": "text", "text": tool_output}]}]}}) + "\n")
+            {"type": "tool_result", "tool_use_id": "t1", "content": [{"type": "text", "text": tool_output}]}]}}) + "\n")
         f.write(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": final}]}}) + "\n")
     return str(p)
 
@@ -655,6 +657,8 @@ def test_answer_hook_reads_a_codex_session_record(tmp_path, monkeypatch):
     p = tmp_path / "rollout.jsonl"
     p.write_text("\n".join(json.dumps(e) for e in [
         {"type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "help"}]}},
+        {"type": "response_item", "payload": {"type": "function_call", "name": "shell", "call_id": "c1",
+                                              "arguments": json.dumps({"command": ["python3", "app.py"]})}},
         {"type": "response_item", "payload": {"type": "function_call_output", "call_id": "c1", "output": err}},
         {"type": "event_msg", "payload": {"type": "agent_message", "message": final}}]) + "\n")
     assert answer_run(data, final, transcript_path=str(p))[1] is None
