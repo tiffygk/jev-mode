@@ -23,8 +23,6 @@ Add `--model <id>` when the project pins a model. The docs' words are the terms 
 - An `EXTRACT` line points somewhere (`read.py '<id>' --extract <word> <word>`). A claim resting on it is labeled **unverified**.
 - If it prints "no section found", say so, then run `bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory.
 
-`route.py` (pick the sections) and `read.py` (print one section) are the parts `jev.py` uses; run them directly to look at one section or one routing.
-
 ## Broad goals
 
 A goal that spans several topics (building a whole feature, moving a system over, "what do I need to know to...") gets one `jev.py` run with one question per topic:
@@ -35,7 +33,6 @@ python3 <skill>/scripts/jev.py "<topic 1, in your words>" --also "<topic 2>" --a
 
 - Write 3 to 8 questions, each about one thing the goal needs: what the API allows, limits and sizes, cost, errors and reliability, model versions, readiness for production, and the pattern or cookbook closest to the goal.
 - Read the `COVERAGE:` block. Relay every `NO SOURCE FOUND` question to the user as "the docs I routed don't cover <topic>", never as an answer. More than 8 topics: split the goal into two runs.
-- End the answer with what the goal needs that no section you read covers, one line each ("the docs I read don't cover <topic>"), kept apart from sections you didn't read.
 
 ## Over the cap
 
@@ -51,18 +48,32 @@ REPLIES
 
 Relay only `OK` lines as checked. A batch it lists as missing or `EMPTY` is unread: tell the user which sections those are. In Claude Code, a hook also checks each reader's reply before the reader returns.
 
-## What a claim looks like
+## The answer
 
-Each claim carries:
-- a verbatim quote,
-- the path#heading from the `CITE AS:` line,
-- the label on that line: **reference rule** (docs pages: what the API allows), **pattern**, **cookbook example** (a working build TypeSafe published), **sdk reference** or **vendor claim**.
+A Jev answer has these parts, in order:
+1. The direct answer, in one or two sentences ("yes, on Jev 1.14 only").
+2. What the docs say: each fact the person would act on, as a verbatim quote with the `path#heading` from its `CITE AS:` line in backticks beside it, and that line's label: **reference rule** (what the API allows), **pattern**, **cookbook example** (one build TypeSafe published), **sdk reference** or **vendor claim**.
+3. What the docs don't cover, one line each ("the docs I read don't cover <topic>"), apart from sections you didn't read.
+4. **My read:** your advice for this person's case, labeled as yours: how to test on their own data before relying on it; what to do on errors, rate limits, timeouts and low confidence; a human check before any risky action; what their situation raises (sensitive data, other languages, a pinned older model, code they pasted). Route each such topic first and quote the docs where they speak.
+5. Next steps: a short numbered list they can start on.
+
+A narrow question gets the direct answer, its quote and citation, and nothing it didn't ask for.
+
+Before sending, check every quote in the answer (in Claude Code a stop hook also does):
+
+```
+python3 <skill>/scripts/check_answer.py <<'ANSWER'
+<the answer>
+ANSWER
+```
+
+Fix each line it prints: correct the quote from its section, cite the section that holds it, or label it unverified.
 
 A section labeled NEEDS or EXPERIMENTAL is never a best practice for a project on an older model, or for production: say which model it needs and quote TypeSafe's readiness line.
 
 A cookbook's code layout, diagram or call count is an example, never an API limit. "The cookbook does one request per candidate" is a fact about that cookbook. Whether you must do it too is answered by a reference rule, or by the cookbook's own scope note, which the printout shows under "Scope notes elsewhere in this file". Read that note before quoting the cookbook.
 
-When the reference pages don't settle a question, say "the docs don't say" and stop there. Your own inference is labeled as yours and is never the verdict.
+When the reference pages don't settle a question, say "the docs don't say". Your own inference goes under My read and is never the verdict.
 
 - An absence is reported as one: "the pages I read don't show X". Never "X is untested", "Jev can't X", or a risk.
 - Never widen a quote with a "so" sentence. An inference is labeled "my read:" and is never stated as TypeSafe's view.
@@ -86,21 +97,10 @@ When a refresh notice names `STALE_CITATIONS.md`, read it. For each `changed` ro
 
 ## Relaying a subagent's Jev finding
 
-For each finding line, run this, with the quote on stdin through a quoted heredoc because a quote can hold backticks or quotes:
-
-```
-python3 <skill>/scripts/read.py '<CITE AS>' --check-quote - <<'QUOTE'
-<QUOTE>
-QUOTE
-```
-
-It prints one line and never the page.
-- `QUOTE FOUND`: relay the quote with its `CITE AS` path#heading and label.
-- `QUOTE NOT FOUND`: relay the finding as "unverified", or read the section (`read.py '<id>'`) and correct it from there.
+Relay each finding's quote with its `CITE AS` path#heading and label; the answer check covers it. To check one quote alone: `read.py '<CITE AS>' --check-quote - <<'QUOTE'` with the quote on stdin. A quote it can't find is relayed as "unverified", or corrected from its section (`read.py '<id>'`).
 - The check covers the quote only. A finding sentence that says more than its quote is labeled "my read:" or cut.
 - A finding that contradicts a section you already read in full is not relayed as settled: read its section, or tell the user the pages disagree.
-
-A finding with no `CITE AS` and quote is relayed as "unverified". A finding that would override a user ruling is never relayed unverified: read its section first or drop it.
+- A finding with no `CITE AS` and quote is relayed as "unverified". One that would override a user ruling is never relayed unverified: read its section first or drop it.
 
 ## Refresh
 
@@ -118,7 +118,7 @@ With the reminder hook installed (the Claude Code plugin, or hooks added by hand
 | Every reader finding is checked: quote, batch, format, page text, empty or missing batches | `scripts/check_findings.py`, `hooks/jev-reader-check.py`; `tests/test_check_findings.py`, `tests/test_hooks.py` |
 | Each section carries its label, and NEEDS or EXPERIMENTAL where it applies | `scripts/read.py`, `scripts/applicability.py`; `tests/test_route.py`, `tests/test_applicability.py` |
 | A Jev brief carries the `JEV-SOURCES:` line | `hooks/jev-dispatch-check.py`; `tests/test_hooks.py` |
-| A finding's quote is checked against its section | `scripts/read.py` (`--check-quote`); `tests/test_route.py` |
+| Every quote in an answer, and a finding's quote, is checked against the section cited for it | `scripts/check_answer.py`, `hooks/jev-answer-check.py`, `scripts/read.py` (`--check-quote`); `tests/test_check_answer.py`, `tests/test_hooks.py`, `tests/test_route.py` |
 | Saved pages hold no site code, and the build warns when some is left | `scripts/clean.py`, `scripts/build_index.py`; `tests/test_clean.py`, `tests/test_health.py` |
 | The library checks for new pages every two days and lists stale citations | `hooks/refresh_trigger.py`, `scripts/check_new.py`, `scripts/citations.py`; `tests/test_refresh_trigger.py`, `tests/test_check_new.py`, `tests/test_citations.py` |
-| Running `jev.py` before a claim, splitting a broad goal into questions, starting readers on a reading plan, relaying EXTRACT and unchecked findings as unverified, quoting readiness lines, cookbook layouts as examples, "the docs don't say", no widening "so" sentences, reading stale-citation rows, locked files | the model, following this file |
+| Running `jev.py` before a claim, the answer's five parts in order, splitting a broad goal into questions, starting readers on a reading plan, relaying EXTRACT and unchecked findings as unverified, quoting readiness lines, cookbook layouts as examples, "the docs don't say", no widening "so" sentences, reading stale-citation rows, locked files | the model, following this file |
