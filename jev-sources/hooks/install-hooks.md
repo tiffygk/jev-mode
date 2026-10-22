@@ -50,12 +50,4 @@ The reminder logs every decision, fire or skip, to `<data>/logs/reminder.jsonl`:
 
 ## In Codex
 
-Codex runs the same reminder from `~/.codex/hooks.json`. Use absolute paths:
-
-```json
-{"hooks": {"UserPromptSubmit": [
-  {"hooks": [{"type": "command", "command": "/usr/bin/python3 /path/to/jev-sources/hooks/jev-prompt-reminder.py", "timeout": 30}]}
-]}}
-```
-
-Codex runs a new hook only after you review and trust it in Codex. If you also installed the plugin in Codex, check that the reminder doesn't appear twice; if it does, remove this entry. The dispatch check and the reader check have no Codex version: Codex has no `SubagentStop` as of this writing. There, run `python3 scripts/check_findings.py <plan_id> < replies.txt` on the readers' replies before relaying them.
+Codex runs no hooks from a plugin. Add all five to `~/.codex/hooks.json` with one command, and run it again after moving the skill folder: `python3 <skill folder>/scripts/codex_hooks.py install`. It keeps your other hooks; `remove` takes out only these. Codex runs a new hook only after you review and trust it.
