@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Stop: before the main session's answer reaches the user, every docs quote in it is checked against the section it
 cites (scripts/check_answer.py). An answer that neither cites a library section nor mentions Jev passes untouched and
-unlogged; one that mentions Jev but cites nothing has only the quotes it gives as the docs' words checked. A quote that
-is not on its cited section, a citation that names no section, or a quote with no citation in reach blocks the stop
-once, with the failing rows (never page text), so the model corrects the quote, cites the section that holds it, or
-labels it unverified. Quotation marks are for the docs' words only: the user's own text goes in backticks. The next stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
+unlogged. One that mentions Jev but cites nothing has the quotes it gives as the docs' words, and any quote holding a
+specific fact (a number with a unit, a price, a status code, a name, an error line), checked. A quote that is not on its
+cited section, a citation that names no section, or a quote with no citation in reach blocks the stop once, with the
+failing rows (never page text), so the model corrects the quote, cites the section that holds it, or labels it
+unverified beside it; a sentence stating a specific Jev fact with no quote or citation is sent back once too.
+Quotation marks are for the docs' words only: the user's own text goes in backticks, which are not checked. The next
+stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
 A quality check, not a security boundary. Logs counts to <data>/logs/answer_check.jsonl unless JEV_LOG=off."""
 import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -18,22 +21,32 @@ TAIL = ("fix each line: correct the quote from its section (read.py '<id>'), cit
         "My read. Then send the whole corrected answer, with no note about this check.")
 
 
+TAIL_BYTES = 4_000_000  # the end of the transcript read for the last answer; a long session is never read whole
+
+
 def _from_transcript(path):
-    """The text of the last assistant message that has text, from a Claude Code transcript (JSON lines)."""
-    last = None
-    with open(path, encoding="utf-8", errors="replace") as f:
-        for line in f:
-            try:
-                e = json.loads(line)
-            except ValueError:
-                continue
-            if e.get("type") != "assistant":
-                continue
-            parts = (e.get("message") or {}).get("content") or []
-            text = "\n".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text")
-            if text.strip():
-                last = text
-    return last
+    """The text of the last assistant message that has text, from the last TAIL_BYTES of a Claude Code transcript
+    (JSON lines). None when no such message is in that window; the hook then passes."""
+    size = os.path.getsize(path)
+    with open(path, "rb") as f:
+        if size > TAIL_BYTES:
+            f.seek(size - TAIL_BYTES)
+            f.readline()  # the window may start mid-line
+        lines = f.read().decode("utf-8", errors="replace").split("\n")
+    for line in reversed(lines):
+        if '"assistant"' not in line:
+            continue
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(e, dict) or e.get("type") != "assistant":
+            continue
+        parts = (e.get("message") or {}).get("content") or []
+        text = "\n".join(p.get("text", "") for p in parts if isinstance(p, dict) and p.get("type") == "text")
+        if text.strip():
+            return text
+    return None
 
 
 def _reason(rows):

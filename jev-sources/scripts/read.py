@@ -23,9 +23,18 @@ EXAMPLE_NOTE = ("JEV-SOURCES NOTE (not TypeSafe's words; never quote it): one bu
                 "check the scope notes below and the reference rules.")
 
 
+_INDEX = {}
+
+
 def _index():
+    """The library index, read once per version of sections.jsonl (an answer check looks it up once per citation)."""
+    path = os.path.join(ROOT, "sections.jsonl")
     try:
-        return [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
+        st = os.stat(path)
+        key = (path, st.st_mtime_ns, st.st_size)
+        if _INDEX.get("key") != key:
+            _INDEX.update(key=key, rows=[json.loads(l) for l in open(path)])
+        return _INDEX["rows"]
     except FileNotFoundError:
         sys.exit(f"library index missing; run {REFRESH}")
 

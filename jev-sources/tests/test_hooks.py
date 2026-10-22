@@ -654,3 +654,32 @@ def test_answer_hook_ignores_the_session_record(tmp_path, monkeypatch):
     ticked = A_GOOD + f"- You got `{line}`; see `docs/one.md#Alpha`.\n"
     assert answer_run(data, ticked, transcript_path=_session(tmp_path, line, line, ticked))[1] is None
 
+
+
+def _transcript(path, pad_bytes, final, after=0):
+    """A Claude Code transcript: pad_bytes of user lines, the final assistant text, then `after` bytes of user lines."""
+    filler = json.dumps({"type": "user", "message": {"role": "user", "content": "x" * 990}}) + "\n"
+    with open(path, "w") as f:
+        for _ in range(pad_bytes // len(filler)):
+            f.write(filler)
+        f.write(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": final}]}}) + "\n")
+        for _ in range(after // len(filler)):
+            f.write(filler)
+    return str(path)
+
+
+def test_answer_hook_reads_only_the_end_of_a_long_transcript(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    final = A_GOOD + '- "every box answers within six seconds" (`docs/one.md#Alpha`)\n'
+    tp = _transcript(tmp_path / "long.jsonl", 120_000_000, final)
+    raw = json.dumps({"session_id": "s1", "stop_hook_active": False, "transcript_path": tp})
+    code, out, secs = answer_run(data, None, raw=raw)
+    assert code == 0 and out["decision"] == "block" and secs < 1.5
+
+
+def test_answer_hook_passes_when_the_last_answer_is_before_the_window(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    final = A_GOOD + '- "every box answers within six seconds" (`docs/one.md#Alpha`)\n'
+    tp = _transcript(tmp_path / "late.jsonl", 0, final, after=6_000_000)
+    raw = json.dumps({"session_id": "s1", "stop_hook_active": False, "transcript_path": tp})
+    assert answer_run(data, None, raw=raw)[:2] == (0, None)

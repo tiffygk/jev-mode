@@ -474,3 +474,58 @@ def test_the_cli_takes_no_arguments(ca):
     assert r.returncode == 2 and "usage" in r.stderr
     assert not hasattr(ca, "transcript_context")
 
+
+
+# --- re-gate 5 must-fixes and the security read's Low -----------------------------------------------------------
+
+@pytest.mark.parametrize("q", ["TypeSafeAPIError: rate limit exceeded", "Overloaded: try again in a while",
+                               "Traceback (most recent call last)"])
+def test_a_short_error_line_borrowing_a_heading_citation_is_checked(ca, q):
+    assert not ca.check(f'## Errors (`docs/one.md#Alpha`)\n\nYou got "{q}"\n')[2]
+
+
+def test_a_quote_holding_code_is_a_specific_fact(ca):
+    for t in ('## A (`docs/one.md#Alpha`)\n\nThe docs say "Use `client.batch()` for this".\n',
+              'Jev.\n\nThe docs say "pass `retry=False` to the client".\n'):
+        rows, _, ok = ca.check(t)
+        assert not ok, (t, rows)
+
+
+def test_correct_answers_with_user_text_or_example_questions_are_not_sent_back(ca):
+    for t in ("Jev.\n\n- The Jev API returned `RateLimitError: too many calls` on the third batch.\n",
+              '- Ask Jev "Is this email about billing?" as a Noul (`docs/one.md#Alpha`).\n',
+              '- See "How to build with the box" for the steps (`docs/three.md#How to build with the box`).\n'):
+        rows, _, ok = ca.check(t)
+        assert ok and ca.unquoted_facts(t) == [], (t, rows)
+    assert ca.unquoted_facts("Jev.\n\nJev's batch limit is `max_batch`.\n")  # a backticked name is still a fact
+
+
+def test_a_label_covers_only_its_own_quote_and_not_an_adjective(ca):
+    two = f'- "every box answers within seven seconds" (unverified) sits beside the docs line "{MIS}" (`docs/one.md#Alpha`).\n'
+    assert verdicts(ca.check(two)[0]) == ["LABELED", "NOT FOUND"]
+    for t in (f'- For unverified accounts the docs say "{MIS}" (`docs/one.md#Alpha`).\n',
+              f'- The docs say "{MIS}" (`docs/one.md#Alpha`) for unverified organizations.\n',
+              f'- The unverified retry header aside the docs say "{MIS}" (`docs/one.md#Alpha`).\n'):
+        assert verdicts(ca.check(t)[0]) == ["NOT FOUND"], t
+    for t in (f'- An unverified figure: "{MIS}" (`docs/one.md#Alpha`).\n', f'- The docs say "{MIS}" (`docs/one.md#Alpha`) unverified.\n'):
+        assert verdicts(ca.check(t)[0]) == ["LABELED"], t
+
+
+def test_the_found_under_hint_is_bounded(ca, monkeypatch):
+    calls = []
+    real = ca._holder
+    monkeypatch.setattr(ca, "_holder", lambda parts, paths: calls.append(len(paths)) or real(parts, paths))
+    text = "Jev.\n\n" + "".join(f'## H{i}\n\n"made up line number {i} about the box answer"\n\n' for i in range(60))
+    ca.check(text + "See `docs/one.md#Alpha`.\n")
+    assert len(calls) == ca.MAX_HINTS and max(calls) <= ca.MAX_HINT_PAGES
+
+
+def test_the_section_index_is_read_once_per_file_version(ca):
+    import read, time
+    a, b = read._index(), read._index()
+    assert a is b
+    path = os.path.join(read.ROOT, "sections.jsonl")
+    lines = open(path).read()
+    time.sleep(0.01)
+    open(path, "w").write(lines.split("\n", 1)[1])  # one section fewer
+    assert len(read._index()) == len(a) - 1

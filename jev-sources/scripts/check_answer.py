@@ -34,6 +34,7 @@ MAX_CITE = 200  # characters of a bare citation tried against the index; a longe
 MAX_CUTS = 10  # comma cuts tried on one bare citation
 MAX_CITES = 30  # distinct citations read from one block
 MAX_QUOTES = 200  # quotes checked in one answer; past it, one TOO MANY row fails the answer
+MAX_HINTS, MAX_HINT_PAGES = 30, 30  # "found under" hints: failing quotes given one, cited pages searched for it
 UNCITED_WORDS = 8  # with no citation of its own, a shorter quoted phrase reads as a term, not a claimed quote
 KINDS = r"(?:docs|cookbooks|patterns|blog)/"
 TICKED = re.compile(r"`([^`\n]+)`")
@@ -44,6 +45,10 @@ ITEM = re.compile(r"^\s{0,3}(?:[-*+]|\d+[.)])\s")
 DOCS_URL = re.compile(r"https?://docs\.typesafe\.ai/([\w/-]+?)(?:\.md)?/?(?=[)#\s>\]]|$)")
 NOFOLDER = re.compile(r"(?<![\w/`.-])([\w-]+\.(?:md|txt)#[^;()`\"*\n]*[^;()`\"*\s,])")
 NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
+LABEL_BEFORE = re.compile(r"\b(?:unverified|unconfirmed)\b(?:\s*[:,)-]|\s+(?:quote|figure|line|wording|claim|number|value|text)s?\b|"
+                          r"\s*$)", re.I)  # a label, not an adjective on some other noun
+LABEL_AFTER = re.compile(r"\s*[,:(-]?\s*(?:\(?\s*)?(?:unverified|unconfirmed)\b\s*\)?\s*$", re.I)  # "..." unverified.
+ERRORISH = re.compile(r"^\s*(?:[A-Za-z_][\w.]*(?:Error|Exception|Warning)\b|Traceback\b|[A-Z]\w*: )")  # an error line
 LABEL = re.compile(r"\b(?:unverified|unconfirmed)\b", re.I)
 LABEL_NEXT = re.compile(r"^\s*(?:This|That|The) (?:quote|wording|line|figure)s? (?:is|are) (?:unverified|unconfirmed)\b", re.I)
 CLAUSE_END = re.compile(r"[;.!?](?=\s|$)")
@@ -150,6 +155,19 @@ def _headings():
     return _CACHE["heads"]
 
 
+def _quote_pairs(block):
+    """(quote as the page would read it, quote with its code marks kept) for each double-quoted string in the block,
+    in order; the second is what the specific-fact test reads (a quote holding `client.batch()` states a name)."""
+    kept = TICKED.sub(lambda m: " " if '"' in m.group(1) else m.group(0), block)
+    return list(zip(QUOTE.findall(_quote_text(block)), QUOTE.findall(kept)))
+
+
+def _specific(q):
+    """Does a quote (code marks kept) state a specific fact: a number with a unit, a price, a status code, a name, or
+    an error line ("TypeSafeAPIError: rate limit exceeded")?"""
+    return bool(SPECIFIC.search(q) or ERRORISH.match(q))
+
+
 def _quote_text(block):
     """The block with code spans that hold a double quote blanked, and other code spans kept as their text, so a quote
     that holds `code` still reads as the page does."""
@@ -248,9 +266,9 @@ def _clause(block, q):
     return (lo + ends[-1].end() if ends else lo), (after.start() if after else min(len(block), i + len(q) + 402))
 
 
-def _claimed(q):
+def _claimed(q):  # q with its code marks kept
     """A quoted string read as a claimed quote: 4 or more words, or any length when it holds a specific fact."""
-    return len(q.split()) >= MIN_WORDS or bool(SPECIFIC.search(q))
+    return len(q.split()) >= MIN_WORDS or _specific(q)
 
 
 def _ref(row):
@@ -266,20 +284,26 @@ def _ref(row):
 
 
 def _labeled(block, q):
-    """Is this quote labeled unverified or unconfirmed beside it: in its clause before it, in the parentheses right
-    after it, or after it up to the next comma or "and"/"but"; or by a next sentence that names it ("This quote is
-    unverified")? A label further along the clause is about something else."""
+    """Is this quote labeled unverified or unconfirmed beside it: in the six words before it, in the parentheses right
+    after it, or right after it before any other word; or by a next sentence that names it ("This quote is
+    unverified")? A label further along the clause, a negated one, or one used as an ordinary adjective ("unverified
+    accounts") is about something else."""
     span = _clause(block, q)
     if span is None:
         return False
     i = block.find('"' + q + '"')
     j, end = i + len(q) + 2, span[1]
-    before = re.split(r",|;|\b(?:and|but|while|whereas)\b", block[span[0]:i])[-1]
+    clause = re.split(r",|;|\b(?:and|but|while|whereas)\b", block[span[0]:i])[-1]
+    before = clause
+    if '"' in before:  # a quote earlier in the clause owns the words and parentheses right after it
+        before = re.sub(r"^\s*\([^()]*\)", "", before.rsplit('"', 1)[-1])
+    before = " ".join(before.split()[-6:])  # a label sits beside its quote
     paren = re.match(r"\s*\([^()]*\)", block[j:end])
     k = j + (paren.end() if paren else 0)
-    tail = re.split(r",|\b(?:and|but|while|whereas)\b", block[k:end])[0]
-    near = before + " " + (paren.group() if paren else "") + " " + tail
-    if LABEL.search(near) and not NOT_LABEL.search(near):
+    tail = re.split(r",|\b(?:and|but|while|whereas)\b", block[k:end])[0].split('"', 1)[0]
+    if NOT_LABEL.search(clause + " " + (paren.group() if paren else "") + " " + tail):
+        return False
+    if LABEL_BEFORE.search(before) or (paren and LABEL.search(paren.group())) or LABEL_AFTER.match(tail):
         return True
     nxt = block[end:end + 1] if end < len(block) else ""
     return bool(nxt and CLAUSE_END.match(block, end) and block[end + 1:end + 2].isspace()
@@ -302,7 +326,11 @@ def check(text, seen=None):
     any_cite = any(_cites(b) for _, b, _ in blocks)
     out, counts = [], {}
     skipped = [0, 0]  # quotes looked at, quotes past MAX_QUOTES
-    pages = {x["path"] for _, b, _ in blocks for c in _cites(b) for x in _resolve(c)}  # pages this answer cites
+    pages = set(list(dict.fromkeys(x["path"] for _, b, _ in blocks for c in _cites(b) for x in _resolve(c)))[:MAX_HINT_PAGES])
+    hints = [0]
+    def hint(parts):  # "found under": a hint only, so it searches the first cited pages for the first failing quotes
+        hints[0] += 1
+        return _holder(parts, pages) if hints[0] <= MAX_HINTS else None
     items = []  # (indent, cites) of the bullets so far under this heading, for a nested bullet's parent
     under = {}  # every citation under each heading
     for h, b, _ in blocks:
@@ -315,10 +343,10 @@ def check(text, seen=None):
         if indent is not None:
             items.append((indent, cites))
         qtext = _quote_text(block)
-        quotes = [q for q in QUOTE.findall(qtext) if _claimed(q)
-                  and (any_cite or _said_by_docs(qtext, q) or SPECIFIC.search(q))]  # with no citation anywhere, quotes
+        quotes = [(q, t) for q, t in _quote_pairs(block) if _claimed(t)
+                  and (any_cite or _said_by_docs(qtext, q) or _specific(t))]  # with no citation anywhere, quotes
         # given as the docs' words or holding a specific fact
-        for q in dict.fromkeys(quotes):  # a quote repeated in one block is checked once
+        for q, t in dict.fromkeys(quotes):  # a quote repeated in one block is checked once
             if skipped[0] >= MAX_QUOTES:
                 skipped[1] += 1
                 continue
@@ -329,7 +357,7 @@ def check(text, seen=None):
             q2 = ESCAPE.sub(r"\1", q)
             parts = RD.quote_parts(q2)
             rows, bad = _rows_for(use)
-            if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
+            if not use and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not _specific(t):
                 continue
             if not use:
                 if q.strip().endswith("?") and not _said_by_docs(qtext, q):
@@ -340,7 +368,7 @@ def check(text, seen=None):
                     if seen is not None:
                         seen.add(q)
                     continue
-                held = _holder(parts, pages)
+                held = hint(parts)
                 v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation under this heading"
                                      + (f" | found under {_ref(held)}" if held else ""))
             elif not rows:
@@ -356,10 +384,10 @@ def check(text, seen=None):
                     continue  # a quoted question not on the page is the answer's own example question
                 elif _labeled(qtext, q):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {_ref(rows[0])}"
-                elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
+                elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not _specific(t):
                     continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
                 elif not cites:  # it borrowed the citations around it, and none holds it
-                    held = _holder(parts, pages)
+                    held = hint(parts)
                     v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation of its own, and none under this heading holds it"
                                          + (f" | found under {_ref(held)}" if held else ""))
                 else:
@@ -383,6 +411,12 @@ def check(text, seen=None):
     return out, summary, ok
 
 
+def _user_code(span):
+    """A backticked span that is the user's text or a citation, not a stated fact: an error line, three or more words,
+    or a library id."""
+    return bool(ERRORISH.match(span) or len(span.split()) >= 3 or BARE.match(span) or NOFOLDER.match(span))
+
+
 def unquoted_facts(text, seen=None):
     """Rows for sentences stating a specific Jev fact with no quote or citation on their line (module docstring). seen,
     when given, is the set check() already filled for this text, so the quotes are not checked twice."""
@@ -401,13 +435,14 @@ def unquoted_facts(text, seen=None):
             continue
         if MY_READ.match(line):
             break
-        quotes = [q for q in QUOTE.findall(_quote_text(line)) if _claimed(q)]
-        if (quotes and all(q in seen for q in quotes)) or (not quotes and _cites(line)):
-            continue  # its quotes were checked, or it cites a section with no quote to check
+        quotes = [q for q, t in _quote_pairs(line) if _claimed(t)]
+        if (quotes and all(q in seen for q in quotes)) or _cites(line):
+            continue  # its quotes were checked, or it cites a section
         for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*#>|")):
             s = s[:MAX_SENTENCE]  # a fact sits in an ordinary sentence; a very long run is not one
             hedged = HEDGED.search(s) or (YOU_HEDGE.search(s) and not any(SPECIFIC.search(q) for q in QUOTE.findall(s)))
-            if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(s) and not hedged:
+            bare = BARE.sub(" ", TICKED.sub(lambda m: " " if _user_code(m.group(1)) else m.group(0), s))
+            if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(bare) and not hedged:
                 out.append(f"UNQUOTED | {_short(s)}")
     return out
 
