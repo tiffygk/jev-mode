@@ -200,3 +200,17 @@ def test_a_jev_answer_quoting_the_docs_with_no_citation_at_all_fails(ca):
 def test_a_jev_reply_with_no_citation_checks_only_quotes_given_as_the_docs_words(ca):
     rows, summary, ok = ca.check('I set the Jev client error to "Jev request failed after three retries, giving up now".\n')
     assert rows == [] and ok
+
+
+def test_a_quoted_question_not_on_the_page_is_the_answers_own_example(ca):
+    rows, _, ok = ca.check('- Ask one Noul per line ("Is this line a billed line item for the order?") (`docs/one.md#Alpha`)\n')
+    assert rows == [] and ok, rows
+
+
+def test_a_docs_url_cites_its_page_and_a_heading_cut_at_a_word_boundary_resolves(ca):
+    _lib_page("primitives__seven.md", "# Seven\n\n## Step 3: check whether an answer exists\n\nA Seven answer is the selected option here.\n")
+    rows, _, ok = ca.check('- "A Seven answer is the selected option here." ([Seven](https://docs.typesafe.ai/primitives/seven))\n'
+                           '- "A Seven answer is the selected option here." (`docs/primitives__seven.md#Step 3`)\n')
+    assert verdicts(rows) == ["FOUND", "FOUND"] and ok, rows
+    rows, _, ok = ca.check('- "A Seven answer is the selected option here." (`docs/primitives__seven.md#Step`)\n')
+    assert verdicts(rows) == ["FOUND"], rows  # one heading starts with "Step"

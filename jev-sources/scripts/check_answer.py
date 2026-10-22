@@ -30,6 +30,7 @@ BARE = re.compile(r"(?<![\w/`])(" + KINDS + r"[\w.-]+(?:#[^;()`\"*\n]*[^;()`\"*\
 QUOTE = re.compile(r"\"([^\"\n]+)\"")
 HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
 ITEM = re.compile(r"^\s{0,3}(?:[-*+]|\d+[.)])\s")
+DOCS_URL = re.compile(r"https?://docs\.typesafe\.ai/([\w/-]+?)(?:\.md)?/?(?=[)#\s>\]]|$)")
 NOFOLDER = re.compile(r"(?<![\w/`.-])([\w-]+\.(?:md|txt)#[^;()`\"*\n]*[^;()`\"*\s,])")
 NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
 UNVERIFIED = re.compile(r"\bunverified\b", re.I)
@@ -85,8 +86,10 @@ def _bare(cite):
 
 
 def _cites(block):
-    """The library citations in a block: code spans that name a library id, and bare ids (plain or in italics)."""
+    """The library citations in a block: code spans that name a library id, bare ids (plain or in italics), and links
+    to a docs.typesafe.ai page (which name that page)."""
     found = [s.strip() for s in TICKED.findall(block) if re.match(KINDS, s.strip())]
+    found += ["docs/" + u.strip("/").replace("/", "__") + ".md" for u in DOCS_URL.findall(block)]
     plain = TICKED.sub(" ", block)
     found += [_bare(c) for c in BARE.findall(plain)]
     found += [_bare(k + c) for c in NOFOLDER.findall(plain) for k in ("docs/", "cookbooks/", "patterns/", "blog/")
@@ -141,12 +144,15 @@ def _resolve(cite):
 
 def _resolve_one(cite):
     r = CF._cited(cite)
-    if r or "#" not in cite or not ELLIPSIS.search(cite):
+    if r or "#" not in cite:
         return r
+    cut = bool(ELLIPSIS.search(cite))  # "Good practice…" may stop mid-word; without an ellipsis, only at a word end
     path, head = ELLIPSIS.sub("", cite).split("#", 1)
     path = path if path.endswith((".md", ".txt")) else path + ".md"
-    hits = [x for x in RD._index() if x["path"] == path and x["heading"].startswith(head.strip())]
-    return hits if len(hits) == 1 else []
+    head = re.sub(r"\s*\([^()]*\)\s*$", "", head).strip()  # a trailing label
+    hits = [x for x in RD._index() if x["path"] == path and x["heading"].startswith(head)
+            and (cut or len(x["heading"]) == len(head) or not x["heading"][len(head)].isalnum())]
+    return hits if len(hits) == 1 and head else []
 
 
 def _holder(parts, paths):
@@ -218,6 +224,8 @@ def check(text):
                 hit = next((r for r in rows if parts and RD._in_row(r, parts)), None)
                 if hit:
                     v, row = "FOUND", f"FOUND | {_short(q)} | {RD._ref(hit)}"
+                elif q.strip().endswith("?"):
+                    continue  # a quoted question not on the page is the answer's own example question
                 elif UNVERIFIED.search(block):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {RD._ref(rows[0])}"
                 elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()):
