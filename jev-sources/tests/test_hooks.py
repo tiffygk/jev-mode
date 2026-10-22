@@ -641,46 +641,16 @@ def _session(tmp_path, user_text, tool_output, final):
     return str(p)
 
 
-def test_answer_hook_excuses_a_line_only_when_the_session_shows_it(tmp_path, monkeypatch):
+def test_answer_hook_ignores_the_session_record(tmp_path, monkeypatch):
+    """Quotation marks are for the docs' words only: a quote the user typed, or a command printed, is still checked,
+    and the send-back says the user's own text goes in backticks. A missing record changes nothing."""
     data = reader_lib(tmp_path, monkeypatch)
-    err = "RateLimitError: too many calls, retry in 60 seconds"
-    final = A_GOOD + f'- The run printed "{err}" (`docs/one.md#Alpha`)\n'
-    assert answer_run(data, final, transcript_path=_session(tmp_path, "why does it fail", f"Traceback\n{err}", final))[1] is None
-    out = answer_run(data, final, transcript_path=_session(tmp_path, "why does it fail", "ok", final))[1]
-    assert out["decision"] == "block" and "NOT FOUND" in out["reason"]
+    line = "every box answers within six seconds"
+    final = A_GOOD + f'- You got "{line}" (`docs/one.md#Alpha`)\n'
+    for tp in (_session(tmp_path, line, line, final), str(tmp_path / "missing.jsonl"), None):
+        out = answer_run(data, final, **({"transcript_path": tp} if tp else {}))[1]
+        assert out["decision"] == "block" and "NOT FOUND" in out["reason"], tp
+        assert "the user's own text" in out["reason"] and "backticks" in out["reason"]
+    ticked = A_GOOD + f"- You got `{line}`; see `docs/one.md#Alpha`.\n"
+    assert answer_run(data, ticked, transcript_path=_session(tmp_path, line, line, ticked))[1] is None
 
-
-def test_answer_hook_reads_a_codex_session_record(tmp_path, monkeypatch):
-    data = reader_lib(tmp_path, monkeypatch)
-    err = "RateLimitError: too many calls, retry in 60 seconds"
-    final = A_GOOD + f'- The run printed "{err}" (`docs/one.md#Alpha`)\n'
-    p = tmp_path / "rollout.jsonl"
-    p.write_text("\n".join(json.dumps(e) for e in [
-        {"type": "response_item", "payload": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": "help"}]}},
-        {"type": "response_item", "payload": {"type": "function_call", "name": "shell", "call_id": "c1",
-                                              "arguments": json.dumps({"command": ["python3", "app.py"]})}},
-        {"type": "response_item", "payload": {"type": "function_call_output", "call_id": "c1", "output": err}},
-        {"type": "event_msg", "payload": {"type": "agent_message", "message": final}}]) + "\n")
-    assert answer_run(data, final, transcript_path=str(p))[1] is None
-    shown = final.replace("The run printed", "The docs page shows")  # an error line the docs are said to show
-    p.write_text(p.read_text().replace(err, "ok"))
-    assert answer_run(data, shown, transcript_path=str(p))[1]["decision"] == "block"
-
-
-def test_answer_hook_never_excuses_a_quote_by_its_own_earlier_row(tmp_path, monkeypatch):
-    data = reader_lib(tmp_path, monkeypatch)
-    final = A_GOOD + '- You got "every box answers within six seconds" (`docs/one.md#Alpha`)\n'
-    row = "NOT FOUND | every box answers within six seconds | cited docs/one.md#Alpha"
-    out = answer_run(data, final, transcript_path=_session(tmp_path, row, "ok", final))[1]
-    assert out["decision"] == "block"
-
-
-def test_answer_hook_reads_a_codex_exec_event_stream(tmp_path, monkeypatch):
-    data = reader_lib(tmp_path, monkeypatch)
-    err = "RateLimitError: too many calls, retry in 60 seconds"
-    final = A_GOOD + f'- The docs page shows "{err}" (`docs/one.md#Alpha`)\n'
-    p = tmp_path / "events.jsonl"
-    p.write_text("\n".join(json.dumps(e) for e in [
-        {"type": "item.completed", "item": {"type": "command_execution", "command": "python3 run.py", "aggregated_output": err}},
-        {"type": "item.completed", "item": {"type": "agent_message", "text": final}}]) + "\n")
-    assert answer_run(data, final, transcript_path=str(p))[1] is None

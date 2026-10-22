@@ -4,8 +4,7 @@ cites (scripts/check_answer.py). An answer that neither cites a library section 
 unlogged; one that mentions Jev but cites nothing has only the quotes it gives as the docs' words checked. A quote that
 is not on its cited section, a citation that names no section, or a quote with no citation in reach blocks the stop
 once, with the failing rows (never page text), so the model corrects the quote, cites the section that holds it, or
-labels it unverified. A quote is the user's own line only when the session record (the user's messages and the output
-of their own shell commands, from transcript_path) holds it. The next stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
+labels it unverified. Quotation marks are for the docs' words only: the user's own text goes in backticks. The next stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
 A quality check, not a security boundary. Logs counts to <data>/logs/answer_check.jsonl unless JEV_LOG=off."""
 import json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -14,7 +13,7 @@ from jev_terms import ROOT, JEV, data_dir, log_event
 CITES = re.compile(r"(?:docs|cookbooks|patterns|blog)/")
 REASON_CAP = 4000
 TAIL = ("fix each line: correct the quote from its section (read.py '<id>'), cite the section that holds it, or label "
-        "it unverified beside the quote; wording you made up (an example question or option) goes in backticks, not quotation marks. "
+        "it unverified beside the quote; wording you made up (an example question or option) and the user's own text (their error, log or message) go in backticks, not quotation marks. "
         "For an UNQUOTED line, a fact stated without a quote: quote it with its citation, mark it unconfirmed, or move it under "
         "My read. Then send the whole corrected answer, with no note about this check.")
 
@@ -73,19 +72,12 @@ def main():
             return 0
         sys.path.insert(0, os.path.join(ROOT, "scripts"))
         import check_answer
-        tp = p.get("transcript_path") if isinstance(p.get("transcript_path"), str) else None
-        memo = []
-        def record():  # the session record, read once and only when a quote is not on its page
-            if not memo:
-                memo.append(check_answer.transcript_context(tp))
-            return memo[0]
-        ctx = record if tp else None
         seen = set()
-        rows, summary, ok = check_answer.check(msg, seen, ctx)
+        rows, summary, ok = check_answer.check(msg, seen)
         if summary is None:
             return 0
         bad = [r for r in rows if not r.startswith(("FOUND", "LABELED"))]
-        loose = check_answer.unquoted_facts(msg, ctx, seen)
+        loose = check_answer.unquoted_facts(msg, seen)
         counts = dict(quotes=len(rows), failed=len(bad), unquoted=len(loose))
         if not bad and not loose:
             log_event("answer_check", decision="clean", session=sid, **counts)

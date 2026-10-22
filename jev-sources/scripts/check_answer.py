@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Check every docs quote in an answer against the section it cites. The answer comes on stdin.
-  python3 scripts/check_answer.py [--transcript <session.jsonl>] < answer.md
+  python3 scripts/check_answer.py < answer.md
 
 A quote is text of 4 or more words in double quotes (straight or curly), outside code spans. Its citations are the
 library ids (docs/, cookbooks/, patterns/, blog/) in the same bullet, table row or paragraph; with none there, the
@@ -11,18 +11,16 @@ its lead-in line, a "Sources:" line after a list). Prints one row per quote:
   BAD CITE | <first words> | <citation>          (no section has that id)
   UNCITED | <first words> | no citation under this heading
   LABELED | <first words> | <section>           (not found, but labeled unverified or unconfirmed beside it)
-then one summary line. A quote not on its page is the user's own line, and is not checked, only when the session
-record holds it as whole words (--transcript, or the Stop hook's transcript_path: the user's messages and the output
-of shell commands that did not run this skill; never a quote under 4 words holding a specific); with no record, only
-when the words right before it give it to the user ("you got", "your log shows") after nothing but connecting words,
-or it is an error line in a block that names no docs page and has no citation in its clause. With no citation
-anywhere, a quote holding a specific fact is still checked. An answer with no library citation is not a Jev answer: nothing is printed and it passes.
+then one summary line. Quotation marks are for the docs' words only: every quote is checked, whoever's words it holds
+(the user's own error, log or message goes in backticks, which are not checked). With no citation anywhere, a quote
+holding a specific fact is still checked. An answer with no library citation that does not mention Jev is not a Jev
+answer: nothing is printed and it passes.
 unquoted_facts(text) lists, apart from the quote check, each sentence that states a specific Jev fact (a price, a
 number with a unit, a status code, a backticked name) with no quote or citation on its line, before "My read" and
 not marked unconfirmed: UNQUOTED | <first words>. They never change the exit code; the Stop hook asks once.
 Exit 0 when every quote is FOUND or LABELED; 1 otherwise; 2 on bad usage. Never prints page text: a quote is shown
 by its first 5 words, at most 60 characters."""
-import json, os, re, sys
+import os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import read as RD
@@ -49,32 +47,8 @@ NESTED = re.compile(r"^\s+(?:[-*+]|\d+[.)])\s")
 LABEL = re.compile(r"\b(?:unverified|unconfirmed)\b", re.I)
 LABEL_NEXT = re.compile(r"^\s*(?:This|That|The) (?:quote|wording|line|figure)s? (?:is|are) (?:unverified|unconfirmed)\b", re.I)
 CLAUSE_END = re.compile(r"[;.!?](?=\s|$)")
-# Without the session record, a quote not on its cited page is the user's own words only when the words right before
-# it give it to the user ("You asked", "you got", "your log shows") after nothing but connecting words; with the record,
-# only when the user's messages or the output of a shell command that did not run this skill hold it.
-USERS = re.compile(r"\byou\s+(?:(?:asked|said|wrote|mentioned|described|called it|put it)(?:\s+me)?"
-                   r"(?:\s+(?:you\s+)?(?:want(?:ed)?|need(?:ed)?|plan(?:ned)?)\s+to)?|(?:want(?:ed)?|need(?:ed)?)\s+to)\s*[:,]?\s*$"
-                   r"|\byour\s+(?:question|words|message|request|note)(?:\s+(?:was|is|reads|says))?\s*[:,]?\s*$", re.I)
-YOURS = re.compile(r"\byou\s+(?:got|see|saw|pasted|posted|shared|copied)\s*[:,]?\s*$"
-                   r"|\byour\s+(?:logs?|errors?|output|traceback|terminal|console|stack trace|paste|run)"
-                   r"(?:\s+(?:shows?|showed|reads?|says?|said|prints?|printed|is|was|has|had|contains?|ends with))?\s*[:,]?\s*$", re.I)
-LEAD_OK = set("when whenever if after before since because as so and but then here here's heres what that this is it "
-              "you ran run tried earlier above below last time the a an error same also just again now still which "
-              "where once first line message all of in your me i we said there".split())  # words a lead-in may follow
-DOCS_LEAD = re.compile(r"\b(?:docs?|documentation|page|reference|guide|cookbook|TypeSafe|sections?|headings?|tables?)\b"
-                       r"|\.(?:md|txt)\b", re.I)  # a sentence that names where its quote comes from
 NOT_LABEL = re.compile(r"\b(?:not|no|nothing|never|none|isn't|aren't|without)\b[^.;:]{0,30}\b(?:unverified|unconfirmed)\b",
                        re.I)  # "Nothing here is unverified" labels nothing
-DOCS_NAMED = re.compile(r"\b(?:docs?|documentation|page|reference|guide|cookbook|TypeSafe)\b", re.I)
-RECORD_ROW = re.compile(r"^[^|\n]{0,40}?\b(?:FOUND|NOT FOUND|BAD CITE|UNCITED|LABELED|UNQUOTED|TOO MANY) \|.*$"
-                        r"|^.{0,40}?answer check: .*$", re.M)
-MAX_RECORD = 20_000_000  # bytes of a session record read for the user's lines (the end, when longer)
-CANDIDATE = re.compile(r'"type":\s*"user"|"Bash"|"payload"|"command_execution"')  # record lines worth parsing
-RESULT_ID = re.compile(r'"tool_use_id":\s*"([^"]+)"')
-OWN_COMMAND = re.compile(r"jev-sources|\b(?:jev|read|route|check_answer|check_findings)\.py\b|sections\.jsonl")
-SHELL_TOOLS = {"shell", "exec_command", "local_shell", "shell_command", "container.exec", "exec"}
-SKILL_BODY = "Base directory for this skill:"
-LOGLINE = re.compile(r"^\s*(?:[A-Za-z_][\w.]*(?:Error|Exception|Warning)\b|Traceback\b|HTTP/\d|\[?\d{4}-\d\d-\d\d|[A-Z]+\d{3,}\b)")
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
 # unquoted facts: a Jev term and a specific in one sentence
@@ -262,49 +236,6 @@ def _rows_for(cites):
     return rows, bad
 
 
-def _lead(block, q):
-    """The words before the quote in its own clause (at most 80 characters); empty when that clause names the docs, so
-    "the docs say you want to "..."" never reads as the user's words."""
-    i = block.find('"' + q + '"')
-    lead = block[max(0, i - 80):i] if i > 0 else ""
-    lead = CLAUSE_END.split(lead)[-1]
-    return "" if DOCS_NAMED.search(BARE.sub(" ", TICKED.sub(" ", lead))) else lead
-
-
-def _in_record(q, record):
-    """Does the session record (the user's messages and shell output, normalized, space-padded) hold this quote, as
-    whole words, each part between elisions in order? A quote under 4 words holding a specific ("$40", "429") is never
-    excused by the record: a short number turns up in most sessions."""
-    q = ESCAPE.sub(r"\1", q)
-    if not record or (SPECIFIC.search(q) and len(q.split()) < MIN_WORDS):
-        return False
-    if not record.startswith(" "):
-        record = " " + record + " "
-    parts = [p for p in (_norm(x) for x in RD._ELISION.split(q)) if p]
-    at = 0
-    for p in parts:
-        at = record.find(" " + p + " ", at)
-        if at < 0:
-            return False
-        at += len(p) + 1
-    return bool(parts)
-
-
-def _plain_lead(lead, m):
-    """Are the words before a lead-in match m in its clause only connecting words ("When", "and", "here is what")? Then
-    the clause names no section, heading, file or table ("Under Rate limits you see" is the docs' line)."""
-    return all(w.strip("'") in LEAD_OK for w in re.findall(r"[\w'.$#/`]+", lead[:m.start()].lower()))
-
-
-def _users(block, q, record=None):
-    """Is this quote the user's own words ("You asked "...")? With the session record, only if the record holds it."""
-    lead = _lead(block, q)
-    m = USERS.search(lead)
-    if not m:
-        return False
-    return _in_record(q, record) if record is not None else _plain_lead(lead, m)
-
-
 def _clause(block, q):
     """(start, end) of the clause around the quote's first appearance: back to the last sentence end within 400
     characters, forward to the next one within 400; None when the quote is not in the block."""
@@ -317,52 +248,9 @@ def _clause(block, q):
     return (lo + ends[-1].end() if ends else lo), (after.start() if after else min(len(block), i + len(q) + 402))
 
 
-def _cited_beside(block, q):
-    """Is the quote given a page: a citation in its clause before it, or right after it ("..." (docs/x.md#y))? A
-    citation later in the clause backs the claim, not the quote."""
-    span = _clause(block, q)
-    if span is None:
-        return False
-    i = block.find('"' + q + '"')
-    lead = block[span[0]:i]
-    if BARE.search(lead) or NOFOLDER.search(lead) or DOCS_URL.search(lead):
-        return True
-    return bool(re.match(r"\s*[(\[]?\s*(?:`|\[)?\s*(?:" + KINDS + r"|https?://docs\.typesafe\.ai|[\w-]+\.(?:md|txt)#)",
-                         block[i + len(q) + 2:span[1]]))
-
-
 def _claimed(q):
     """A quoted string read as a claimed quote: 4 or more words, or any length when it holds a specific fact."""
     return len(q.split()) >= MIN_WORDS or bool(SPECIFIC.search(q))
-
-
-def _users_line(block, q, record=None, around=None):
-    """A quote not on its cited page that is the user's own line (an error, a log line, their paste). With the session
-    record, the record must hold it; without, the words right before it give it to the user in a sentence that names no
-    docs page or section and the quote is not given a page of its own, or it is shaped like an error line in a block that names no docs page outside its citations
-    and is not given a page of its own. around: the text the quote's borrowed citations come from (its heading's
-    blocks), read for a named docs page in place of the block."""
-    if record is not None:
-        return _in_record(q, record)
-    i = block.find('"' + q + '"')
-    sentence = re.split(r"[.!?](?=\s)", block[max(0, i - 400):max(i, 0)])[-1]
-    lead = _lead(block, q)
-    m = YOURS.search(lead)
-    if (m and _plain_lead(lead, m) and not DOCS_LEAD.search(BARE.sub(" ", TICKED.sub(" ", sentence)))
-            and not _cited_beside(block, q)):
-        return True
-    return bool(LOGLINE.match(q)) and not _names_docs(around or block) and not _cited_beside(block, q)
-
-
-def _names_docs(text):
-    """Does the text, outside its quotes, code spans and citations, name a docs page? Kept per text: one answer asks
-    about the same block for each of its quotes."""
-    memo = _CACHE.setdefault("names_docs", {})
-    if text not in memo:
-        if len(memo) > 500:
-            memo.clear()
-        memo[text] = bool(DOCS_NAMED.search(QUOTE.sub(" ", BARE.sub(" ", TICKED.sub(" ", text)))))
-    return memo[text]
 
 
 def _ref(row):
@@ -398,116 +286,16 @@ def _labeled(block, q):
                 and LABEL_NEXT.match(block[end + 1:]))
 
 
-def _own_command(cmd):
-    """Does a shell command run this skill or read its library? Its output is page text, not the user's."""
-    s = json.dumps(cmd) if not isinstance(cmd, str) else cmd
-    return bool(OWN_COMMAND.search(s))
-
-
-def _strings(x, out, depth=0):
-    """Every text in a message's content, skipping tool calls and thinking."""
-    if depth > 6:
-        return
-    if isinstance(x, str):
-        out.append(x)
-    elif isinstance(x, list):
-        for y in x:
-            _strings(y, out, depth + 1)
-    elif isinstance(x, dict) and x.get("type") not in ("tool_use", "tool_result", "thinking", "redacted_thinking"):
-        for k in ("text", "content", "output", "message", "stdout", "stderr", "aggregated_output"):
-            if k in x:
-                _strings(x[k], out, depth + 1)
-
-
-def transcript_context(path):
-    """What the user brought to the session, normalized and space-padded for quote lookup: their own messages and the
-    output of shell commands that did not run this skill or read its library. Left out: the assistant's words, thinking,
-    tool calls, skill bodies, compaction summaries, results of other tools (file reads, subagents, web fetches) and the
-    checker's own rows. None when the record can't be read or holds none of this. Only the last MAX_RECORD bytes are
-    read."""
-    try:
-        size = os.path.getsize(path)
-        with open(path, "rb") as f:
-            if size > MAX_RECORD:
-                f.seek(size - MAX_RECORD)
-                f.readline()
-            raw = f.read().decode("utf-8", errors="replace")
-    except (OSError, TypeError, ValueError):
-        return None
-    texts, seen_any, shell = [], False, {}  # shell: tool call id -> True when its output counts
-    for line in raw.split("\n"):
-        if not CANDIDATE.search(line):
-            continue  # most of a long record is assistant text and file reads: skip them unparsed
-        if '"tool_result"' in line and not any(shell.get(i) for i in RESULT_ID.findall(line)):
-            continue
-        try:
-            e = json.loads(line)
-        except ValueError:
-            continue
-        if not isinstance(e, dict) or e.get("isMeta") or e.get("isCompactSummary") or e.get("isSidechain"):
-            continue
-        msg = e.get("message") if isinstance(e.get("message"), dict) else None
-        pay = e.get("payload") if isinstance(e.get("payload"), dict) else None
-        item = e.get("item") if isinstance(e.get("item"), dict) else None
-        if e.get("type") == "assistant" and msg and isinstance(msg.get("content"), list):  # Claude Code tool calls
-            for c in msg["content"]:
-                if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Bash":
-                    shell[c.get("id")] = not _own_command((c.get("input") or {}).get("command", ""))
-        elif e.get("type") == "user" and msg:  # Claude Code: a user turn, or tool results
-            seen_any = True
-            content = msg.get("content")
-            for c in content if isinstance(content, list) else [content]:
-                if isinstance(c, dict) and c.get("type") == "tool_result":
-                    if shell.get(c.get("tool_use_id")):
-                        _strings(c.get("content"), texts)
-                elif not (isinstance(c, str) and c.startswith(SKILL_BODY)) and not (
-                        isinstance(c, dict) and str(c.get("text", "")).startswith(SKILL_BODY)):
-                    _strings(c, texts)
-        elif pay is not None:  # Codex rollout
-            t = pay.get("type")
-            if t in ("function_call", "custom_tool_call", "local_shell_call"):
-                args = pay.get("arguments") or pay.get("input") or pay.get("action") or ""
-                shell[pay.get("call_id")] = ((t == "local_shell_call" or pay.get("name") in SHELL_TOOLS)
-                                             and not _own_command(args))
-            elif t in ("function_call_output", "custom_tool_call_output"):
-                seen_any = True
-                if shell.get(pay.get("call_id")):
-                    _strings({"output": pay.get("output")}, texts)
-            elif t == "exec_command_end":
-                seen_any = True
-                if not _own_command(pay.get("command", "")):
-                    _strings({k: pay.get(k) for k in ("stdout", "stderr", "aggregated_output")}, texts)
-            elif t == "user_message" or (pay.get("role") == "user" and t == "message"):
-                seen_any = True
-                _strings({k: pay.get(k) for k in ("content", "message")}, texts)
-        elif item is not None and item.get("type") == "command_execution":  # codex exec --json
-            seen_any = True
-            if not _own_command(item.get("command", "")):
-                _strings({"output": item.get("aggregated_output")}, texts)
-    if not seen_any:
-        return None
-    return " " + _norm(RECORD_ROW.sub(" ", "\n".join(texts))) + " "
-
-
 def _said_by_docs(block, q):
     """Is this quote given as the docs' words ("The docs say "...""), going by the words just before it?"""
     i = block.find('"' + q + '"')
     return i > 0 and bool(DOCS_SAY.search(block[max(0, i - 60):i]))
 
 
-def check(text, seen=None, context=None):
+def check(text, seen=None):
     """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev. seen, a
-    set, collects each quote given a row or found to be the user's, so unquoted_facts reads the lines whose quotes were
-    passed over as terms. context, when given, is a function returning the session record (transcript_context); it is
-    read only when a quote is not on its page."""
+    set, collects each quote given a row, so unquoted_facts reads the lines whose quotes were passed over as terms."""
     text = text.translate(CURLY)
-    memo = []
-    def record():
-        if context is None:
-            return None
-        if not memo:
-            memo.append(context())
-        return memo[0]
     blocks = _blocks(text)
     if not any(_cites(b) for _, b, _ in blocks) and not JEV.search(text):
         return [], None, True
@@ -516,10 +304,9 @@ def check(text, seen=None, context=None):
     skipped = [0, 0]  # quotes looked at, quotes past MAX_QUOTES
     pages = {x["path"] for _, b, _ in blocks for c in _cites(b) for x in _resolve(c)}  # pages this answer cites
     items = []  # (indent, cites) of the bullets so far under this heading, for a nested bullet's parent
-    under, texts = {}, {}  # every citation, and the text, under each heading
+    under = {}  # every citation under each heading
     for h, b, _ in blocks:
         under.setdefault(h, []).extend(c for c in _cites(b) if c not in under.get(h, []))
-        texts[h] = texts.get(h, "") + "\n" + b
     for head, block, indent in blocks:
         cites = _cites(block)
         if indent is None and not block.startswith("|"):
@@ -536,10 +323,6 @@ def check(text, seen=None, context=None):
                 skipped[1] += 1
                 continue
             skipped[0] += 1
-            if USERS.search(_lead(qtext, q)) and _users(qtext, q, record()):
-                if seen is not None:
-                    seen.add(q)
-                continue
             if _norm(q) in _headings():
                 continue  # a page or section title in quotes ("the guide "How to build..."") is a name, not a quote
             use = cites or parent + [c for c in under.get(head, []) if c not in parent]
@@ -551,10 +334,6 @@ def check(text, seen=None, context=None):
             if not use:
                 if q.strip().endswith("?") and not _said_by_docs(qtext, q):
                     continue  # the answer's own example question
-                if _users_line(qtext, q, record()):
-                    if seen is not None:
-                        seen.add(q)
-                    continue
                 if _labeled(qtext, q):
                     counts["LABELED"] = counts.get("LABELED", 0) + 1
                     out.append(f"LABELED | {_short(q)} | no citation")
@@ -579,10 +358,6 @@ def check(text, seen=None, context=None):
                     v, row = "LABELED", f"LABELED | {_short(q)} | {_ref(rows[0])}"
                 elif not cites and len(q.split()) < UNCITED_WORDS and not SENTENCE.match(q.strip()) and not SPECIFIC.search(q):
                     continue  # a short phrase (not a whole sentence) with no citation of its own reads as a term
-                elif _users_line(qtext, q, record(), None if cites else texts[head]):
-                    if seen is not None:
-                        seen.add(q)
-                    continue  # the user's error or log line, quoted beside a citation
                 elif not cites:  # it borrowed the citations around it, and none holds it
                     held = _holder(parts, pages)
                     v, row = "UNCITED", (f"UNCITED | {_short(q)} | no citation of its own, and none under this heading holds it"
@@ -608,7 +383,7 @@ def check(text, seen=None, context=None):
     return out, summary, ok
 
 
-def unquoted_facts(text, context=None, seen=None):
+def unquoted_facts(text, seen=None):
     """Rows for sentences stating a specific Jev fact with no quote or citation on their line (module docstring). seen,
     when given, is the set check() already filled for this text, so the quotes are not checked twice."""
     text = text.translate(CURLY)
@@ -616,7 +391,7 @@ def unquoted_facts(text, context=None, seen=None):
         return []
     if seen is None:
         seen = set()
-        check(text, seen, context)
+        check(text, seen)
     out, fence = [], False
     for line in text.split("\n"):
         if line.lstrip().startswith("```"):
@@ -639,14 +414,13 @@ def unquoted_facts(text, context=None, seen=None):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if argv and (len(argv) != 2 or argv[0] != "--transcript"):
-        print("usage: check_answer.py [--transcript <session.jsonl>] < answer.md", file=sys.stderr)
+    if argv:
+        print("usage: check_answer.py < answer.md", file=sys.stderr)
         return 2
     text = sys.stdin.buffer.read().decode("utf-8", errors="replace")
-    ctx = (lambda: transcript_context(argv[1])) if argv else None
     seen = set()
-    rows, summary, ok = check(text, seen, ctx)
-    for r in rows + unquoted_facts(text, ctx, seen):
+    rows, summary, ok = check(text, seen)
+    for r in rows + unquoted_facts(text, seen):
         print(r)
     if summary:
         print(summary)

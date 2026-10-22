@@ -72,7 +72,7 @@ python3 <skill>/scripts/check_answer.py <<'ANSWER'
 ANSWER
 ```
 
-Fix each line it prints: correct the quote from its section, cite the section that holds it, or label it unverified. Wording you made up (an example question or option) goes in backticks, never quotation marks. Send only the corrected answer, with no note about the check.
+Fix each line it prints: correct the quote from its section, cite the section that holds it, or label it unverified. Wording you made up (an example question or option) and the user's own text (their error, log or message) go in backticks, never quotation marks: quotation marks are for the docs' words only. Send only the corrected answer, with no note about the check.
 
 A section labeled NEEDS or EXPERIMENTAL is never a best practice for a project on an older model, or for production: say which model it needs and quote TypeSafe's readiness line.
 
