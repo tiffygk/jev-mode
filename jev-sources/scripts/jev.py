@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """One call for a Jev question: route it (in your words, and in the docs' words when given), read every READ FULL
-section in reading order up to a token cap, and print one bundle with a citation line per section. Sections past the
-cap are listed with their read.py commands, never dropped.
+section in reading order up to the bundle cap, and print one bundle with a citation line per section. Sections past the
+cap are never dropped: up to a third of the cap, they are listed with their read.py commands for this session to read;
+past that, they go to readers in a reading plan, so this session takes in at most about 1.33 times the cap.
   jev.py "<question>" [--docs-words "<question in the docs' words>"] [--model jev-1.13.0] [--cap 12000] [--json]
   jev.py "<q1>" --also "<q2>" [--also ...]   several questions, one shared cap, a COVERAGE block (at most 8 questions)
   jev.py --map "<goal>"                        an outline of the pages and sections that may answer a broad goal; reads nothing"""
@@ -15,7 +16,12 @@ import paths
 from paths import CODE, REFRESH
 import clean
 
-CAP = 12000
+CAP = 12000         # the bundle cap: page text printed at once
+
+
+def direct_limit(cap):
+    """Tokens left past the bundle cap that this session reads itself; more than this go to readers."""
+    return cap // 3
 ORDER = {"reference": 0, "pattern": 1, "sdk": 2, "example": 3, "vendor": 4, "other": 5}
 MAX_QUESTIONS = 8   # sub-questions in one call
 MAX_BATCHES = 6     # reading-plan batches; past that the goal is too broad
@@ -142,7 +148,7 @@ def bundle(questions, model=None, cap=CAP, log=True, coverage=True):
             usage_log.write("read", id=s["id"], extract=False, tokens=s["tokens"], via="jev.py")
         used += s["tokens"]
     plan, too_broad = [], None
-    if sum(s["tokens"] for s in not_read) > cap:
+    if sum(s["tokens"] for s in not_read) > direct_limit(cap):
         plan = reading_plan(not_read, cap)
         if len(plan) > MAX_BATCHES:  # no partial plan: the goal is narrowed or split instead
             too_broad = {"batches": len(plan), "tokens": sum(s["tokens"] for s in not_read)}
@@ -201,7 +207,7 @@ def main():
     ap.add_argument("--also", action="append", default=[], help="another question; repeat up to %d in all" % (MAX_QUESTIONS - 1))
     ap.add_argument("--map", action="store_true", help="print an outline of the pages that may answer the goal; read nothing")
     ap.add_argument("--model")
-    ap.add_argument("--cap", type=int, default=CAP)
+    ap.add_argument("--cap", type=int, default=CAP, help="the bundle cap (default %(default)s); leftovers over a third of it go to readers")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
     model = applicability.checked(a.model)
@@ -233,7 +239,7 @@ def main():
               f"narrow the goal or split it into runs")
     elif b["plan_batches"]:
         total = sum(s["tokens"] for s in b["not_read"])
-        print(f"READING PLAN: {len(b['not_read'])} sections, {total:,} tokens not yet read, more than the cap ({a.cap:,}). "
+        print(f"READING PLAN: {len(b['not_read'])} sections, {total:,} tokens not yet read, more than a third of the bundle cap ({a.cap:,}). "
               f"Start one reader per batch (SKILL.md, \"Over the cap\").")
         print("GOAL: " + " | ".join(qs))
         for n, batch in enumerate(b["plan_batches"], 1):
@@ -242,7 +248,7 @@ def main():
             print(reader_block(plan_id, n, batch, qs))
     else:
         for s in b["not_read"]:
-            print(f"NOT YET READ (over the cap): {rd} {shlex.quote(s['id'])}  # {s['path']}#{s['heading']}")
+            print(f"NOT YET READ (past the bundle cap; read it yourself): {rd} {shlex.quote(s['id'])}  # {s['path']}#{s['heading']}")
     for s in b["extract"]:
         print(f"EXTRACT (claims from it are unverified until read in full): {rd} '{s['id']}'")
     if len(groups) > 1:

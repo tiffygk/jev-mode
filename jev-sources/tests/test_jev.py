@@ -118,12 +118,20 @@ def test_extract_items_are_listed_not_read(J, monkeypatch):
 
 
 def test_cli_prints_a_read_command_for_each_unread_section(J, monkeypatch, capsys):
-    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=700), sec("b", tokens=700), sec("e", depth="EXTRACT")]}})
-    monkeypatch.setattr(sys, "argv", ["jev.py", "q", "--cap", "1000"])
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=900), sec("b", tokens=200), sec("e", depth="EXTRACT")]}})
+    monkeypatch.setattr(sys, "argv", ["jev.py", "q", "--cap", "1000"])  # 200 left over: under a third of the cap
     J.main()
     out = capsys.readouterr().out
     assert f"python3 {os.path.join(CODE, 'scripts', 'read.py')} {shlex.quote('b')}  #" in out
     assert "NOT YET READ" in out and "EXTRACT" in out and "semantic: on" in out
+
+
+def test_leftovers_up_to_a_third_of_the_cap_are_read_directly_and_more_go_to_readers(J, monkeypatch):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=900), sec("b", tokens=333)]}})
+    assert J.bundle(["q"], cap=1000)["plan"] == []  # 333: exactly a third, read by the main session
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=900), sec("b", tokens=334)]}})
+    assert J.bundle(["q"], cap=1000)["plan"] == [["b"]]  # 334: over a third, so a reader takes it
+    assert J.direct_limit(12000) == 4000
 
 
 # ---- on an invented library -------------------------------------------------------------------------------------
@@ -348,7 +356,7 @@ def test_over_twice_the_cap_prints_a_plan_with_runnable_numeric_id_commands(tmp_
     r = run_jev(env, "what is the batch limit", "--cap", "1500")
     assert r.returncode == 0, r.stderr
     out = r.stdout
-    assert "READING PLAN: " in out and "tokens not yet read, more than the cap (1,500)" in out
+    assert "READING PLAN: " in out and "tokens not yet read, more than a third of the bundle cap (1,500)" in out
     assert "GOAL: what is the batch limit" in out
     assert "BATCH 1 (~" in out and "BATCH 2 (~" in out
     assert "NOT YET READ" not in out
@@ -363,12 +371,13 @@ def test_over_twice_the_cap_prints_a_plan_with_runnable_numeric_id_commands(tmp_
     assert res.returncode == 0 and res.stdout.startswith("SOURCE: docs/p") and "#What's the batch limit" in res.stdout.split("|")[0], res.stderr
 
 
-def test_at_or_under_the_cap_the_unread_sections_are_listed_not_planned(tmp_path, monkeypatch):
+def test_leftovers_under_a_third_of_the_cap_are_listed_and_more_are_planned(tmp_path, monkeypatch):
     env = make_lib(tmp_path, monkeypatch, plan_lib_pages(3, 1000))
-    over = run_jev(env, "what is the batch limit", "--cap", "1500", "--json")  # 2,000 tokens unread: over the cap
+    over = run_jev(env, "what is the batch limit", "--cap", "2500", "--json")  # ~1,000 unread: under the cap, over a third
     assert json.loads(over.stdout)["plan"]
-    out = run_jev(env, "what is the batch limit", "--cap", "2500").stdout  # 1,000 unread: at or under
-    assert "READING PLAN" not in out and "NOT YET READ (over the cap)" in out
+    env = make_lib(tmp_path / "five", monkeypatch, plan_lib_pages(5, 1000))
+    out = run_jev(env, "what is the batch limit", "--cap", "4500").stdout  # ~1,000 unread: under a third (1,500)
+    assert "READING PLAN" not in out and "NOT YET READ (past the bundle cap; read it yourself)" in out
 
 
 def test_a_section_over_the_cap_stands_alone_in_the_cli_plan(J, monkeypatch, capsys):

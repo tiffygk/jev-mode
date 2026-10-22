@@ -28,7 +28,7 @@ body
 CITE AS: cookbooks/invented_demo.md#Demo (layout) (cookbook example) | NEEDS jev-9.9
 SOURCE: cookbooks/invented_demo.md#Demo (layout) | KIND: cookbook example | READ: full
 body
-NOT YET READ (over the cap): python3 /x/scripts/read.py 'docs/other#3'  # docs/other.md#Not read
+NOT YET READ (past the bundle cap; read it yourself): python3 /x/scripts/read.py 'docs/other#3'  # docs/other.md#Not read
 EXTRACT (claims from it are unverified until read in full): python3 /x/scripts/read.py 'docs/other#4'
 semantic: on
 """

@@ -17,9 +17,9 @@ Run one command and read what it prints:
 python3 <skill>/scripts/jev.py "<the question, in your words>" --docs-words "<the same question in the docs' words>"
 ```
 
-Add `--model <id>` when the project pins a model. The docs' words are the terms the docs use (for example "second request", "depends on", "one request", "Choice options", "threshold"); the command routes both phrasings and merges them. It reads every READ FULL section, reference rules first, then patterns, SDK pages, cookbook examples and vendor claims, within a token cap (`--cap N`), and starts each with a `CITE AS:` line to quote. Route each separate question on its own.
+Add `--model <id>` when the project pins a model. The docs' words are the terms the docs use (for example "second request", "depends on", "one request", "Choice options", "threshold"); the command routes both phrasings and merges them. It reads every READ FULL section, reference rules first, then patterns, SDK pages, cookbook examples and vendor claims, within the bundle cap (`--cap N`), and starts each with a `CITE AS:` line to quote. Route each separate question on its own.
 
-- A section printed under `NOT YET READ (over the cap)` comes with its `read.py` command: run it before relying on that section.
+- A section printed under `NOT YET READ` comes with its `read.py` command: run it before relying on that section. These leftovers are at most a third of the cap; more go to readers.
 - An `EXTRACT` line points somewhere (`read.py '<id>' --extract <word> <word>`). A claim resting on it is labeled **unverified**.
 - If it prints "no section found", say so, then run `bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory.
 
@@ -36,7 +36,7 @@ python3 <skill>/scripts/jev.py "<topic 1, in your words>" --also "<topic 2>" --a
 
 ## Over the cap
 
-When `jev.py` prints `READING PLAN`, the unread sections are more than the cap. Keep the sections it already printed in full; don't read them again. It also prints one `READER BRIEF` block per batch: start one read-only reader subagent per block, with the block pasted whole as its brief. Batches may run in parallel.
+When `jev.py` prints `READING PLAN`, the unread sections are more than a third of the cap. Keep the sections it already printed in full; don't read them again. It also prints one `READER BRIEF` block per batch: start one read-only reader subagent per block, with the block pasted whole as its brief. Batches may run in parallel.
 
 Where you can't start subagents, read one batch at a time yourself: write its finding lines under that batch's `JEV-READER:` line and keep only those lines before the next batch. Then check every reply at once, through a quoted heredoc:
 
