@@ -27,7 +27,7 @@ Each section `jev.py` finds gets a label:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/how-it-works-dark.svg">
-  <img alt="How a Jev question flows: reminder hook, jev.py, keyword and meaning routes, labels, sections read in full or a reading plan, then a quoted claim." src="images/how-it-works.svg">
+  <img alt="How a Jev question flows: reminder hook, jev.py, keyword and meaning routes, labels, sections read in full or a reading plan, then a cited answer." src="images/how-it-works.svg">
 </picture>
 
 1. A hook sees a Jev message and tells the model to run `jev.py`. At most every two days, the hook also starts a background check for new or re-dated TypeSafe pages.
@@ -36,14 +36,14 @@ Each section `jev.py` finds gets a label:
    - A small offline model compares meanings and adds up to two sections the keywords missed.
    - Both read the docs without the site's display code stuffing context.
    - It reads the READ FULL sections, reference rules first, up to a size cap. The model reads small leftovers itself; past a third of the cap, subagents read the rest.
-   - A broad goal runs as up to 8 questions in one call, naming any that found nothing.
-3. The model quotes each section with its provenance (source and label), or says "the docs don't say". A hook checks every quote and sends back misquotes and unquoted facts.
+   - A question reads what it asks. A build runs one question per part and names any that found nothing.
+3. The model answers in its own words, citing each section and label, or says "the docs don't say". A hook sends back misquotes and citations to missing sections.
 
 | Step | Who enforces it |
 |---|---|
 | Routing, labels, reading order, cap | Code, once the model runs `jev.py` |
-| Reminder; refusing subagent instructions without their source line; checking every quote, a subagent's or the answer's | Hooks, once installed |
-| Running `jev.py`, the quote, its provenance | The model, following `SKILL.md` |
+| Reminder; refusing subagent instructions without their source line; checking citations, a subagent's or the answer's | Hooks, once installed |
+| Running `jev.py`, the answer, its provenance | The model, following `SKILL.md` |
 
 After a page changes, the background check reruns the routing tests and lists the citations it affects. Data stays in `~/.claude/jev-sources-data/`; `JEV_LOG=off` stops logging your questions.
 
@@ -53,7 +53,7 @@ It reads TypeSafe's docs (including Models and the API and SDK reference), patte
 
 ## Where the rules come from
 
-Jev Sources adds no rules. It quotes TypeSafe and says each page's kind: reference pages say what the API allows; cookbooks show one working build. A cookbook that sends one request per item shows one way to build it; a reference page or its scope note says whether you must. Rating a design is a separate skill, [Jevaluate](../jevaluate/).
+Jev Sources adds no rules. It cites TypeSafe and says each page's kind: reference pages say what the API allows; cookbooks show one working build. A cookbook that sends one request per item shows one way to build it; a reference page or its scope note says whether you must. Rating a design is a separate skill, [Jevaluate](../jevaluate/).
 
 ## How accurate it is
 
