@@ -55,7 +55,13 @@ MARKER = "JEV-SOURCES:"
 BRIEF = ("JEV-SOURCES: before any finding, run "
          f"`python3 {ROOT}/scripts/jev.py \"<the question, in your words>\" --docs-words \"<the same question in the docs' words>\"` "
          "(it routes the question twice) and read what it prints; quote verbatim, give path#heading, label reference rule, pattern, cookbook example, "
-         "sdk reference or vendor claim; findings without this are unverified.")
+         "sdk reference or vendor claim; quotation marks only for the docs' words; your own text and the user's go in backticks; "
+         "findings without this are unverified.")
+
+# Words that start a build or a plan ("plan" only as a verb), and the reminder line they add beside a Jev word.
+BUILD = re.compile(r"\b(build|building|implement\w*|set up|migrat\w*|planning|plan (?:it|this|that|the|out|for))\b", re.I)
+BUILD_LINE = (" If this starts a build or plan: run jev.py with one --also per part the build needs, and give each builder "
+              "subagent the JEV-SOURCES line with questions for its own part (SKILL.md, \"Building\").")
 
 
 def sentences(text):

@@ -689,3 +689,86 @@ def test_answer_hook_passes_when_the_last_answer_is_before_the_window(tmp_path, 
     tp = _transcript(tmp_path / "late.jsonl", 0, final, after=6_000_000)
     raw = json.dumps({"session_id": "s1", "stop_hook_active": False, "transcript_path": tp})
     assert answer_run(data, None, raw=raw)[:2] == (0, None)
+
+
+# --- Task 2: subagent reports that cite the docs, and the build line ------------------------------------------------
+def test_a_builder_report_with_a_bad_citation_is_sent_back_once(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch, with_plan=False)
+    msg = "Done. Rate limits are per key (`docs/one.md#Gamma`)."
+    code, out = reader_run(data, msg, agent_id="b1")
+    assert code == 0 and out["decision"] == "block"
+    assert "SUBAGENT CHECK" in out["reason"] and "BAD CITE" in out["reason"] and "docs/one.md#Gamma" in out["reason"]
+    assert "Quotation marks only for the docs' words" in out["reason"] and len(out["reason"]) <= 4000
+    assert reader_run(data, msg, agent_id="b1") == (0, None)
+    ev = _lines(data, "subagent_check")
+    assert [x["decision"] for x in ev] == ["block", "loop_guard"]
+    assert msg not in json.dumps(ev)
+
+
+def test_a_builder_report_with_real_citations_passes(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch, with_plan=False)
+    assert reader_run(data, "Done. Every box has a time limit (`docs/one.md#Alpha`).", agent_id="b2") == (0, None)
+    assert [x["decision"] for x in _lines(data, "subagent_check")] == ["clean"]
+
+
+def test_a_subagent_report_citing_nothing_passes_silently(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch, with_plan=False)
+    assert reader_run(data, "Done; 12 tests pass.", agent_id="b3") == (0, None)
+    assert _lines(data, "subagent_check") == []
+
+
+def test_a_report_quoting_the_projects_own_docs_file_is_not_checked(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch, with_plan=False)
+    msg = 'Per `docs/CONTRIBUTING.md#Setup`, "run make test before pushing".'
+    assert reader_run(data, msg, agent_id="b4") == (0, None)
+    assert _lines(data, "subagent_check") == []
+
+
+def test_reader_replies_keep_the_reader_check(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out = reader_run(data, head() + BAD + "\n")
+    assert out["decision"] == "block" and "QUOTE NOT FOUND | b1 |" in out["reason"] and "SUBAGENT CHECK" not in out["reason"]
+    assert _lines(data, "subagent_check") == []
+
+
+def _prompt(data_dir, prompt, session="bs", **extra):
+    return run("jev-prompt-reminder.py", {"prompt": prompt, "session_id": session, **extra}, JEV_SOURCES_DATA=str(data_dir))
+
+
+def _build_line():
+    sys.path.insert(0, H)
+    import jev_terms
+    return jev_terms.BUILD_LINE
+
+
+def test_a_build_word_with_jev_adds_the_build_line(tmp_path):
+    out = _prompt(tmp_path, "I'm going to build a ticket triage with Jev")
+    assert out["hookSpecificOutput"]["additionalContext"].endswith(_build_line())
+
+
+def test_a_build_follow_up_after_recent_jev_fires_the_build_line(tmp_path):
+    assert _prompt(tmp_path, "What question type fits ticket triage in Jev?")
+    out = _prompt(tmp_path, "Thanks. I'm going to build this now; plan it and use subagents for the parts.")
+    ctx = out["hookSpecificOutput"]["additionalContext"]
+    assert ctx.startswith("This message is about Jev/TypeSafe.") and ctx.endswith(_build_line())
+
+
+def test_a_build_word_with_no_jev_in_reach_stays_quiet(tmp_path):
+    assert _prompt(tmp_path, "I'm going to build the settings page now") is None
+
+
+def test_a_plain_jev_question_has_no_build_line(tmp_path):
+    out = _prompt(tmp_path, "What does Jev's free plan include?")
+    assert out and _build_line() not in out["hookSpecificOutput"]["additionalContext"]
+
+
+def test_a_build_word_on_a_handback_fires_nothing(tmp_path):
+    assert _prompt(tmp_path, "What question type fits ticket triage in Jev?")
+    assert _prompt(tmp_path, "<task-notification> build finished, plan it") is None
+
+
+def test_plan_mode_after_recent_jev_fires_the_build_line(tmp_path):
+    assert _prompt(tmp_path, "What question type fits ticket triage in Jev?", session="pm")
+    assert _prompt(tmp_path, "use subagents for it", session="pm") is None  # default mode: nothing to add
+    out = _prompt(tmp_path, "use subagents for it", session="pm", permission_mode="plan")
+    assert out["hookSpecificOutput"]["additionalContext"].endswith(_build_line())

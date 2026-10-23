@@ -1,7 +1,7 @@
 """When the reminder fires. decide() is used by the hook, the scoring script and the tests, so the rule that was
 measured is the rule that runs. Candidate rules were fixed on 2026-10-14 before any labels existed."""
 import re
-from jev_terms import JEV, HANDBACK, DESIGN, topic_text
+from jev_terms import JEV, HANDBACK, DESIGN, BUILD, topic_text
 
 CONTINUATION = re.compile(r"^\s*This session is being continued from a previous conversation", re.I)
 # Jev 1.14 terms today's JEV pattern misses ("Box" alone is a common word, so only the compound counts).
@@ -42,11 +42,28 @@ def decide(prompt, rule="current", recent=frozenset()):
     return True, "jev_design" if design else "jev_word", words
 
 
+def recent_words(state):
+    """Jev words that fired in this session within the last WINDOW prompts, from the session state."""
+    return {w for n, ws in state.get("fires", []) if state.get("n", 0) - n < WINDOW for w in ws}
+
+
+def build_line(prompt, permission_mode, recent):
+    """True when the reminder adds the build line: a build word beside a Jev word in this message or one that fired in
+    the last WINDOW prompts; in plan mode a Jev word in this message or in that window is enough. Handbacks and
+    continuation summaries never add it."""
+    if not isinstance(prompt, str) or HANDBACK.search(prompt) or CONTINUATION.search(prompt):
+        return False
+    jev = bool(jev_words(prompt)) or bool(recent)
+    if permission_mode == "plan":
+        return jev
+    return jev and bool(BUILD.search(topic_text(prompt)))
+
+
 def step(state, prompt, rule):
     """One prompt through the rule, advancing the session state. The hook and score_rules.py both call this, so the
     window is computed one way. Every prompt the hook sees advances n, handbacks and notifications included."""
     state = {"n": state.get("n", 0), "fires": list(state.get("fires", []))}
-    recent = {w for n, ws in state["fires"] if state["n"] - n < WINDOW for w in ws}
+    recent = recent_words(state)
     fire, reason, words = decide(prompt, rule, recent)
     state["n"] += 1
     if fire:

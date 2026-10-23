@@ -89,7 +89,7 @@ When the reference pages don't settle a question, say "the docs don't say". Your
 Paste this line into the brief with `<skill>` written out in full, since the subagent has no skill folder (the dispatch hook refuses a Jev brief without it):
 
 ```
-JEV-SOURCES: before any finding, run `python3 <skill>/scripts/jev.py "<the question, in your words>" --docs-words "<the same question in the docs' words>"` (it routes the question twice) and read what it prints; quote verbatim, give path#heading, label reference rule, pattern, cookbook example, sdk reference or vendor claim; findings without this are unverified.
+JEV-SOURCES: before any finding, run `python3 <skill>/scripts/jev.py "<the question, in your words>" --docs-words "<the same question in the docs' words>"` (it routes the question twice) and read what it prints; quote verbatim, give path#heading, label reference rule, pattern, cookbook example, sdk reference or vendor claim; quotation marks only for the docs' words; your own text and the user's go in backticks; findings without this are unverified.
 ```
 
 ## Speed, cost and accuracy claims

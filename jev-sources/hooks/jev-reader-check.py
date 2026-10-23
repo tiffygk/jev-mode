@@ -4,7 +4,11 @@ scripts/check_findings.py before it returns. A bad quote, a finding outside its 
 no findings blocks the stop once per agent, with the failing rows (never section text), so the reader fixes them while
 it still holds the pages. A reply with finding lines but no JEV-READER line is sent back once to add it (its batch
 would otherwise count as missing). The second stop of the same agent passes (loop guard). Any fault passes and is logged.
-A quality check, not a security boundary. Logs to <data>/logs/reader_check.jsonl unless JEV_LOG=off."""
+Any other subagent reply that cites a page the library holds gets the answer check (scripts/check_answer.py): a citation
+that names no section, or a quote not on its section, blocks once per agent with the failing rows (never page text).
+A reply citing nothing, or only files the library does not hold, passes untouched and unlogged.
+A quality check, not a security boundary. Logs to <data>/logs/reader_check.jsonl (readers) and subagent_check.jsonl
+(other subagents) unless JEV_LOG=off."""
 import json, os, re, sys, tempfile, time
 try:
     import fcntl
@@ -19,6 +23,9 @@ REASON_CAP = 4000
 STATE_CAP = 500
 LOCK_WAIT = 2.0  # seconds
 TAIL = "fix these lines and reply again, starting with the JEV-READER line"
+SUB_TAIL = ("fix each line: cite the section that holds the fact (run jev.py or read.py), correct a quote from its section, "
+            "or mark the claim unverified. Quotation marks only for the docs' words; your own text and the user's go in "
+            "backticks. Then reply again.")
 
 
 def _state_path():
@@ -81,6 +88,41 @@ def _reason(rows):
     return ("\n".join(out) + tail)[:REASON_CAP]
 
 
+def _sub_reason(rows):
+    head, tail = "SUBAGENT CHECK", f"\n{SUB_TAIL}"
+    out, used = [head], len(head) + len(tail)
+    for i, r in enumerate(rows):
+        more = f"\n... and {len(rows) - i} more failing lines"
+        if used + len(r) + 1 + len(more) > REASON_CAP:
+            out.append(more.strip("\n"))
+            break
+        out.append(r)
+        used += len(r) + 1
+    return ("\n".join(out) + tail)[:REASON_CAP]
+
+
+def _subagent_check(msg, sid, agent):
+    """The answer check on a subagent report that cites a page the library holds. Blocks once per agent."""
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import check_answer
+    cites = check_answer._cites(msg)
+    if not any(check_answer._resolve(c.split("#", 1)[0]) for c in cites):
+        return 0  # cites nothing, or only files the library does not hold: not checked, not logged
+    rows, summary, ok = check_answer.check(msg)
+    ctx = dict(session=sid if isinstance(sid, str) else "-", agent_id=agent if isinstance(agent, str) else "-")
+    bad = [r for r in rows if not r.startswith(("FOUND", "LABELED"))]
+    counts = dict(rows=len(rows), failed=len(bad))
+    if summary is None or ok or not bad:
+        log_event("subagent_check", decision="clean", **ctx, **counts)
+        return 0
+    if not isinstance(agent, str) or not agent or not _first_block(agent):
+        log_event("subagent_check", decision="loop_guard", **ctx, **counts)
+        return 0
+    log_event("subagent_check", decision="block", **ctx, **counts)
+    print(json.dumps({"decision": "block", "reason": _sub_reason(bad)}))
+    return 0
+
+
 def main():
     sid = agent = plan_id = batch = None
     try:
@@ -95,7 +137,7 @@ def main():
         start = next((i for i, x in enumerate(lines) if HEADER.match(x.strip())), None)  # a short preamble may come first
         if start is None:
             if not any(x.strip().startswith("FINDING:") and "| CITE AS:" in x for x in lines):
-                return 0  # not a reader reply: say nothing, log nothing
+                return _subagent_check(msg, sid, agent)  # not a reader reply: silent unless it cites the library
             if not isinstance(agent, str) or not agent or not _first_block(agent):
                 return 0  # finding lines with no header: the reader dropped it, so its batch would count as missing
             log_event("reader_check", decision="block_no_header", session=sid if isinstance(sid, str) else "-", agent_id=agent)

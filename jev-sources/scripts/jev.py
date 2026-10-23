@@ -28,6 +28,8 @@ MAX_BATCHES = 6     # reading-plan batches; past that the goal is too broad
 MAP_TOKENS = 1500   # outline size, counted as characters / 4
 LABEL = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference",
          "vendor": "vendor claim", "other": "other"}
+SCOPE = ("SCOPE: use these sections for what this turn asks or builds; for a part not covered here, "
+         "run jev.py when that part starts.")
 NEXT = 'Next: run jev.py with one question per topic you need: jev.py "<q1>" --also "<q2>" ...'
 
 
@@ -164,6 +166,20 @@ def bundle(questions, model=None, cap=CAP, log=True, coverage=True):
     return out
 
 
+def map_blocks(secs):
+    """map_outline's lines for sections that carry path, kind, heading and tokens: one block per page, in the order the
+    pages first appear: the page line (label, section count, size of the listed sections), then one line per heading."""
+    pages = {}
+    for s in secs:
+        pages.setdefault(s["path"], []).append(s)
+    blocks = []
+    for path, group in pages.items():  # a page's token figure counts only its listed sections, not the whole page
+        n = len(group)
+        head = f"{path} ({LABEL.get(group[0]['kind'], 'other')}, {n} section{'s' if n != 1 else ''}, ~{sum(x['tokens'] for x in group):,} tokens)"
+        blocks.append([head] + [f"  - {x['heading']} (~{x['tokens']:,})" for x in group])
+    return blocks
+
+
 def map_outline(goal, docs_words=None, budget=MAP_TOKENS, model=None):
     """The pages and sections that may answer a broad goal: path, label, headings and sizes, no section text, nothing logged.
     Pages come in rank order of each page's best section; pages that do not fit the budget (characters / 4) become a count."""
@@ -182,11 +198,7 @@ def map_outline(goal, docs_words=None, budget=MAP_TOKENS, model=None):
             pages.setdefault(s["path"], []).append(s)
     if not pages:
         return f"MAP: {goal[:200]}\nno section found; route in other words or refresh\n"
-    blocks = []
-    for path, secs in pages.items():  # a page's token figure counts only its listed sections, not the whole page
-        n = len(secs)
-        head = f"{path} ({LABEL.get(secs[0]['kind'], 'other')}, {n} section{'s' if n != 1 else ''}, ~{sum(x['tokens'] for x in secs):,} tokens)"
-        blocks.append([head] + [f"  - {x['heading']} (~{x['tokens']:,})" for x in secs])
+    blocks = map_blocks([x for secs in pages.values() for x in secs])
 
     def text(kept):
         lines = [f"MAP: {goal[:200]}"] + [l for b in blocks[:kept] for l in b]
@@ -240,10 +252,14 @@ def main():
     elif b["plan_batches"]:
         total = sum(s["tokens"] for s in b["not_read"])
         print(f"READING PLAN: {len(b['not_read'])} sections, {total:,} tokens not yet read, more than a third of the bundle cap ({a.cap:,}). "
-              f"Start one reader per batch (SKILL.md, \"Over the cap\").")
+              f"Start one reader per batch. If you can't start subagents, read at most one batch: the sections your task relies on, "
+              f"chosen from the MAP. If your task needs more, stop and report which parts to split into separate tasks.")
         print("GOAL: " + " | ".join(qs))
         for n, batch in enumerate(b["plan_batches"], 1):
             print(f"BATCH {n} (~{sum(s['tokens'] for s in batch):,} tokens)")
+        print("MAP (for choosing what to read; never state a fact from it):")
+        for block in map_blocks(b["not_read"]):
+            print("\n".join(block))
         for n, batch in enumerate(b["plan_batches"], 1):
             print(reader_block(plan_id, n, batch, qs))
     else:
@@ -263,6 +279,8 @@ def main():
                 word = "unread" if b["too_broad"] else "in plan"  # a too-broad goal has no plan to be in
                 print(f"  {n}. {c['q']}: read {len(c['read'])}, {word} {len(c['planned'])}")
     print(f"semantic: {b['semantic']}")
+    if len(groups) > 1:
+        print(SCOPE)
     return 0
 
 

@@ -346,9 +346,9 @@ def _example_question(block, q):
 
 
 def check(text, seen=None):
-    """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev. seen, a
-    set, collects each quote given a row. A
-    saved page that is missing fails the answer once, naming the page, rather than passing it unchecked."""
+    """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev. seen,
+    when given, collects each quote that got a row (kept for callers). A saved page that is missing fails the answer
+    once, naming the page, rather than passing it unchecked."""
     memo = _CACHE.get("resolved")
     if memo is not None and len(memo) > MAX_MEMO:
         memo.clear()  # between answers, never mid-answer

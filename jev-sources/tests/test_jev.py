@@ -724,3 +724,53 @@ def test_a_saved_plan_makes_every_missing_folder_owner_only(tmp_path, monkeypatc
     jev.save_plan(["q"], [[{"id": "a", "tokens": 1}]])
     for d in (tmp_path / "x", tmp_path / "x" / "data", tmp_path / "x" / "data" / "plans"):
         assert oct(os.stat(d).st_mode & 0o777) == "0o700", d
+
+
+# --- Task 2: the headings map and the one-batch path ---------------------------------------------------------------
+def two_topic_pages():
+    body = "\n".join("Sentence number %d about this topic goes here and runs on." % i for i in range(20))
+    pages = {}
+    for k in range(3):
+        pages["docs/limits%d.md" % k] = "# Rate limits and retries %d\n\nrate limits retries %s\n" % (k, body)
+        pages["docs/pricing%d.md" % k] = "# Pricing per request %d\n\npricing per request %s\n" % (k, body)
+    return pages
+
+
+def test_reading_plan_prints_a_headings_map_and_a_one_batch_path(tmp_path, monkeypatch):
+    env = make_lib(tmp_path, monkeypatch, two_topic_pages())
+    r = run_jev(env, "rate limits and retries", "--also", "pricing per request", "--cap", "300")
+    assert r.returncode == 0, r.stderr
+    out = r.stdout.splitlines()
+    plan_line = next(l for l in out if l.startswith("READING PLAN:"))
+    assert "read at most one batch" in plan_line and "chosen from the MAP" in plan_line and "SKILL.md" not in plan_line
+    assert "Start one reader per batch." in plan_line and "which parts to split into separate tasks" in plan_line
+    assert "SKILL.md" not in r.stdout
+    i = next(i for i, l in enumerate(out) if l.startswith("MAP (for choosing what to read; never state a fact from it):"))
+    block = []
+    for l in out[i + 1:]:
+        if not (l.startswith("  - ") or re.match(r"^docs/\S+ \(", l)):
+            break
+        block.append(l)
+    j = json.loads(run_jev(env, "rate limits and retries", "--also", "pricing per request", "--cap", "300", "--json").stdout)
+    assert j["not_read"]
+    rows = [json.loads(x) for x in open(os.path.join(env["JEV_SOURCES_DATA"], "sections.jsonl"))]
+    by_id = {x["id"]: x for x in rows}
+    for sid in j["not_read"]:
+        s = by_id[sid]
+        assert any(l.startswith(s["path"] + " (") for l in block), s["path"]
+        assert any(l.startswith("  - " + s["heading"] + " (~") for l in block), s["heading"]
+    for l in block:  # a heading, a label and a size: never section text
+        assert re.match(r"^(docs/\S+ \([a-z ]+, \d+ sections?, ~[\d,]+ tokens\)|  - .+ \(~[\d,]+\))$", l), l
+        assert "Sentence number" not in l
+
+
+def test_a_multi_question_run_ends_with_the_scope_line(tmp_path, monkeypatch):
+    env = make_lib(tmp_path, monkeypatch, two_topic_pages())
+    out = run_jev(env, "rate limits and retries", "--also", "pricing per request", "--cap", "300").stdout.rstrip("\n").splitlines()
+    assert out[-1] == ("SCOPE: use these sections for what this turn asks or builds; for a part not covered here, "
+                       "run jev.py when that part starts.")
+
+
+def test_a_single_question_run_has_no_scope_line(tmp_path, monkeypatch):
+    env = make_lib(tmp_path, monkeypatch, two_topic_pages())
+    assert "SCOPE:" not in run_jev(env, "rate limits and retries", "--cap", "300").stdout
