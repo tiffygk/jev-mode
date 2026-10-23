@@ -43,7 +43,7 @@ Each section `jev.py` finds gets a label:
 |---|---|
 | Routing, labels, reading order, cap | Code, once the model runs `jev.py` |
 | Reminder; refusing subagent instructions without their source line; checking citations, a subagent's or the answer's | Hooks, once installed |
-| Running `jev.py`, the answer, its provenance | The model, following `SKILL.md` |
+| Running `jev.py`, the answer, its sources | The model, following `SKILL.md` |
 
 After a page changes, the background check reruns the routing tests and lists the citations it affects. Data stays in `~/.claude/jev-sources-data/`; `JEV_LOG=off` stops logging your questions.
 
