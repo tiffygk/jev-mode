@@ -212,6 +212,7 @@ def test_a_topic_section_whose_page_moved_resolves_within_its_page_family():
     assert route.topic_section(two, "docs/api.md#Handling rate limits") is None  # ambiguous: never guess
 
 
+@needs_lib
 def test_topic_paths_resolve():
     """2026-10-14: a topic pointing at a page or heading TypeSafe renamed routes nowhere, silently."""
     sys.path.insert(0, os.path.join(CODE, "scripts"))
