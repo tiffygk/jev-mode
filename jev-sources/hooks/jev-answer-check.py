@@ -16,7 +16,8 @@ from jev_terms import ROOT, JEV, data_dir, log_event
 CITES = re.compile(r"(?:docs|cookbooks|patterns|blog)/")
 REASON_CAP = 4000
 TAIL = ("fix each line: for a citation that names no section, cite the section that holds the fact (run jev.py or "
-        "read.py to find it); for a quote, correct it from its section (read.py '<id>'), put it in your own words with "
+        "read.py to find it); if the path is a file in the user's own project, drop the #heading and keep it in backticks; "
+        "for a quote, correct it from its section (read.py '<id>'), put it in your own words with "
         "its citation, or label it unverified in the parentheses beside it. Wording you made up and the user's own text "
         "(their error, log or message) go in backticks, not quotation marks. Then send the whole corrected answer, "
         "with no note about this check.")

@@ -774,3 +774,14 @@ def test_a_multi_question_run_ends_with_the_scope_line(tmp_path, monkeypatch):
 def test_a_single_question_run_has_no_scope_line(tmp_path, monkeypatch):
     env = make_lib(tmp_path, monkeypatch, two_topic_pages())
     assert "SCOPE:" not in run_jev(env, "rate limits and retries", "--cap", "300").stdout
+
+
+def test_the_reading_plan_map_is_capped(J):
+    blocks = [["docs/p%d.md (docs, 3 sections, ~900 tokens)" % k] + ["  - Heading %d.%d (~300)" % (k, i) for i in range(3)] for k in range(20)]
+    lines = J.capped_map_lines(blocks, 100)
+    assert lines[-1].endswith("more headings not shown")
+    shown = lines[:-1]
+    assert shown and sum(len(l) + 1 for l in shown) / 4 <= 100
+    n = int(lines[-1].split()[1])
+    assert n == sum(len(b) for b in blocks) - len(shown)
+    assert J.capped_map_lines(blocks[:1], 1500) == blocks[0]  # within budget: everything, no closing line

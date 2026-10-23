@@ -74,9 +74,9 @@ ANSWER
 
 Fix each line it prints: cite the section that holds the fact, correct a quote from its section, or label it unverified. Wording you made up (an example question or option) and the user's own text (their error, log or message) go in backticks, never quotation marks: quotation marks are for the docs' words only. Send only the corrected answer, with no note about the check.
 
-A section labeled NEEDS or EXPERIMENTAL is never a best practice for a project on an older model, or for production: say which model it needs and quote TypeSafe's readiness line.
+A section labeled NEEDS or EXPERIMENTAL is never a best practice for a project on an older model, or for production: say which model it needs and give TypeSafe's readiness line in its exact words (the one exception to paraphrasing).
 
-A cookbook's code layout, diagram or call count is an example, never an API limit. "The cookbook does one request per candidate" is a fact about that cookbook. Whether you must do it too is answered by a reference rule, or by the cookbook's own scope note, which the printout shows under "Scope notes elsewhere in this file". Read that note before quoting the cookbook.
+A cookbook's code layout, diagram or call count is an example, never an API limit. "The cookbook does one request per candidate" is a fact about that cookbook. Whether you must do it too is answered by a reference rule, or by the cookbook's own scope note, which the printout shows under "Scope notes elsewhere in this file". Read that note before citing the cookbook.
 
 When the reference pages don't settle a question, say "the docs don't say". Your own inference goes under My read and is never the verdict.
 
@@ -94,7 +94,7 @@ JEV-SOURCES: before any finding, run `python3 <skill>/scripts/jev.py "<the quest
 
 ## Speed, cost and accuracy claims
 
-Speed, cost and accuracy claims come from TypeSafe's blog posts, which the refresh fetches and `SOURCES.md` in the data folder lists; routing labels them **vendor claim**; attribute them to TypeSafe. The Jev 1.14 post (`blog/jev-1-14.txt`) says of the features behind "danger zone" headers: "we think there is still way too much jaggedness for us to vouch for these for production use cases!" Quote that as TypeSafe's readiness statement. Price is in `docs/models.md#Current models` and rate limits in `docs/models.md#Rate limits` (reference rules).
+Speed, cost and accuracy claims come from TypeSafe's blog posts, which the refresh fetches and `SOURCES.md` in the data folder lists; routing labels them **vendor claim**; attribute them to TypeSafe. The Jev 1.14 post (`blog/jev-1-14.txt`) says of the features behind "danger zone" headers: "we think there is still way too much jaggedness for us to vouch for these for production use cases!" Give that as TypeSafe's readiness statement, in its exact words. Price is in `docs/models.md#Current models` and rate limits in `docs/models.md#Rate limits` (reference rules).
 
 ## After a refresh notice
 

@@ -647,6 +647,15 @@ def _session(tmp_path, user_text, tool_output, final):
     return str(p)
 
 
+def test_the_send_back_tells_the_model_how_to_handle_the_users_own_file():
+    import importlib.util
+    sys.path.insert(0, H)
+    spec = importlib.util.spec_from_file_location("jev_answer_check", os.path.join(H, "jev-answer-check.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert "if the path is a file in the user's own project, drop the #heading and keep it in backticks;" in mod.TAIL
+
+
 def test_answer_hook_ignores_the_session_record(tmp_path, monkeypatch):
     """Quotation marks are for the docs' words only: a quote the user typed, or a command printed, is still checked,
     and the send-back says the user's own text goes in backticks. A missing record changes nothing."""
@@ -785,3 +794,8 @@ def test_plan_mode_after_recent_jev_fires_the_build_line(tmp_path):
     assert _prompt(tmp_path, "use subagents for it", session="pm") is None  # default mode: nothing to add
     out = _prompt(tmp_path, "use subagents for it", session="pm", permission_mode="plan")
     assert out["hookSpecificOutput"]["additionalContext"].endswith(_build_line())
+
+
+def test_the_build_line_names_the_sections_already_found():
+    line = _build_line()
+    assert "with questions for its own part and the path#heading sections already found for it" in line

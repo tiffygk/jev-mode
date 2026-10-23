@@ -61,7 +61,8 @@ BRIEF = ("JEV-SOURCES: before any finding, run "
 # Words that start a build or a plan ("plan" only as a verb), and the reminder line they add beside a Jev word.
 BUILD = re.compile(r"\b(build|building|implement\w*|set up|migrat\w*|planning|plan (?:it|this|that|the|out|for))\b", re.I)
 BUILD_LINE = (" If this starts a build or plan: run jev.py with one --also per part the build needs, and give each builder "
-              "subagent the JEV-SOURCES line with questions for its own part (SKILL.md, \"Building\").")
+              "subagent the JEV-SOURCES line with questions for its own part and the path#heading sections already found for it "
+              "(SKILL.md, \"Building\").")
 
 
 def sentences(text):

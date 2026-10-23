@@ -180,6 +180,24 @@ def map_blocks(secs):
     return blocks
 
 
+def capped_map_lines(blocks, budget=MAP_TOKENS):
+    """The MAP lines of a reading plan, whole pages in order, within the same budget as map_outline (characters / 4).
+    Lines past the budget become one closing count."""
+    lines = [l for b in blocks for l in b]
+    kept, used = [], 0
+    for l in lines:
+        if (used + len(l) + 1) / 4 > budget:
+            break
+        kept.append(l)
+        used += len(l) + 1
+    if len(kept) < len(lines):
+        # the closing line counts against the budget too
+        while kept and (used + 40) / 4 > budget:
+            used -= len(kept.pop()) + 1
+        kept.append("MAP: %d more headings not shown" % (len(lines) - len(kept)))
+    return kept
+
+
 def map_outline(goal, docs_words=None, budget=MAP_TOKENS, model=None):
     """The pages and sections that may answer a broad goal: path, label, headings and sizes, no section text, nothing logged.
     Pages come in rank order of each page's best section; pages that do not fit the budget (characters / 4) become a count."""
@@ -258,8 +276,7 @@ def main():
         for n, batch in enumerate(b["plan_batches"], 1):
             print(f"BATCH {n} (~{sum(s['tokens'] for s in batch):,} tokens)")
         print("MAP (for choosing what to read; never state a fact from it):")
-        for block in map_blocks(b["not_read"]):
-            print("\n".join(block))
+        print("\n".join(capped_map_lines(map_blocks(b["not_read"]))))
         for n, batch in enumerate(b["plan_batches"], 1):
             print(reader_block(plan_id, n, batch, qs))
     else:
