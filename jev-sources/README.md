@@ -66,7 +66,8 @@ Jev Sources adds no rules. It cites TypeSafe and says each page's kind: referenc
 | Broad first-time goals, written blind | 12 | 🔴 Hard | read or left for later reading | 49% of needed sections (40% to 60%); unsplit, 9% |
 
 How to read it:
-- 🟢 **Easy** questions cover the docs broadly; the routing was tuned on them. 🔴 **Hard** questions each ask about one function, field or error in the SDK reference. An agent that never saw this tool wrote 48 of them. Half were used to pick among four versions of the matching step; the table's 24 scored the winner once.
+- 🟢 **Easy** questions cover the docs broadly; the routing was tuned on them.
+- 🔴 **Hard** questions each ask about one function, field or error in the SDK reference. An agent that never saw this tool wrote 48 of them. Half were used to pick among four versions of the matching step; the table's 24 scored the winner once.
 - **Listed** means the section is anywhere in the list `jev.py` returns. **Printed in full** is stricter: the whole section, within the cap.
 - **Found** is recall: the share of questions whose section was found. For goals, it is the average share of each goal's needed sections, as a separate reviewer marked them. Ranges are 95% intervals (Wilson; bootstrap for goals), wide on small rows.
 - **Broad goals** are first-time requests, such as moving a classifier to Jev, written blind. Splitting reads about 4 times the tokens.
