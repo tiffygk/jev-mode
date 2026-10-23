@@ -19,13 +19,22 @@ import applicability
 ROOT = DATA
 LABEL = {"reference": "reference rule", "pattern": "pattern", "example": "cookbook example", "sdk": "sdk reference",
          "vendor": "vendor claim", "other": "other"}
-EXAMPLE_NOTE = ("EXAMPLE: one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
+EXAMPLE_NOTE = ("JEV-SOURCES NOTE (not TypeSafe's words; never quote it): one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
                 "check the scope notes below and the reference rules.")
 
 
+_INDEX = {}
+
+
 def _index():
+    """The library index, read once per version of sections.jsonl (an answer check looks it up once per citation)."""
+    path = os.path.join(ROOT, "sections.jsonl")
     try:
-        return [json.loads(l) for l in open(os.path.join(ROOT, "sections.jsonl"))]
+        st = os.stat(path)
+        key = (path, st.st_mtime_ns, st.st_size, st.st_ctime_ns, st.st_ino)  # ctime moves on any write
+        if _INDEX.get("key") != key:
+            _INDEX.update(key=key, rows=[json.loads(l) for l in open(path)])
+        return _INDEX["rows"]
     except FileNotFoundError:
         sys.exit(f"library index missing; run {REFRESH}")
 
@@ -44,9 +53,9 @@ def _rows(sid):
         if not path.endswith((".md", ".txt")):
             path += ".md"
         heads = [heading]
-        for label in LABEL.values():  # a trailing label counts only when it is one of ours
-            if heading.endswith(f" ({label})"):
-                heads.append(heading[:-len(label) - 3])
+        m = re.search(r" \((?:%s)(?:,[^()]*)?\)$" % "|".join(re.escape(x) for x in LABEL.values()), heading)
+        if m:  # a trailing label counts only when it starts with one of ours ("(reference rule, experimental)" too)
+            heads.append(heading[:m.start()])
         for h in heads:  # the whole text first: a heading may really end in a parenthesis
             hit = [x for x in rows if x["path"] == path and x["heading"] == h]
             if hit:
@@ -64,12 +73,15 @@ def _row(sid):
     return r
 
 
-_ESCAPED = re.compile(r"\\([*_`\s])")
+_ESCAPED = re.compile(r"\\([*_`\s\"])")  # a backslash before markup, a space or a quote mark (a reader's \" in a QUOTE)
 _SKIP = re.compile(r"[\s*_`]")
 
 
+TYPO = str.maketrans({"\u2019": "'", "\u2018": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-"})  # curly quotes, dashes
+
+
 def _squash(text):
-    return _SKIP.sub("", _ESCAPED.sub(r"\1", text))
+    return _SKIP.sub("", _ESCAPED.sub(r"\1", text.translate(TYPO)))
 
 
 def _kept(line):
@@ -78,11 +90,12 @@ def _kept(line):
     for i, ch in enumerate(line):
         if _SKIP.match(ch) or (ch == "\\" and i + 1 < len(line) and _SKIP.match(line[i + 1])):
             continue
-        keep.append(ch)
+        keep.append(ch.translate(TYPO))
         cols.append(i)
     return "".join(keep), cols
 
 
+LINK = re.compile(r'!?\[([^\]\n]*)\]\([^)\s]*(?:\s+"[^"]*")?\)')  # a Markdown link or image: matched as its text
 _ELISION = re.compile(r"\[?(?:\.\.\.|…)\]?")
 _EDGE = "\"'“”‘’.,;:!? \t\r\n"
 
@@ -90,7 +103,7 @@ _EDGE = "\"'“”‘’.,;:!? \t\r\n"
 def quote_parts(quote):
     """The quote's parts between elisions (..., … or [...]), squashed, each without the quote marks and the
     sentence punctuation a writer adds or drops at a quote's ends. [] means the quote is empty."""
-    parts = (_squash(p.strip(_EDGE)) for p in _ELISION.split(quote))
+    parts = (_squash(p.strip(_EDGE)) for p in _ELISION.split(LINK.sub(r"\1", quote)))
     return [p for p in parts if p]
 
 
@@ -122,18 +135,48 @@ def _find(text, lines, owner, cols, want, start):
     return best
 
 
+_FLAT = {}
+
+
+class MissingSource(SystemExit):
+    """A saved page the index names is gone; the CLI exits with the message, and the answer check fails the answer."""
+
+    def __init__(self, page):
+        self.page = page
+        super().__init__(f"missing source {page}; run {REFRESH}")
+
+
+def _flat(r):
+    """(lines, squashed text, line of each character, column of each character) of section r, kept per file version,
+    since one answer check matches many quotes against the same sections."""
+    path = os.path.join(ROOT, r["path"])
+    try:
+        st = os.stat(path)
+    except OSError:
+        raise MissingSource(r["path"])
+    key = (path, r["line_start"], r["line_end"], st.st_mtime_ns, st.st_size, st.st_ctime_ns, st.st_ino)
+    if key not in _FLAT:
+        if len(_FLAT) > 2000:
+            _FLAT.clear()
+        try:
+            lines = open(path, encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+        except OSError:
+            raise MissingSource(r["path"])
+        lines = [LINK.sub(r"\1", ln) for ln in lines]  # a quote of a link's text matches the page's [text](url)
+        flat, owner, cols = [], [], []
+        for i, ln in enumerate(lines):
+            sq, c = _kept(ln)
+            flat.append(sq)
+            owner += [i] * len(sq)
+            cols += c
+        _FLAT[key] = (lines, "".join(flat), owner, cols)
+    return _FLAT[key]
+
+
 def _in_row(r, parts):
     """(line_no, line) where the quote's parts start in section r, all found in order; None if they are not."""
-    if not os.path.exists(os.path.join(ROOT, r["path"])):
-        sys.exit(f"missing source {r['path']}; run {REFRESH}")
-    lines = open(os.path.join(ROOT, r["path"]), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
-    flat, owner, cols = [], [], []
-    for i, ln in enumerate(lines):
-        sq, c = _kept(ln)
-        flat.append(sq)
-        owner += [i] * len(sq)
-        cols += c
-    text, start, spans = "".join(flat), 0, []
+    lines, text, owner, cols = _flat(r)
+    start, spans = 0, []
     for want in parts:
         span = _find(text, lines, owner, cols, want, start)
         if span is None:
@@ -189,6 +232,15 @@ def elsewhere_on_page(sid, quote):
     return None
 
 
+def _url(path):
+    """' | URL: <address>' from the page's saved header (a .md address loses its .md), or '' when it has none."""
+    try:
+        m = re.match(r"<!-- saved \S+ from (https?://\S+?)(?:\.md)? (?:\||-->)", open(os.path.join(ROOT, path), encoding="utf-8").readline())
+    except OSError:
+        return ""
+    return f" | URL: {m.group(1)}" if m else ""
+
+
 def render(sid, extract_terms=None):
     """The section as text. The first line is CITE AS: <path>#<heading> (<label>); from the second line on it is
     what read.py prints. extract_terms (a list) gives an extract instead of the full section. Does not log."""
@@ -206,7 +258,8 @@ def render(sid, extract_terms=None):
         body = "\n".join(lines)
     label = LABEL[r["kind"]]
     out = [f"CITE AS: {r['path']}#{r['heading']} ({label})",
-           f"SOURCE: {r['path']}#{r['heading']} | KIND: {label} | READ: {'extract, not a full read' if extract else 'full'}"]
+           f"SOURCE: {r['path']}#{r['heading']} | KIND: {label} | READ: {'extract, not a full read' if extract else 'full'}"
+           + _url(r["path"])]
     if r["kind"] == "example":
         out.append(EXAMPLE_NOTE)
     ap = applicability.lookup(r["path"], r["heading"])

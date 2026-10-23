@@ -17,8 +17,9 @@ def sec(sid, kind="reference", depth="READ FULL", tokens=100, **kw):
 
 
 @pytest.fixture
-def J(monkeypatch):
+def J(monkeypatch, tmp_path):
     import jev
+    monkeypatch.setattr(jev.paths, "DATA", str(tmp_path / "plandata"))  # a reading plan is written here, never into the library
     monkeypatch.setattr(jev.RD, "render", lambda sid, extract_terms=None: f"CITE AS: {sid}\nbody of {sid}")
     return jev
 
@@ -117,12 +118,20 @@ def test_extract_items_are_listed_not_read(J, monkeypatch):
 
 
 def test_cli_prints_a_read_command_for_each_unread_section(J, monkeypatch, capsys):
-    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=700), sec("b", tokens=700), sec("e", depth="EXTRACT")]}})
-    monkeypatch.setattr(sys, "argv", ["jev.py", "q", "--cap", "1000"])
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=900), sec("b", tokens=200), sec("e", depth="EXTRACT")]}})
+    monkeypatch.setattr(sys, "argv", ["jev.py", "q", "--cap", "1000"])  # 200 left over: under a third of the cap
     J.main()
     out = capsys.readouterr().out
     assert f"python3 {os.path.join(CODE, 'scripts', 'read.py')} {shlex.quote('b')}  #" in out
     assert "NOT YET READ" in out and "EXTRACT" in out and "semantic: on" in out
+
+
+def test_leftovers_up_to_a_third_of_the_cap_are_read_directly_and_more_go_to_readers(J, monkeypatch):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=900), sec("b", tokens=333)]}})
+    assert J.bundle(["q"], cap=1000)["plan"] == []  # 333: exactly a third, read by the main session
+    routes(J, monkeypatch, {"q": {"sections": [sec("a", tokens=900), sec("b", tokens=334)]}})
+    assert J.bundle(["q"], cap=1000)["plan"] == [["b"]]  # 334: over a third, so a reader takes it
+    assert J.direct_limit(12000) == 4000
 
 
 # ---- on an invented library -------------------------------------------------------------------------------------
@@ -200,7 +209,7 @@ def test_render_of_a_cookbook_section_adds_the_example_line_under_source(lib):
     text = read.render(sid_of(lib, "cookbooks/rerank_typesafe.md", "Rerank"))
     lines = text.split("\n")
     assert lines[0].endswith("(cookbook example)") and lines[1].startswith("SOURCE: ")
-    assert lines[2] == ("EXAMPLE: one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
+    assert lines[2] == ("JEV-SOURCES NOTE (not TypeSafe's words; never quote it): one build TypeSafe published. Its layout, call counts and diagrams are not API limits; "
                         "check the scope notes below and the reference rules.")
     assert "Scope notes elsewhere in this file" in text
 
@@ -347,7 +356,7 @@ def test_over_twice_the_cap_prints_a_plan_with_runnable_numeric_id_commands(tmp_
     r = run_jev(env, "what is the batch limit", "--cap", "1500")
     assert r.returncode == 0, r.stderr
     out = r.stdout
-    assert "READING PLAN: " in out and "tokens not yet read, more than the cap (1,500)" in out
+    assert "READING PLAN: " in out and "tokens not yet read, more than a third of the bundle cap (1,500)" in out
     assert "GOAL: what is the batch limit" in out
     assert "BATCH 1 (~" in out and "BATCH 2 (~" in out
     assert "NOT YET READ" not in out
@@ -362,12 +371,13 @@ def test_over_twice_the_cap_prints_a_plan_with_runnable_numeric_id_commands(tmp_
     assert res.returncode == 0 and res.stdout.startswith("SOURCE: docs/p") and "#What's the batch limit" in res.stdout.split("|")[0], res.stderr
 
 
-def test_at_or_under_the_cap_the_unread_sections_are_listed_not_planned(tmp_path, monkeypatch):
+def test_leftovers_under_a_third_of_the_cap_are_listed_and_more_are_planned(tmp_path, monkeypatch):
     env = make_lib(tmp_path, monkeypatch, plan_lib_pages(3, 1000))
-    over = run_jev(env, "what is the batch limit", "--cap", "1500", "--json")  # 2,000 tokens unread: over the cap
+    over = run_jev(env, "what is the batch limit", "--cap", "2500", "--json")  # ~1,000 unread: under the cap, over a third
     assert json.loads(over.stdout)["plan"]
-    out = run_jev(env, "what is the batch limit", "--cap", "2500").stdout  # 1,000 unread: at or under
-    assert "READING PLAN" not in out and "NOT YET READ (over the cap)" in out
+    env = make_lib(tmp_path / "five", monkeypatch, plan_lib_pages(5, 1000))
+    out = run_jev(env, "what is the batch limit", "--cap", "4500").stdout  # ~1,000 unread: under a third (1,500)
+    assert "READING PLAN" not in out and "NOT YET READ (past the bundle cap; read it yourself)" in out
 
 
 def test_a_section_over_the_cap_stands_alone_in_the_cli_plan(J, monkeypatch, capsys):
@@ -404,3 +414,374 @@ def test_a_clean_section_gets_no_notice(J, monkeypatch, capsys):
     monkeypatch.setattr(sys, "argv", ["jev.py", "q"])
     J.main()
     assert "looks like site code" not in capsys.readouterr().out
+
+
+# ---- map mode, several questions, coverage and the ceilings ------------------------------------------------------
+
+def run_main(J, monkeypatch, *argv):
+    monkeypatch.setattr(sys, "argv", ["jev.py", *argv])
+    return J.main()
+
+
+def map_routes(J, monkeypatch, per_q, seen=None):
+    def fake(q, model=None, limit=10, per_page=2):
+        if seen is not None:
+            seen.append((q, limit, per_page))
+        return dict(dict(definitions=[], semantic="on"), **per_q[q])
+    monkeypatch.setattr(J.R, "route", fake)
+    monkeypatch.setattr(J.RD, "render", lambda *a, **k: pytest.fail("map mode must not read a section"))
+
+
+def big_map(n_pages, heading="A long heading about one topic of the batch limit rules"):
+    out = []
+    for k in range(n_pages):
+        for j in range(2):
+            out.append(sec("docs/p%d#%d" % (k, j), path="docs/p%d.md" % k, heading="%s %d.%d" % (heading, k, j), tokens=700 + j * 100))
+    return out
+
+
+def test_map_routes_wide_and_prints_pages_with_sections_and_no_body(J, monkeypatch, capsys):
+    seen = []
+    secs = [sec("docs/a#0", path="docs/a.md", heading="Alpha", tokens=600), sec("cook/b#0", path="cook/b.md", heading="Beta", kind="example", tokens=1400),
+            sec("docs/a#1", path="docs/a.md", heading="Gamma", tokens=900)]
+    map_routes(J, monkeypatch, {"goal": {"sections": secs}}, seen)
+    assert run_main(J, monkeypatch, "--map", "goal") == 0
+    out = capsys.readouterr().out.splitlines()
+    assert seen == [("goal", 30, 3)]
+    assert out[0] == "MAP: goal"
+    assert out[1] == "docs/a.md (reference rule, 2 sections, ~1,500 tokens)"  # grouped, in rank order of each page's best section
+    assert out[2:4] == ["  - Alpha (~600)", "  - Gamma (~900)"]
+    assert out[4] == "cook/b.md (cookbook example, 1 section, ~1,400 tokens)"
+    assert out[-1] == 'Next: run jev.py with one question per topic you need: jev.py "<q1>" --also "<q2>" ...'
+    assert not any("body of" in l for l in out)
+
+
+def test_map_stays_under_the_budget_on_forty_pages_and_says_how_many_more(J, monkeypatch, capsys):
+    map_routes(J, monkeypatch, {"goal": {"sections": big_map(40)}})
+    assert run_main(J, monkeypatch, "--map", "goal") == 0
+    text = capsys.readouterr().out
+    assert len(text) / 4 <= J.MAP_TOKENS
+    lines = text.rstrip("\n").splitlines()
+    assert lines[-2].startswith("... and ") and lines[-2].endswith(" more pages") and lines[-1].startswith("Next: ")
+    shown = sum(1 for l in lines if l.startswith("docs/"))
+    assert lines[-2] == "... and %d more pages" % (40 - shown) and 0 < shown < 40
+
+
+def test_map_echoes_a_long_goal_cut_to_200_characters(J, monkeypatch, capsys):
+    goal = "word " * 2000
+    map_routes(J, monkeypatch, {goal: {"sections": big_map(40)}})
+    assert run_main(J, monkeypatch, "--map", goal) == 0
+    text = capsys.readouterr().out
+    assert len(text.splitlines()[0]) <= len("MAP: ") + 200 and len(text) / 4 <= J.MAP_TOKENS
+
+
+def test_map_outline_takes_a_smaller_budget_and_keeps_at_least_one_page(J, monkeypatch):
+    map_routes(J, monkeypatch, {"goal": {"sections": big_map(5)}})
+    out = J.map_outline("goal", budget=100)
+    assert len(out) / 4 <= 100 or out.count("docs/p") == 1
+    assert out.count("docs/p0.md (") == 1 and "more pages" in out
+
+
+def test_map_merges_the_docs_words_routing_without_repeating_a_section(J, monkeypatch, capsys):
+    a, b = sec("docs/a#0", path="docs/a.md", heading="Alpha"), sec("docs/b#0", path="docs/b.md", heading="Beta")
+    map_routes(J, monkeypatch, {"mine": {"sections": [a]}, "docs": {"sections": [a, b]}})
+    run_main(J, monkeypatch, "--map", "mine", "--docs-words", "docs")
+    out = capsys.readouterr().out
+    assert out.count("Alpha") == 1 and "docs/b.md" in out
+
+
+def test_map_logs_no_read(tmp_path, monkeypatch):
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(tmp_path))
+    monkeypatch.setenv("JEV_LOG", "on")
+    for name in ("jev", "route", "read", "usage_log", "paths", "applicability", "semantic"):
+        sys.modules.pop(name, None)
+    import jev
+    map_routes(jev, monkeypatch, {"goal": {"sections": [sec("docs/a#0", path="docs/a.md")]}})
+    monkeypatch.setattr(sys, "argv", ["jev.py", "--map", "goal"])
+    jev.main()
+    assert not (tmp_path / "logs" / "read.jsonl").exists()
+
+
+def three(J, monkeypatch, shared=True):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("a"), sec("s")]}, "q2": {"sections": [sec("s"), sec("b")] if shared else [sec("b")]},
+                            "q3": {"sections": [sec("x", depth="EXTRACT")]}})
+
+
+def test_a_section_two_questions_reach_is_printed_once_and_counted_under_both(J, monkeypatch, capsys):
+    three(J, monkeypatch)
+    assert run_main(J, monkeypatch, "q1", "--also", "q2", "--also", "q3") == 0
+    out = capsys.readouterr().out
+    assert out.count("body of s") == 1
+    cov = out.split("COVERAGE:\n", 1)[1].splitlines()
+    assert cov[0] == "  1. q1: read 2, in plan 0" and cov[1] == "  2. q2: read 2, in plan 0"
+
+
+def test_a_question_with_nothing_to_read_in_full_prints_no_source_found(J, monkeypatch, capsys):
+    three(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--also", "q3")
+    out = capsys.readouterr().out
+    assert "NO SOURCE FOUND: q3" in out
+    assert "  3. q3: NO SOURCE FOUND (nothing to read in full; EXTRACT only: 1)" in out
+    routes(J, monkeypatch, {"q1": {"sections": [sec("a")]}, "q2": {"sections": []}})
+    run_main(J, monkeypatch, "q1", "--also", "q2")
+    assert "  2. q2: NO SOURCE FOUND (nothing to read in full; EXTRACT only: 0)" in capsys.readouterr().out
+
+
+def test_coverage_counts_a_sections_in_the_plan_per_question(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("a", tokens=900)]}, "q2": {"sections": [sec("b", tokens=900), sec("c", tokens=900)]}})
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--cap", "1000")
+    out = capsys.readouterr().out
+    assert "  1. q1: read 1, in plan 0" in out and "  2. q2: read 0, in plan 2" in out
+
+
+def test_a_single_question_prints_no_coverage_block(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a")]}})
+    run_main(J, monkeypatch, "q")
+    assert "COVERAGE" not in capsys.readouterr().out
+
+
+def test_docs_words_belong_to_the_first_question_only(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("a")]}, "words": {"sections": [sec("w")]}, "q2": {"sections": [sec("b")]}})
+    run_main(J, monkeypatch, "q1", "--docs-words", "words", "--also", "q2", "--json")
+    cov = json.loads(capsys.readouterr().out)["coverage"]
+    assert [c["q"] for c in cov] == ["q1", "q2"]
+    assert sorted(cov[0]["read"]) == ["a", "w"] and cov[1]["read"] == ["b"]
+
+
+def test_json_carries_coverage_with_read_planned_and_extract_ids(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("a", tokens=900), sec("e", depth="EXTRACT")]}, "q2": {"sections": [sec("b", tokens=900)]}})
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--cap", "1000", "--json")
+    cov = json.loads(capsys.readouterr().out)["coverage"]
+    assert cov == [{"q": "q1", "read": ["a"], "planned": [], "extract": ["e"]}, {"q": "q2", "read": [], "planned": ["b"], "extract": []}]
+
+
+def test_a_ninth_question_exits_2_with_the_split_message(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q%d" % i: {"sections": [sec("a")]} for i in range(9)})
+    args = ["q0"] + [x for i in range(1, 9) for x in ("--also", "q%d" % i)]
+    assert run_main(J, monkeypatch, *args) == 2
+    cap = capsys.readouterr()
+    assert "too many sub-questions (9); split the goal into two runs of at most 8" in cap.err and cap.out == ""
+    args = ["q0"] + [x for i in range(1, 8) for x in ("--also", "q%d" % i)]
+    assert run_main(J, monkeypatch, *args) == 0  # eight is allowed
+
+
+def test_more_than_six_batches_prints_goal_too_broad_and_no_plan(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("s%d" % i, tokens=12000) for i in range(8)]}})
+    run_main(J, monkeypatch, "q")
+    out = capsys.readouterr().out
+    assert "goal too broad: 7 batches (84,000 tokens); narrow the goal or split it into runs" in out
+    assert "READING PLAN" not in out and "BATCH" not in out and "NOT YET READ" not in out
+    routes(J, monkeypatch, {"q": {"sections": [sec("s%d" % i, tokens=12000) for i in range(7)]}})
+    run_main(J, monkeypatch, "q")  # exactly six batches is a plan
+    assert "BATCH 6" in capsys.readouterr().out
+
+
+def test_too_broad_in_json_has_no_plan(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("s%d" % i, tokens=12000) for i in range(8)]}})
+    run_main(J, monkeypatch, "q", "--json")
+    assert json.loads(capsys.readouterr().out)["plan"] == []
+
+
+def test_the_ceilings_are_constants(J):
+    assert (J.MAX_QUESTIONS, J.MAX_BATCHES, J.MAP_TOKENS) == (8, 6, 1500)
+
+
+def test_a_pages_sections_stay_in_one_batch_when_they_fit(J):
+    mk = lambda i, p, t: {"id": i, "path": p, "tokens": t}
+    plan = J.reading_plan([mk("x1", "x.md", 5000), mk("y1", "y.md", 6000), mk("x2", "x.md", 5000)], 12000)
+    assert [[s["id"] for s in b] for b in plan] == [["x1", "x2"], ["y1"]]
+
+
+def test_a_page_over_the_cap_is_split_in_reading_order(J):
+    mk = lambda i, p, t: {"id": i, "path": p, "tokens": t}
+    plan = J.reading_plan([mk("x1", "x.md", 7000), mk("y1", "y.md", 3000), mk("x2", "x.md", 7000)], 12000)
+    assert [[s["id"] for s in b] for b in plan] == [["x1", "y1"], ["x2"]]
+
+
+# ---- the saved plan, the reader blocks and the three T1 review fixes -------------------------------------------------
+
+import re
+
+
+def two_batches(J, monkeypatch):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("docs/a#0", path="docs/a.md", tokens=1900, heading="Alpha"),
+                                                 sec("docs/b#1", path="docs/b.md", tokens=900, heading="It's b"),
+                                                 sec("docs/c#2", path="docs/c.md", tokens=900, heading="Gamma"),
+                                                 sec("docs/d#3", path="docs/d.md", tokens=900, heading="Delta")]},
+                            "q2": {"sections": []}})
+
+
+def plan_files(J):
+    d = os.path.join(J.paths.DATA, "plans")
+    return sorted(os.listdir(d)) if os.path.isdir(d) else []
+
+
+def test_a_printed_plan_is_saved_with_exactly_the_interface_fields(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--cap", "2000")
+    files = plan_files(J)
+    assert len(files) == 1 and re.fullmatch(r"p[0-9a-f]{8}\.json", files[0])
+    d = os.path.join(J.paths.DATA, "plans")
+    plan = json.load(open(os.path.join(d, files[0])))
+    assert list(plan) == ["plan_id", "created", "goal", "batches"]
+    assert plan["plan_id"] + ".json" == files[0] and re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", plan["created"])
+    assert plan["goal"] == ["q1", "q2"]
+    assert plan["batches"] == [{"n": 1, "ids": ["docs/b#1", "docs/c#2"], "tokens": 1800}, {"n": 2, "ids": ["docs/d#3"], "tokens": 900}]
+    assert oct(os.stat(d).st_mode & 0o777) == "0o700"
+    assert oct(os.stat(os.path.join(d, files[0])).st_mode & 0o777) == "0o600"
+
+
+def test_the_plan_is_written_atomically_leaving_no_temp_file(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--cap", "2000")
+    assert all(re.fullmatch(r"p[0-9a-f]{8}\.json", f) for f in plan_files(J))
+
+
+def test_the_reader_block_is_printed_line_for_line(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    import jev
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--cap", "2000")
+    out = capsys.readouterr().out
+    pid = plan_files(J)[0][:-5]
+    rd = os.path.join(CODE, "scripts", "read.py")
+    want = "\n".join([
+        f"----- READER BRIEF plan {pid} batch 1 -----",
+        f"JEV-READER: plan {pid} batch 1",
+        jev.READER_SOURCES,
+        "GOAL: q1 | q2",
+        "Read these sections in full, in order:",
+        f"  python3 {rd} {shlex.quote('docs/b#1')}   # docs/b.md#It's b",
+        f"  python3 {rd} {shlex.quote('docs/c#2')}   # docs/c.md#Gamma",
+        "Return only lines of this form, at most 12, with no page text:",
+        'FINDING: <one sentence> | CITE AS: <path#heading (label)> | QUOTE: "<exact words>"',
+        "Start your reply with the JEV-READER line above.",
+        "----- END READER BRIEF -----"])
+    assert want in out
+    assert "<skill>" not in out
+    assert "Each reader returns only lines of this form" not in out
+    assert "scripts/jev.py" not in want  # readers read their batch; they never route again
+
+
+def test_one_reader_block_per_batch(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("s%d" % i, tokens=12000) for i in range(4)]}})
+    run_main(J, monkeypatch, "q")
+    out = capsys.readouterr().out
+    assert out.count("----- READER BRIEF plan ") == 3 and out.count("----- END READER BRIEF -----") == 3
+    assert out.count("JEV-READER: plan ") == 3 and "batch 3 -----" in out
+
+
+def test_json_carries_the_plan_id(J, monkeypatch, capsys):
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--cap", "2000", "--json")
+    d = json.loads(capsys.readouterr().out)
+    assert d["plan_id"] + ".json" == plan_files(J)[0]
+
+
+def test_no_plan_no_file_and_no_plan_id(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a")]}})
+    run_main(J, monkeypatch, "q", "--json")
+    assert "plan_id" not in json.loads(capsys.readouterr().out) and plan_files(J) == []
+    routes(J, monkeypatch, {"q": {"sections": [sec("s%d" % i, tokens=12000) for i in range(8)]}})
+    run_main(J, monkeypatch, "q")
+    assert plan_files(J) == []
+
+
+def test_log_off_does_not_stop_the_plan_file(J, monkeypatch, capsys):
+    monkeypatch.setenv("JEV_LOG", "off")
+    two_batches(J, monkeypatch)
+    run_main(J, monkeypatch, "q1", "--cap", "2000")
+    assert len(plan_files(J)) == 1
+
+
+def test_a_too_broad_goal_says_unread_not_in_plan_in_coverage(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("s%d" % i, tokens=12000) for i in range(8)]}, "q2": {"sections": [sec("s7", tokens=12000)]}})
+    run_main(J, monkeypatch, "q1", "--also", "q2")
+    out = capsys.readouterr().out
+    assert "goal too broad" in out
+    assert "  1. q1: read 1, unread 7" in out and "  2. q2: read 0, unread 1" in out
+    assert "in plan" not in out
+
+
+def test_map_with_also_exits_2(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q": {"sections": [sec("a")]}})
+    assert run_main(J, monkeypatch, "--map", "q", "--also", "q2") == 2
+    cap = capsys.readouterr()
+    assert "--map takes one goal; run --also without --map" in cap.err and cap.out == ""
+
+
+def test_a_section_one_question_reached_only_as_extract_is_not_counted_read_for_it(J, monkeypatch, capsys):
+    routes(J, monkeypatch, {"q1": {"sections": [sec("s")]}, "q2": {"sections": [sec("s", depth="EXTRACT")]}})
+    run_main(J, monkeypatch, "q1", "--also", "q2", "--json")
+    cov = json.loads(capsys.readouterr().out)["coverage"]
+    assert cov[0]["read"] == ["s"] and cov[1]["read"] == [] and cov[1]["extract"] == ["s"]
+
+
+def test_a_saved_plan_makes_every_missing_folder_owner_only(tmp_path, monkeypatch):
+    for name in ("jev", "route", "read", "usage_log", "paths", "applicability", "semantic"):
+        sys.modules.pop(name, None)
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(tmp_path / "x" / "data"))
+    import jev
+    jev.save_plan(["q"], [[{"id": "a", "tokens": 1}]])
+    for d in (tmp_path / "x", tmp_path / "x" / "data", tmp_path / "x" / "data" / "plans"):
+        assert oct(os.stat(d).st_mode & 0o777) == "0o700", d
+
+
+# --- Task 2: the headings map and the one-batch path ---------------------------------------------------------------
+def two_topic_pages():
+    body = "\n".join("Sentence number %d about this topic goes here and runs on." % i for i in range(20))
+    pages = {}
+    for k in range(3):
+        pages["docs/limits%d.md" % k] = "# Rate limits and retries %d\n\nrate limits retries %s\n" % (k, body)
+        pages["docs/pricing%d.md" % k] = "# Pricing per request %d\n\npricing per request %s\n" % (k, body)
+    return pages
+
+
+def test_reading_plan_prints_a_headings_map_and_a_one_batch_path(tmp_path, monkeypatch):
+    env = make_lib(tmp_path, monkeypatch, two_topic_pages())
+    r = run_jev(env, "rate limits and retries", "--also", "pricing per request", "--cap", "300")
+    assert r.returncode == 0, r.stderr
+    out = r.stdout.splitlines()
+    plan_line = next(l for l in out if l.startswith("READING PLAN:"))
+    assert "read at most one batch" in plan_line and "chosen from the MAP" in plan_line and "SKILL.md" not in plan_line
+    assert "Start one reader per batch." in plan_line and "which parts to split into separate tasks" in plan_line
+    assert "SKILL.md" not in r.stdout
+    i = next(i for i, l in enumerate(out) if l.startswith("MAP (for choosing what to read; never state a fact from it):"))
+    block = []
+    for l in out[i + 1:]:
+        if not (l.startswith("  - ") or re.match(r"^docs/\S+ \(", l)):
+            break
+        block.append(l)
+    j = json.loads(run_jev(env, "rate limits and retries", "--also", "pricing per request", "--cap", "300", "--json").stdout)
+    assert j["not_read"]
+    rows = [json.loads(x) for x in open(os.path.join(env["JEV_SOURCES_DATA"], "sections.jsonl"))]
+    by_id = {x["id"]: x for x in rows}
+    for sid in j["not_read"]:
+        s = by_id[sid]
+        assert any(l.startswith(s["path"] + " (") for l in block), s["path"]
+        assert any(l.startswith("  - " + s["heading"] + " (~") for l in block), s["heading"]
+    for l in block:  # a heading, a label and a size: never section text
+        assert re.match(r"^(docs/\S+ \([a-z ]+, \d+ sections?, ~[\d,]+ tokens\)|  - .+ \(~[\d,]+\))$", l), l
+        assert "Sentence number" not in l
+
+
+def test_a_multi_question_run_ends_with_the_scope_line(tmp_path, monkeypatch):
+    env = make_lib(tmp_path, monkeypatch, two_topic_pages())
+    out = run_jev(env, "rate limits and retries", "--also", "pricing per request", "--cap", "300").stdout.rstrip("\n").splitlines()
+    assert out[-1] == ("SCOPE: use these sections for what this turn asks or builds; for a part not covered here, "
+                       "run jev.py when that part starts.")
+
+
+def test_a_single_question_run_has_no_scope_line(tmp_path, monkeypatch):
+    env = make_lib(tmp_path, monkeypatch, two_topic_pages())
+    assert "SCOPE:" not in run_jev(env, "rate limits and retries", "--cap", "300").stdout
+
+
+def test_the_reading_plan_map_is_capped(J):
+    blocks = [["docs/p%d.md (docs, 3 sections, ~900 tokens)" % k] + ["  - Heading %d.%d (~300)" % (k, i) for i in range(3)] for k in range(20)]
+    lines = J.capped_map_lines(blocks, 100)
+    assert lines[-1].endswith("more headings not shown")
+    shown = lines[:-1]
+    assert shown and sum(len(l) + 1 for l in shown) / 4 <= 100
+    n = int(lines[-1].split()[1])
+    assert n == sum(len(b) for b in blocks) - len(shown)
+    assert J.capped_map_lines(blocks[:1], 1500) == blocks[0]  # within budget: everything, no closing line

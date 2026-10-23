@@ -55,7 +55,14 @@ MARKER = "JEV-SOURCES:"
 BRIEF = ("JEV-SOURCES: before any finding, run "
          f"`python3 {ROOT}/scripts/jev.py \"<the question, in your words>\" --docs-words \"<the same question in the docs' words>\"` "
          "(it routes the question twice) and read what it prints; quote verbatim, give path#heading, label reference rule, pattern, cookbook example, "
-         "sdk reference or vendor claim; findings without this are unverified.")
+         "sdk reference or vendor claim; quotation marks only for the docs' words; your own text and the user's go in backticks; "
+         "findings without this are unverified.")
+
+# Words that start a build or a plan ("plan" only as a verb), and the reminder line they add beside a Jev word.
+BUILD = re.compile(r"\b(build|building|implement\w*|set up|migrat\w*|planning|plan (?:it|this|that|the|out|for))\b", re.I)
+BUILD_LINE = (" If this starts a build or plan: run jev.py with one --also per part the build needs, and give each builder "
+              "subagent the JEV-SOURCES line with questions for its own part and the path#heading sections already found for it "
+              "(SKILL.md, \"Building\").")
 
 
 def sentences(text):
@@ -88,6 +95,21 @@ def data_dir():
     return os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
 
 
+def private_dirs(path):
+    """Make path and every missing folder above it owner-only (os.makedirs gives its mode to the last folder only)."""
+    missing = []
+    p = os.path.abspath(path)
+    while not os.path.isdir(p):
+        missing.append(p)
+        p = os.path.dirname(p)
+    for d in reversed(missing):
+        try:
+            os.mkdir(d, 0o700)
+        except FileExistsError:
+            pass
+    os.chmod(path, 0o700)
+
+
 FIELD_CAP = 300
 
 
@@ -99,10 +121,8 @@ def log_event(name, **fields):
     if fields.get("session") is None and not os.environ.get("JEV_HOOK_LOG_TESTS"):
         return
     try:
-        os.makedirs(data_dir(), mode=0o700, exist_ok=True)  # makedirs gives the mode to the last folder only
         d = os.path.join(data_dir(), "logs")
-        os.makedirs(d, mode=0o700, exist_ok=True)
-        os.chmod(d, 0o700)  # a folder made before this version keeps its old mode otherwise
+        private_dirs(d)  # a folder made before this version keeps its old mode otherwise
         fields = {k: v[:FIELD_CAP] if isinstance(v, str) else v for k, v in fields.items()}
         rec = {"ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), **fields}
         fd = os.open(os.path.join(d, name + ".jsonl"), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)

@@ -199,16 +199,32 @@ def test_semantic_only_appends_to_keyword_routes(q):
         assert all(s["depth"] == "EXTRACT" for s in on["sections"][n:])  # meaning-matched sections are not mandatory reads
 
 @pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "sections.jsonl")), reason="no library")
+def test_a_topic_section_whose_page_moved_resolves_within_its_page_family():
+    sys.path.insert(0, os.path.join(CODE, "scripts"))
+    import route
+    rows = [{"id": "docs/api__errors#3", "path": "docs/api__errors.md", "heading": "Handling rate limits"},
+            {"id": "docs/models#4", "path": "docs/models.md", "heading": "Handling rate limits"},
+            {"id": "docs/api__system-one#1", "path": "docs/api__system-one.md", "heading": "Request"}]
+    assert route.topic_section(rows, "docs/api.md#Handling rate limits")["id"] == "docs/api__errors#3"
+    assert route.topic_section(rows, "docs/api__errors.md#Handling rate limits")["id"] == "docs/api__errors#3"
+    assert route.topic_section(rows, "docs/api.md#Nowhere") is None
+    two = rows + [{"id": "docs/api__other#2", "path": "docs/api__other.md", "heading": "Handling rate limits"}]
+    assert route.topic_section(two, "docs/api.md#Handling rate limits") is None  # ambiguous: never guess
+
+
+@needs_lib
 def test_topic_paths_resolve():
     """2026-10-14: a topic pointing at a page or heading TypeSafe renamed routes nowhere, silently."""
+    sys.path.insert(0, os.path.join(CODE, "scripts"))
+    import route
     rows = [json.loads(l) for l in open(os.path.join(DATA, "sections.jsonl"), encoding="utf-8")]
     have = {(r["path"], r["heading"]) for r in rows}
     paths = {r["path"] for r in rows}
     for t in json.load(open(os.path.join(CODE, "topics.json")))["topics"]:
         for p in t["paths"]:
             path, _, head = p.partition("#")
-            assert path in paths, f"{t['name']}: {path} is not in the library"
-            assert not head or (path, head) in have, f"{t['name']}: {p} is not a section"
+            assert head or path in paths, f"{t['name']}: {path} is not in the library"
+            assert not head or route.topic_section(rows, p), f"{t['name']}: {p} is not a section, even in its page family"
 
 
 # --- router: identifier parts, parent headings and the SDK weight, on an invented library ---
@@ -348,6 +364,11 @@ def test_read_accepts_the_cite_as_forms(rlib, sid):
     r = read_cli(rlib[0], sid)
     assert r.returncode == 0 and "The box returns four numbers." in r.stdout, r.stderr
     assert r.stdout.startswith("SOURCE: docs/primitives__box.md#Response structure")
+
+
+def test_the_source_line_carries_the_page_web_address_from_its_saved_header(rlib):
+    first = read_cli(rlib[0], "docs/primitives__box.md#Response structure").stdout.split("\n")[0]
+    assert first.endswith("| URL: https://docs.typesafe.ai/x")  # the saved .md address, as a reader opens it
 
 
 def test_a_heading_ending_in_a_parenthesis_that_is_not_a_label_keeps_it(rlib):
@@ -568,3 +589,29 @@ def test_the_skill_md_heredoc_runs_a_quote_with_backticks_unharmed(qlib):
     cmd = f"{sys.executable} {CODE}/scripts/read.py 'docs/limits.md#Images' --check-quote - <<'QUOTE'\nRun `pip install typesafe` first, then say \"go\".\nQUOTE"
     r = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, env=qlib)
     assert r.returncode == 0 and "QUOTE FOUND" in r.stdout, r.stderr
+
+
+# ---- limit and per_page: the wider net map mode uses; the defaults are today's routing ----------------------------
+
+def _many_pages(n_pages, per_page):
+    return {"docs/p%d.md" % k: "".join("# Batch limit part %d of page %d\n\nthe batch limit applies here\n\n" % (j, k)
+                                      for j in range(per_page)) for k in range(n_pages)}
+
+
+def test_route_defaults_keep_two_sections_per_page_and_ten_in_all(trial, tmp_path, monkeypatch):
+    R = _lib(trial, tmp_path, monkeypatch, _many_pages(12, 3))
+    monkeypatch.setenv("JEV_SEMANTIC", "off")
+    res = R.route("batch limit")
+    assert len(res["sections"]) == 6  # six by keyword, two a page: today's cut
+    assert max(sum(1 for s in res["sections"] if s["path"] == p) for p in {s["path"] for s in res["sections"]}) == 2
+    assert R.route("batch limit", limit=10, per_page=2) == res
+
+
+def test_route_limit_and_per_page_widen_the_net(trial, tmp_path, monkeypatch):
+    R = _lib(trial, tmp_path, monkeypatch, _many_pages(12, 3))
+    monkeypatch.setenv("JEV_SEMANTIC", "off")
+    res = R.route("batch limit", limit=30, per_page=3)
+    per = {}
+    for s in res["sections"]:
+        per[s["path"]] = per.get(s["path"], 0) + 1
+    assert max(per.values()) == 3 and len(res["sections"]) == 26

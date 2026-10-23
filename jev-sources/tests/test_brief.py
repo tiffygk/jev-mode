@@ -36,3 +36,13 @@ def test_reminder_text_names_jev_py_and_keeps_the_labels(tmp_path):
                    f"`python3 {root}/scripts/jev.py \"<the question>\" --docs-words \"<the same question in the docs' words>\"` "
                    "and read what it prints, unless those sections were already read in full this session. Keep each source's label "
                    "(reference rule, pattern, cookbook example, sdk reference, vendor claim) and say when a section is marked NEEDS or EXPERIMENTAL.")
+
+
+def test_the_brief_line_carries_the_quotation_mark_rule():
+    sys.path.insert(0, H)
+    import jev_terms
+    assert "quotation marks only for the docs' words" in jev_terms.BRIEF
+    assert "your own text and the user's go in backticks" in jev_terms.BRIEF
+    skill = open(os.path.join(os.path.dirname(H), "SKILL.md"), encoding="utf-8").read()
+    line = next(l for l in skill.splitlines() if l.startswith("JEV-SOURCES: before any finding"))
+    assert line == jev_terms.BRIEF.replace(jev_terms.ROOT, "<skill>")

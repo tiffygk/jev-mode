@@ -42,3 +42,9 @@ def test_readme_at_most_1130_words():
     # The repo's README rule is 750 words; this README may run to 1130 (CLAUDE.md, "Writing in this repo").
     text = open(os.path.join(SKILL_DIR, "README.md"), encoding="utf-8").read()
     assert len(re.sub(r"<[^>]*>", "", text).split()) <= 1130  # HTML tags don't count, as in the README guide
+
+
+def test_skill_md_is_at_most_125_lines():
+    import os
+    p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "SKILL.md")
+    assert len(open(p, encoding="utf-8").read().splitlines()) <= 125

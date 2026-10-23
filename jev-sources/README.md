@@ -4,8 +4,6 @@ Hate when your coding harness hallucinates Jev functionality or implements Jev f
 
 It answers Jev questions from TypeSafe's official docs, cookbooks, patterns and blog posts. It never calls Jev: your coding agent's Claude or Codex model does the reading, so no TypeSafe key is needed.
 
-For developers and agent teams checking Jev designs.
-
 ## Sample
 
 > **jev.py** on "can I put 30 passages in one call?", trimmed
@@ -16,20 +14,20 @@ For developers and agent teams checking Jev designs.
 
 ## Labels
 
-`jev.py` labels every section it finds, telling the model how to use it.
+Each section `jev.py` finds gets a label:
 
 | Label | The model | Set when |
 |---|---|---|
 | **READ&nbsp;FULL** | Reads it all before any claim | Short, or the question limits a design |
 | **EXTRACT** | Gets a pointer; claims from it are unverified | Long, or matched by meaning only |
-| **NEEDS** | Names the model the section needs; reads it last when you named an older one | The page needs a newer model than yours (or than jev-latest), per a kept list of TypeSafe's stated limits |
+| **NEEDS** | Names the model the section needs; reads it last when you named an older one | The page needs a newer model than yours (or than jev-latest), per a list of TypeSafe's stated limits |
 | **EXPERIMENTAL** | Quotes TypeSafe's line that it isn't production-ready | TypeSafe calls it experimental (same list) |
 
 ## How it works
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/how-it-works-dark.svg">
-  <img alt="How a Jev question flows: reminder hook, jev.py, keyword and meaning routes, labels, sections read in full or a reading plan, then a quoted claim." src="images/how-it-works.svg">
+  <img alt="How a Jev question flows: reminder hook, jev.py, keyword and meaning routes, labels, sections read in full or a reading plan, then a cited answer." src="images/how-it-works.svg">
 </picture>
 
 1. A hook sees a Jev message and tells the model to run `jev.py`. At most every two days, the hook also starts a background check for new or re-dated TypeSafe pages.
@@ -37,24 +35,25 @@ For developers and agent teams checking Jev designs.
    - Keywords rank sections and boost reference rules; names like `request_id` also match their parts.
    - A small offline model compares meanings and adds up to two sections the keywords missed.
    - Both read the docs without the site's display code stuffing context.
-   - It reads the READ FULL sections, reference rules first, up to a size cap. Past the cap, it prints a reading plan for subagents.
-3. The model quotes each section with its provenance (source and label), or says "the docs don't say".
+   - It reads the READ FULL sections, reference rules first, up to a size cap. The model reads small leftovers itself; past a third of the cap, subagents read the rest.
+   - A question reads what it asks. A build runs one question per part and names any that found nothing.
+3. The model answers in its own words, citing each section and label, or says "the docs don't say". A hook sends back misquotes and citations to missing sections.
 
 | Step | Who enforces it |
 |---|---|
 | Routing, labels, reading order, cap | Code, once the model runs `jev.py` |
-| Reminder; refusing a Jev brief without its source line | Hooks, once installed |
-| Running `jev.py`, the quote, its provenance | The model, following `SKILL.md` |
+| Reminder; refusing subagent instructions without their source line; checking citations, a subagent's or the answer's | Hooks, once installed |
+| Running `jev.py`, the answer, its sources | The model, following `SKILL.md` |
 
-After fetching a changed page, the background check reruns the routing tests and lists citations whose page or section changed. Data stays in `~/.claude/jev-sources-data/`; `JEV_LOG=off` stops logging your questions.
+After a page changes, the background check reruns the routing tests and lists the citations it affects. Data stays in `~/.claude/jev-sources-data/`; `JEV_LOG=off` stops logging your questions.
 
 ## What it reads
 
-It reads TypeSafe's docs (including Models and the API and SDK reference), patterns, cookbooks and blog posts (labeled vendor claims). Each refresh finds them through the sitemaps, the docs' `llms.txt` and the skill's `scripts/urls.txt`. A raw copy of each page is kept to detect changes. `SOURCES.md` in the data folder lists every page your copy holds and when it was saved. Updated for Jev 1.14, including image input and Box questions, both experimental per TypeSafe.
+It reads TypeSafe's docs (including Models and the API and SDK reference), patterns, cookbooks and blog posts (labeled vendor claims). `SOURCES.md` in the data folder lists every page your copy holds and when it was saved. Updated for Jev 1.14, including image input and Box questions, both experimental per TypeSafe.
 
 ## Where the rules come from
 
-Jev Sources adds no rules. It quotes TypeSafe and labels each page's kind: reference pages say what the API allows; cookbooks show one working build. So a cookbook that sends one request per item shows one way to build it; a reference page or the cookbook's scope note says whether you must. Rating a design is a separate skill, [Jevaluate](../jevaluate/).
+Jev Sources adds no rules. It cites TypeSafe and says each page's kind: reference pages say what the API allows; cookbooks show one working build. A cookbook that sends one request per item shows one way to build it; a reference page or its scope note says whether you must. Rating a design is a separate skill, [Jevaluate](../jevaluate/).
 
 ## How accurate it is
 
@@ -63,17 +62,17 @@ Jev Sources adds no rules. It quotes TypeSafe and labels each page's kind: refer
 | Everyday questions | 21 | 🟢 Easy | listed, at any label | 86% (18 of 21; 65% to 95%) |
 | Everyday questions | 21 | 🟢 Easy | printed in full within the cap | 81% (17 of 21; 60% to 92%) |
 | Release-check questions | 20 | 🟢 Easy | printed in full within the cap | 100% (20 of 20; 84% to 100%) |
-| SDK questions, written blind | 24 | 🔴 Hard | printed in full within the cap | 42% (10 of 24; 24% to 61%); previous version 38% |
+| SDK questions, written blind | 24 | 🔴 Hard | printed in full within the cap | 42% (10 of 24; 24% to 61%) |
+| Broad first-time goals, written blind | 12 | 🔴 Hard | read or left for later reading | 49% of needed sections (40% to 60%); unsplit, 9% |
 
 How to read it:
-- 68 questions in all: the rows above plus 3 naming an older model.
-- **n** is the number of questions in the row, its sample size. Every question searches all 1,213 sections in the library, 765 of them SDK reference entries.
-- 🟢 **Easy** questions cover the docs in general, and the routing was tuned on them. 🔴 **Hard** questions each ask about one function, field or error in the SDK reference, where many entries have similar names. An agent that never saw this tool wrote 48 of them. Half chose between four versions of the matching step; the 24 in the table scored the winner once.
-- **Listed** means the section is anywhere in the list `jev.py` returns. **Printed in full** is stricter: the model gets the whole section within the size cap.
-- **Found** is recall: the share of questions whose section was found. The range is the 95% Wilson interval, wide because the rows are small.
-- On the hard questions, the new version found one more than the previous version, too few to show a real improvement (exact McNemar p = 1.0). All 3 questions naming an older model got the right label.
+- 🟢 **Easy** questions cover the docs broadly; the routing was tuned on them.
+- 🔴 **Hard** questions each ask about one function, field or error in the SDK reference.
+- **Listed** means the section is anywhere in the list `jev.py` returns. **Printed in full** is stricter: the whole section, within the cap.
+- **Found** is recall: the share of questions whose section was found. For goals, it is the average share of each goal's needed sections, as a separate reviewer marked them. Ranges are 95% intervals (Wilson; bootstrap for goals), wide on small rows.
+- **Broad goals** are first-time requests, such as moving a classifier to Jev, written blind. Splitting reads about 4 times the tokens.
 
-The table measures `jev.py` once the model runs it. Running depends on the reminder hook; `scripts/firing_report.py` shows how often the hook fires.
+The table measures `jev.py` once it runs; `scripts/firing_report.py` shows how often the reminder hook prompts it. Live sessions in projects that say they use Jev met blind answer keys on 18 of 19 tests, twice, and 10 of 11 held out.
 
 ## Install and use
 
@@ -93,7 +92,7 @@ codex plugin marketplace add tiffygk/jev-mode
 codex plugin add jev-sources@jev-mode
 ```
 
-Then ask your agent to refresh. By copy (Codex: `~/.agents/skills/` throughout):
+Then ask your agent to refresh. Codex runs no plugin hooks: have it run `scripts/codex_hooks.py install`. By copy (Codex: `~/.agents/skills/` throughout):
 
 ```
 git clone https://github.com/tiffygk/jev-mode

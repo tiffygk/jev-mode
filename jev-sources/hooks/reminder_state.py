@@ -1,7 +1,7 @@
 """Per-session state for the prompt reminder: how many prompts the session has sent and which Jev words fired when.
 Lives in <data>/logs/reminder_state/<sha1(session)[:16]>.json. Nothing here raises: a failure means no state."""
 import hashlib, json, os, time
-from jev_terms import data_dir
+from jev_terms import data_dir, private_dirs
 
 
 def _dir():
@@ -29,9 +29,7 @@ def save(sid, st):
     if sid is None:
         return
     try:
-        os.makedirs(data_dir(), mode=0o700, exist_ok=True)  # makedirs gives the mode to the last folder only
-        os.makedirs(os.path.dirname(_dir()), mode=0o700, exist_ok=True)
-        os.makedirs(_dir(), mode=0o700, exist_ok=True)
+        private_dirs(_dir())
         st = {"n": st["n"], "fires": st["fires"][-50:]}
         path = _path(sid)
         tmp = path + ".%d.tmp" % os.getpid()
