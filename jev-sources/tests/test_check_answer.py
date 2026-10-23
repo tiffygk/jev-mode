@@ -622,3 +622,10 @@ def test_a_page_rewritten_with_its_old_time_and_size_is_read_again(ca):
     open(path, "w").write(text)
     os.utime(path, ns=(st.st_atime_ns, st.st_mtime_ns))
     assert read._flat(r)[1] != before
+
+
+def test_a_page_missing_mid_check_fails_the_answer_once_and_names_it(ca):
+    import read
+    os.remove(os.path.join(read.ROOT, "docs", "one.md"))
+    rows, summary, ok = ca.check('- "every box answers within five seconds" (`docs/one.md#Alpha`)\n')
+    assert not ok and any(r.startswith("BAD CITE") and "docs/one.md" in r for r in rows), rows

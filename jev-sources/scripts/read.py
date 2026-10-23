@@ -138,18 +138,30 @@ def _find(text, lines, owner, cols, want, start):
 _FLAT = {}
 
 
+class MissingSource(SystemExit):
+    """A saved page the index names is gone; the CLI exits with the message, and the answer check fails the answer."""
+
+    def __init__(self, page):
+        self.page = page
+        super().__init__(f"missing source {page}; run {REFRESH}")
+
+
 def _flat(r):
     """(lines, squashed text, line of each character, column of each character) of section r, kept per file version,
     since one answer check matches many quotes against the same sections."""
     path = os.path.join(ROOT, r["path"])
-    if not os.path.exists(path):
-        sys.exit(f"missing source {r['path']}; run {REFRESH}")
-    st = os.stat(path)
+    try:
+        st = os.stat(path)
+    except OSError:
+        raise MissingSource(r["path"])
     key = (path, r["line_start"], r["line_end"], st.st_mtime_ns, st.st_size, st.st_ctime_ns, st.st_ino)
     if key not in _FLAT:
         if len(_FLAT) > 2000:
             _FLAT.clear()
-        lines = open(path, encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+        try:
+            lines = open(path, encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]]
+        except OSError:
+            raise MissingSource(r["path"])
         lines = [LINK.sub(r"\1", ln) for ln in lines]  # a quote of a link's text matches the page's [text](url)
         flat, owner, cols = [], [], []
         for i, ln in enumerate(lines):

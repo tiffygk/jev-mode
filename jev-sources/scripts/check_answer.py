@@ -353,7 +353,16 @@ def _example_question(block, q):
 
 def check(text, seen=None):
     """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev. seen, a
-    set, collects each quote given a row, so unquoted_facts reads the lines whose quotes were passed over as terms."""
+    set, collects each quote given a row, so unquoted_facts reads the lines whose quotes were passed over as terms. A
+    saved page that is missing fails the answer once, naming the page, rather than passing it unchecked."""
+    try:
+        return _check(text, seen)
+    except RD.MissingSource as e:
+        row = f"BAD CITE | missing page {RD._safe(str(e.page))[:80]} | run the refresh"
+        return [row], "answer check: a cited page is missing from the library", False
+
+
+def _check(text, seen=None):
     text = text.translate(CURLY)
     blocks = _blocks(text)
     if not any(_cites(b) for _, b, _ in blocks) and not JEV.search(text):
