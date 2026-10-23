@@ -235,11 +235,15 @@ def _resolve_one(cite):
     path = path if path.endswith((".md", ".txt")) else path + ".md"
     head = re.sub(r"\s*\([^()]*\)\s*$", "", head).strip()  # a trailing label
     head = head[:-1].rstrip() if head.endswith(":") else head  # one trailing colon, on either side, is not a difference
-    hits = []
+    hits, exact = [], []
     for x in _idx():
         h = x["heading"][:-1].rstrip() if x["heading"].endswith(":") else x["heading"]
         if x["path"] == path and h.startswith(head) and (cut or len(h) == len(head) or not h[len(head)].isalnum()):
             hits.append(x)
+            if h == head and not cut:
+                exact.append(x)
+    if exact and head:
+        return exact  # a heading that equals the citation wins over longer headings it prefixes
     return hits if len(hits) == 1 and head else []
 
 

@@ -11,6 +11,7 @@ GAMMA = "Gamma says the body is over 32 MiB when it is rejected."
 PAGES = {
     "docs/one.md": f"# One\n\nIntro.\n\n## Alpha\n\n{ALPHA}\n\n## Beta\n\n{BETA}\n",
     "docs/two.md": f"# Two\n\n## Gamma\n\n{GAMMA}\n",
+    "docs/four.md": "# Four\n\n## Confidence\n\nShort section.\n\n## Confidence is derived from the probabilities\n\nLonger section.\n",
     "docs/three.md": "# Three\n\n## How to build with the box\n\nBuild steps go here in order.\n\n## Price\n\n| Price | \\$42 / \\$0.042 |\n",
 }
 
@@ -87,6 +88,13 @@ def test_a_citation_with_a_trailing_colon_resolves(ca):
     assert "BAD CITE" not in verdicts(rows) and ok, rows
     rows, _, ok = ca.check('- "every box answers within five seconds" (`docs/one.md#Alpha`)\n- see `docs/three.md#How to build with the box:`\n')
     assert "BAD CITE" not in verdicts(rows), rows
+
+
+def test_an_exact_heading_wins_over_longer_headings_it_prefixes(ca):
+    for cite in ("docs/four.md#Confidence:", "docs/four.md#Confidence"):
+        rows, _, ok = ca.check(f'- see `{cite}` and "Short section." there\n')
+        assert "BAD CITE" not in verdicts(rows), (cite, rows)
+    assert len(ca._resolve("docs/four.md#Confidence:")) >= 1
 
 
 def test_a_short_quoted_term_and_code_spans_are_not_checked(ca):
