@@ -4,8 +4,8 @@ scripts/check_findings.py before it returns. A bad quote, a finding outside its 
 no findings blocks the stop once per agent, with the failing rows (never section text), so the reader fixes them while
 it still holds the pages. A reply with finding lines but no JEV-READER line is sent back once to add it (its batch
 would otherwise count as missing). The second stop of the same agent passes (loop guard). Any fault passes and is logged.
-Any other subagent reply that cites a page the library holds gets the answer check (scripts/check_answer.py): a citation
-that names no section, or a quote not on its section, blocks once per agent with the failing rows (never page text).
+Any other subagent reply that cites a page the library holds gets the citation check (check_answer.bad_citations): a
+citation that names no section blocks once per agent with the failing rows (never page text). Quotes are not checked here.
 A reply citing nothing, or only files the library does not hold, passes untouched and unlogged.
 A quality check, not a security boundary. Logs to <data>/logs/reader_check.jsonl (readers) and subagent_check.jsonl
 (other subagents) unless JEV_LOG=off."""
@@ -23,7 +23,7 @@ REASON_CAP = 4000
 STATE_CAP = 500
 LOCK_WAIT = 2.0  # seconds
 TAIL = "fix these lines and reply again, starting with the JEV-READER line"
-SUB_TAIL = ("fix each line: cite the section that holds the fact (run jev.py or read.py), correct a quote from its section, "
+SUB_TAIL = ("fix each line: cite the section that holds the fact (run jev.py or read.py), "
             "or mark the claim unverified. Quotation marks only for the docs' words; your own text and the user's go in "
             "backticks. Then reply again.")
 
@@ -102,17 +102,17 @@ def _sub_reason(rows):
 
 
 def _subagent_check(msg, sid, agent):
-    """The answer check on a subagent report that cites a page the library holds. Blocks once per agent."""
+    """The citation check (bad_citations only, no quote check) on a subagent report that cites a page the library holds.
+    Blocks once per agent."""
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import check_answer
     cites = check_answer._cites(msg)
     if not any(check_answer._resolve(c.split("#", 1)[0]) for c in cites):
         return 0  # cites nothing, or only files the library does not hold: not checked, not logged
-    rows, summary, ok = check_answer.check(msg)
+    bad = check_answer.bad_citations(msg)
     ctx = dict(session=sid if isinstance(sid, str) else "-", agent_id=agent if isinstance(agent, str) else "-")
-    bad = [r for r in rows if not r.startswith(("FOUND", "LABELED"))]
-    counts = dict(rows=len(rows), failed=len(bad))
-    if summary is None or ok or not bad:
+    counts = dict(rows=len(bad), failed=len(bad))
+    if not bad:
         log_event("subagent_check", decision="clean", **ctx, **counts)
         return 0
     if not isinstance(agent, str) or not agent or not _first_block(agent):

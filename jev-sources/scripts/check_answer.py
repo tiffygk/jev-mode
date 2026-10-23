@@ -234,8 +234,12 @@ def _resolve_one(cite):
     path, head = ELLIPSIS.sub("", cite).split("#", 1)
     path = path if path.endswith((".md", ".txt")) else path + ".md"
     head = re.sub(r"\s*\([^()]*\)\s*$", "", head).strip()  # a trailing label
-    hits = [x for x in _idx() if x["path"] == path and x["heading"].startswith(head)
-            and (cut or len(x["heading"]) == len(head) or not x["heading"][len(head)].isalnum())]
+    head = head[:-1].rstrip() if head.endswith(":") else head  # one trailing colon, on either side, is not a difference
+    hits = []
+    for x in _idx():
+        h = x["heading"][:-1].rstrip() if x["heading"].endswith(":") else x["heading"]
+        if x["path"] == path and h.startswith(head) and (cut or len(h) == len(head) or not h[len(head)].isalnum()):
+            hits.append(x)
     return hits if len(hits) == 1 and head else []
 
 
@@ -343,6 +347,17 @@ def _example_question(block, q):
     i = block.find('"' + q + '"')
     return (q.strip().endswith("?") and i >= 0 and not _said_by_docs(block, q)
             and bool(ASKING.search(block[max(0, i - 60):i]) or OPENS.search(block[max(0, i - 60):i])))
+
+
+def bad_citations(text):
+    """BAD CITE rows only: each `path#heading` citation whose page the library holds but which names no section, once.
+    No quote is checked. The subagent hook uses this."""
+    text = text.translate(CURLY)
+    out = []
+    for c in dict.fromkeys(c for _, b, _ in _blocks(text) for c in _cites(b)):
+        if "#" in c and not _resolve(c) and _resolve(c.split("#", 1)[0]):
+            out.append(f"BAD CITE | {RD._safe(c)[:80]} | names no section")
+    return out
 
 
 def check(text, seen=None):

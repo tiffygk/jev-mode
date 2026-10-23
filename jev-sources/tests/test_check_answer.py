@@ -82,6 +82,13 @@ def test_a_cite_that_names_no_section_fails(ca):
     assert verdicts(rows) == ["BAD CITE"] and not ok, rows
 
 
+def test_a_citation_with_a_trailing_colon_resolves(ca):
+    rows, _, ok = ca.check('- "every box answers within five seconds" (`docs/one.md#Alpha:`)\n')
+    assert "BAD CITE" not in verdicts(rows) and ok, rows
+    rows, _, ok = ca.check('- "every box answers within five seconds" (`docs/one.md#Alpha`)\n- see `docs/three.md#How to build with the box:`\n')
+    assert "BAD CITE" not in verdicts(rows), rows
+
+
 def test_a_short_quoted_term_and_code_spans_are_not_checked(ca):
     rows, summary, ok = ca.check('- The "danger zone" header and `{"request_id": "abc def ghi jkl"}` (`docs/one.md#Alpha`)\n')
     assert rows == [] and ok and summary.startswith("answer check: 0 quotes")

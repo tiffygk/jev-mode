@@ -724,6 +724,19 @@ def test_a_report_quoting_the_projects_own_docs_file_is_not_checked(tmp_path, mo
     assert _lines(data, "subagent_check") == []
 
 
+def test_a_reviewer_report_quoting_the_plan_it_reviews_passes(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch, with_plan=False)
+    msg = ("Review done. Docs fact (`docs/one.md#Alpha`).\n"
+           'The plan says "write the fixtures before any run and keep them fixed"\n')
+    assert reader_run(data, msg, agent_id="b5") == (0, None)
+
+
+def test_a_subagent_misquote_beside_a_real_citation_is_not_blocked_at_the_subagent(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch, with_plan=False)
+    msg = '"every box answers within ten seconds" (`docs/one.md#Alpha`)'
+    assert reader_run(data, msg, agent_id="b6") == (0, None)
+
+
 def test_reader_replies_keep_the_reader_check(tmp_path, monkeypatch):
     data = reader_lib(tmp_path, monkeypatch)
     code, out = reader_run(data, head() + BAD + "\n")
