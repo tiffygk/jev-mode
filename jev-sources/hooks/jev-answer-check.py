@@ -5,7 +5,7 @@ unlogged. One that mentions Jev but cites nothing has the quotes it gives as the
 specific fact (a number with a unit, a price, a status code, a name, an error line), checked. A quote that is not on its
 cited section, a citation that names no section, or a quote with no citation in reach blocks the stop once, with the
 failing rows (never page text), so the model corrects the quote, cites the section that holds it, or labels it
-unverified beside it; a sentence stating a specific Jev fact with no quote or citation is sent back once too.
+unverified beside it. Every citation must name a real section; an answer may paraphrase the docs with citations.
 Quotation marks are for the docs' words only: the user's own text goes in backticks, which are not checked. The next
 stop passes (Claude Code sets stop_hook_active). Any fault passes and is logged.
 A quality check, not a security boundary. Logs counts to <data>/logs/answer_check.jsonl unless JEV_LOG=off."""
@@ -15,10 +15,11 @@ from jev_terms import ROOT, JEV, data_dir, log_event
 
 CITES = re.compile(r"(?:docs|cookbooks|patterns|blog)/")
 REASON_CAP = 4000
-TAIL = ("fix each line: correct the quote from its section (read.py '<id>'), cite the section that holds it, or label "
-        "it unverified beside the quote; wording you made up (an example question or option) and the user's own text (their error, log or message) go in backticks, not quotation marks. "
-        "For an UNQUOTED line, a fact stated without a quote: quote it with its citation, mark it unconfirmed, or move it under "
-        "My read. Then send the whole corrected answer, with no note about this check.")
+TAIL = ("fix each line: for a citation that names no section, cite the section that holds the fact (run jev.py or "
+        "read.py to find it); for a quote, correct it from its section (read.py '<id>'), put it in your own words with "
+        "its citation, or label it unverified in the parentheses beside it. Wording you made up and the user's own text "
+        "(their error, log or message) go in backticks, not quotation marks. Then send the whole corrected answer, "
+        "with no note about this check.")
 
 
 TAIL_BYTES = 4_000_000  # the end of the transcript read for the last answer; a long session is never read whole
@@ -85,18 +86,16 @@ def main():
             return 0
         sys.path.insert(0, os.path.join(ROOT, "scripts"))
         import check_answer
-        seen = set()
-        rows, summary, ok = check_answer.check(msg, seen)
+        rows, summary, ok = check_answer.check(msg)
         if summary is None:
             return 0
         bad = [r for r in rows if not r.startswith(("FOUND", "LABELED"))]
-        loose = check_answer.unquoted_facts(msg, seen)
-        counts = dict(quotes=len(rows), failed=len(bad), unquoted=len(loose))
-        if not bad and not loose:
+        counts = dict(quotes=len(rows), failed=len(bad))
+        if not bad:
             log_event("answer_check", decision="clean", session=sid, **counts)
             return 0
         log_event("answer_check", decision="block", session=sid, **counts)
-        print(json.dumps({"decision": "block", "reason": _reason(bad + loose)}))
+        print(json.dumps({"decision": "block", "reason": _reason(bad)}))
         return 0
     except BaseException as e:  # fail open: a fault in this check must never hold an answer back
         if isinstance(e, SystemExit) and e.code in (0, None):

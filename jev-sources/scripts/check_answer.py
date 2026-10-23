@@ -15,9 +15,7 @@ then one summary line. Quotation marks are for the docs' words only: every quote
 (the user's own error, log or message goes in backticks, which are not checked). With no citation anywhere, a quote
 holding a specific fact is still checked. An answer with no library citation that does not mention Jev is not a Jev
 answer: nothing is printed and it passes.
-unquoted_facts(text) lists, apart from the quote check, each sentence that states a specific Jev fact (a price, a
-number with a unit, a status code, a backticked name) with no quote or citation on its line, before "My read" and
-not marked unconfirmed: UNQUOTED | <first words>. They never change the exit code; the Stop hook asks once.
+Every citation must name a section: one that names none prints BAD CITE | <citation> | names no section, once.
 Exit 0 when every quote is FOUND or LABELED; 1 otherwise; 2 on bad usage. Never prints page text: a quote is shown
 by its first 5 words, at most 60 characters."""
 import os, re, sys
@@ -29,7 +27,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from jev_terms import JEV
 
 MIN_WORDS = 4  # a shorter quoted string is a term or a name ("danger zone"), not a quote
-MAX_SENTENCE = 500  # characters of one sentence the unquoted-fact check reads
 MAX_CITE = 200  # characters of a bare citation tried against the index; a longer run is not a citation
 MAX_CUTS = 10  # comma cuts tried on one bare citation
 MAX_CITES = 30  # distinct citations read from one block
@@ -63,19 +60,11 @@ NOT_LABEL = re.compile(r"\b(?:not|no|nothing|never|none|isn't|aren't|without)\b[
                        re.I)  # "Nothing here is unverified" labels nothing
 DOCS_SAY = re.compile(r"\b(?:docs?|documentation|TypeSafe|reference|cookbook|guide|blog(?: post)?|page|section|FAQ)\b[^\"]{0,40}$", re.I)
 SENTENCE = re.compile(r"^[A-Z].*[.!?]$")
-# unquoted facts: a Jev term and a specific in one sentence
-FACT_TERM = re.compile(r"\b(?:Jevs?|Nouls?|System One|TypeSafe|SDK|API|endpoint|rate[ -]limits?|models?|alias|"
-                       r"bills?|billed|charges?|priced?|pricing|context)\b", re.I)
-FACT_NAME = re.compile(r"\b(?:Choice|Score|Box)\b")  # common words in lower case, question types when capitalized
 SPECIFIC = re.compile(r"\b[a-z]+_[a-z_]+\b|\$\s?\d|\b(?:limits?|caps?|max(?:imum)?|minimum|default)\s+(?:is|of|at|to|=)\s+\$?\d"
                       r"|\b\d[\d,.]{0,20}\s*(?:%|ms\b|s\b|secs?\b|seconds?\b|min\b|mins\b|minutes?\b|hours?\b|hrs?\b|days?\b|"
                       r"weeks?\b|RPM\b|RPS\b|TPM\b|x\b|tokens?\b|requests?\b|options?\b|questions?\b|levels?\b|"
                       r"[KMGB]i?B\b|[KMB]\b|[MB]tok\b|dollars?\b|cents?\b|"
                       r"characters?\b|per\b|million\b|billion\b|k\b|MB\b)|\b[45]\d\d\b|`[^`\n]+`")
-YOU_HEDGE = re.compile(r"\b(?:you|your)\b", re.I)  # about the person's own case, unless the sentence quotes a specific
-HEDGED = re.compile(r"\b(?:unconfirmed|unverified|my read|I'd|I would)\b|(?:pages?|docs|sections?) I (?:read|routed)\b"
-                    r"|\bI (?:didn't|did not|haven't|have not) (?:read|check|see)|\bthe docs (?:don't|do not) (?:say|show|cover|list)", re.I)
-MY_READ = re.compile(r"^\s*(?:#+\s*|\*\*)My read\b", re.I)
 ESCAPE = re.compile(r"\\([^\w\s])")
 CURLY = str.maketrans({"\u201c": '"', "\u201d": '"', "\u201e": '"'})
 
@@ -146,7 +135,11 @@ _CACHE = {}
 def _idx():
     """The library index, read once per change of sections.jsonl (one answer looks it up many times)."""
     path = os.path.join(RD.ROOT, "sections.jsonl")
-    stamp = os.path.getmtime(path) if os.path.exists(path) else None
+    try:
+        st = os.stat(path)
+        stamp = (st.st_mtime_ns, st.st_size, st.st_ctime_ns, st.st_ino)
+    except OSError:
+        stamp = None
     if _CACHE.get("stamp") != stamp or "rows" not in _CACHE:
         _CACHE.update(stamp=stamp, rows=RD._index())
     return _CACHE["rows"]
@@ -211,7 +204,7 @@ def _family(row):
 def _resolve(cite):
     rows = _idx()
     memo = _CACHE.setdefault("resolved", {})
-    if memo.get("of") is not rows or len(memo) > MAX_MEMO:
+    if memo.get("of") is not rows:
         memo.clear()
         memo["of"] = rows
     if cite not in memo:
@@ -300,6 +293,7 @@ def _label_after(s):
     one whose parts split at ; or , include one ("(`docs/x.md#H`; unverified)"), or by the bare word before any other
     word, in emphasis or after a dash or comma ("**unverified**", ", unverified.")? A word followed by another quote
     labels that quote, and one followed by a noun is an adjective ("unverified accounts")."""
+    s = re.sub(r"\s+", " ", s)
     pos = 0
     for _ in range(3):
         m = AFTER_PAREN.match(s, pos)
@@ -328,7 +322,7 @@ def _labeled(block, q):
     if '"' in before:  # a quote earlier in the clause owns the words and parentheses right after it
         before = re.sub(r"^\s*[*_]*\([^()]*\)[*_]*", "", before.rsplit('"', 1)[-1])
     before = " ".join(before.split()[-6:])  # a label sits beside its quote
-    row = block[block.rfind("\n", 0, i) + 1:].split("\n", 1)[0]
+    row = re.sub(r"\s+", " ", block[block.rfind("\n", 0, i) + 1:].split("\n", 1)[0])
     if (LABEL_BEFORE.search(before) or _label_after(block[j:j + 600])
             or (row.lstrip().startswith("|") and any(LABEL_ONLY.match(c) for c in row.split("|") if c.strip()))):
         return True
@@ -353,8 +347,11 @@ def _example_question(block, q):
 
 def check(text, seen=None):
     """(rows, summary, ok). summary is None when the answer neither cites a library section nor mentions Jev. seen, a
-    set, collects each quote given a row, so unquoted_facts reads the lines whose quotes were passed over as terms. A
+    set, collects each quote given a row. A
     saved page that is missing fails the answer once, naming the page, rather than passing it unchecked."""
+    memo = _CACHE.get("resolved")
+    if memo is not None and len(memo) > MAX_MEMO:
+        memo.clear()  # between answers, never mid-answer
     try:
         return _check(text, seen)
     except RD.MissingSource as e:
@@ -365,22 +362,23 @@ def check(text, seen=None):
 def _check(text, seen=None):
     text = text.translate(CURLY)
     blocks = _blocks(text)
-    if not any(_cites(b) for _, b, _ in blocks) and not JEV.search(text):
+    cites_of = [_cites(b) for _, b, _ in blocks]
+    any_cite = any(cites_of)
+    if not any_cite and not JEV.search(text):
         return [], None, True
-    any_cite = any(_cites(b) for _, b, _ in blocks)
     out, counts = [], {}
     skipped = [0, 0]  # quotes looked at, quotes past MAX_QUOTES
-    pages = set(list(dict.fromkeys(x["path"] for _, b, _ in blocks for c in _cites(b) for x in _resolve(c)))[:MAX_HINT_PAGES])
+    pages = set(list(dict.fromkeys(x["path"] for cs in cites_of for c in cs for x in _resolve(c)))[:MAX_HINT_PAGES])
     hints = [0]
     def hint(parts):  # "found under": a hint only, so it searches the first cited pages for the first failing quotes
         hints[0] += 1
         return _holder(parts, pages) if hints[0] <= MAX_HINTS else None
     items = []  # (indent, cites) of the bullets so far under this heading, for a nested bullet's parent
     under = {}  # every citation under each heading
-    for h, b, _ in blocks:
-        under.setdefault(h, []).extend(c for c in _cites(b) if c not in under.get(h, []))
-    for head, block, indent in blocks:
-        cites = _cites(block)
+    for (h, _, _), cs in zip(blocks, cites_of):
+        under.setdefault(h, []).extend(c for c in cs if c not in under.get(h, []))
+    reported = set()  # bad citations a quote's BAD CITE row already named
+    for (head, block, indent), cites in zip(blocks, cites_of):
         if indent is None and not block.startswith("|"):
             items = []
         parent = next((c for i, c in reversed(items) if indent is not None and i < indent and c), [])
@@ -417,6 +415,7 @@ def _check(text, seen=None):
                                      + (f" | found under {_ref(held)}" if held else ""))
             elif not rows:
                 v, row = "BAD CITE", f"BAD CITE | {_short(q)} | {RD._safe(bad[0])[:80]}"
+                reported.update(bad)
             else:
                 raw = RD.quote_parts(q) if q2 != q else None  # the page may keep the escapes ("\\$42") the quote was read without
                 esc = RD.quote_parts(re.sub(r"(?<!\\)\$", r"\\$", q2)) if "$" in q2 else None  # or the quote may drop them
@@ -447,6 +446,10 @@ def _check(text, seen=None):
             out.append(row)
             if seen is not None:
                 seen.add(q)
+    for c in dict.fromkeys(c for cs in cites_of for c in cs):
+        if "#" in c and c not in reported and not _resolve(c):
+            counts["BAD CITE"] = counts.get("BAD CITE", 0) + 1
+            out.append(f"BAD CITE | {RD._safe(c)[:80]} | names no section")
     if skipped[1]:
         counts["TOO MANY"] = 1
         out.append(f"TOO MANY | {skipped[1]} more quotes not checked | at most {MAX_QUOTES} are checked in one answer")
@@ -458,56 +461,14 @@ def _check(text, seen=None):
     return out, summary, ok
 
 
-USER_TIE = re.compile(r"\b(?:you|your|yours|log|logs|logged|output|printed|prints|pasted|traceback|stdout|stderr|terminal|"
-                      r"console|returned|showed|raised|threw|emitted|got|received)\b", re.I)  # past tense: the run that happened
-
-
-def _user_code(span, sentence):
-    """A backticked span that is the user's text or a citation, not a stated fact: an error line, a library id, or three
-    or more words in a sentence that ties them to the user's own run ("The run printed `...`")."""
-    return bool(ERRORISH.match(span) or BARE.match(span) or NOFOLDER.match(span)
-                or (len(span.split()) >= 3 and USER_TIE.search(sentence)))
-
-
-def unquoted_facts(text, seen=None):
-    """Rows for sentences stating a specific Jev fact with no quote or citation on their line (module docstring). seen,
-    when given, is the set check() already filled for this text, so the quotes are not checked twice."""
-    text = text.translate(CURLY)
-    if not JEV.search(text) and not any(_cites(b) for _, b, _ in _blocks(text)):
-        return []
-    if seen is None:
-        seen = set()
-        check(text, seen)
-    out, fence = [], False
-    for line in text.split("\n"):
-        if line.lstrip().startswith("```"):
-            fence = not fence
-            continue
-        if fence:
-            continue
-        if MY_READ.match(line):
-            break
-        quotes = [q for q, t in _quote_pairs(line) if _claimed(t)]
-        if (quotes and all(q in seen for q in quotes)) or _cites(line):
-            continue  # its quotes were checked, or it cites a section
-        for s in re.split(r"(?<=[.!?])\s+", line.strip(" -*#>|")):
-            s = s[:MAX_SENTENCE]  # a fact sits in an ordinary sentence; a very long run is not one
-            hedged = HEDGED.search(s) or (YOU_HEDGE.search(s) and not any(SPECIFIC.search(q) for q in QUOTE.findall(s)))
-            bare = BARE.sub(" ", TICKED.sub(lambda m: " " if _user_code(m.group(1), s) else m.group(0), s))
-            if (FACT_TERM.search(s) or FACT_NAME.search(s)) and SPECIFIC.search(bare) and not hedged:
-                out.append(f"UNQUOTED | {_short(s)}")
-    return out
-
-
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if argv:
         print("usage: check_answer.py < answer.md", file=sys.stderr)
         return 2
     text = sys.stdin.buffer.read().decode("utf-8", errors="replace")
-    seen = set()
-    rows, summary, ok = check(text, seen)
-    for r in rows + unquoted_facts(text, seen):
+    rows, summary, ok = check(text)
+    for r in rows:
         print(r)
     if summary:
         print(summary)

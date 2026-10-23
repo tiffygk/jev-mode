@@ -217,45 +217,9 @@ def test_a_docs_url_cites_its_page_and_a_heading_cut_at_a_word_boundary_resolves
     assert verdicts(rows) == ["FOUND"], rows  # one heading starts with "Step"
 
 
-# --- unquoted facts: a specific Jev fact stated with no quote ---------------------------------------------------
+# --- shared fixture text for the quote checks ---------------------------------------------------
 
 CITED = 'Speed: "every box answers within five seconds" (`docs/one.md#Alpha`, reference rule)\n\n'
-
-
-def test_a_price_or_status_code_about_jev_with_no_quote_is_listed(ca):
-    facts = ca.unquoted_facts(CITED + "Jev bills $42 per billion input tokens.\n\nWhen a body is wrong, the API returns a `422`.\n")
-    assert [f.split(" | ")[0] for f in facts] == ["UNQUOTED", "UNQUOTED"]
-    assert facts[0].startswith("UNQUOTED | Jev bills $42 per billion")
-
-
-def test_a_fact_with_its_quote_on_the_line_or_under_my_read_or_marked_unconfirmed_is_not_listed(ca):
-    text = (CITED + 'Price: "You pay per input token." (`docs/one.md#Alpha`)\n\n'
-            "Jev allows 255 options per Choice (unconfirmed: the pages I read don't show it).\n\n"
-            "**My read:** at 10 million questions a month, Jev would cost about $4.\n")
-    assert ca.unquoted_facts(text) == []
-
-
-def test_the_persons_own_numbers_code_blocks_and_answers_with_no_jev_are_not_listed(ca):
-    text = CITED + "You send 2 million texts a month, 5 questions each.\n\n```\nclient.system_one(model=\"jev-1.13.0\")  # 255 options\n```\n"
-    assert ca.unquoted_facts(text) == []
-    assert ca.unquoted_facts("The 3 queues cost $5 a day to run.\n") == []
-
-
-def test_unquoted_facts_never_change_the_quote_verdict(ca):
-    rows, summary, ok = ca.check(CITED + "Jev bills $42 per billion input tokens.\n")
-    assert ok and verdicts(rows) == ["FOUND"]
-
-
-def test_cli_prints_unquoted_rows_and_keeps_its_exit_code(ca, tmp_path):
-    env = {**os.environ, "JEV_SOURCES_DATA": os.environ["JEV_SOURCES_DATA"], "JEV_LOG": "off", "JEV_SEMANTIC": "off"}
-    r = subprocess.run([sys.executable, os.path.join(SCRIPTS, "check_answer.py")], input=CITED + "Jev bills $42 per billion input tokens.\n",
-                       capture_output=True, text=True, env=env)
-    assert r.returncode == 0 and "UNQUOTED | Jev bills $42 per billion" in r.stdout
-
-
-def test_a_gap_statement_is_not_an_unquoted_fact_but_a_flat_denial_is(ca):
-    assert ca.unquoted_facts(CITED + "The pages I read don't give a limit on 255 options.\n\nI didn't read the SDK errors page for `422`.\n") == []
-    assert len(ca.unquoted_facts(CITED + "The API doesn't stream partial answers over 3 requests.\n")) == 1
 
 
 # --- gate round 1 must-fixes ------------------------------------------------------------------------------------
@@ -277,16 +241,10 @@ def test_a_short_quote_holding_a_specific_fact_is_checked_not_skipped(ca):
     assert not ok and any(r.startswith(("UNCITED", "NOT FOUND")) and "$42" in r for r in rows)
 
 
-def test_a_backticked_file_name_next_to_lowercase_score_is_not_a_jev_fact(ca):
-    assert ca.unquoted_facts(CITED + "My code writes three spreadsheets: `flags.csv` with each score.\n") == []
-    assert len(ca.unquoted_facts(CITED + "A Score question returns 3 levels.\n")) == 1
-
-
 def test_long_comma_runs_and_long_digit_runs_stay_fast(ca):
     import time
     t = time.perf_counter()
     ca.check('Jev: "every box answers within five seconds" docs/one.md#' + "a," * 3000 + "x\n")
-    ca.unquoted_facts("Jev costs " + "1," * 20000 + "x\n")
     assert time.perf_counter() - t < 2
 
 
@@ -296,7 +254,7 @@ def test_a_short_made_up_quote_with_a_specific_never_passes_both_checks(ca, fake
     for text in (f'## Price\n\n- Speed: "every box answers within five seconds" (`docs/one.md#Alpha`)\n\nJev sets {fake} for each call.\n',
                  f'Jev sets {fake} for each call.\n'):
         rows, _, ok = ca.check(text)
-        assert not ok or ca.unquoted_facts(text), (fake, text, rows)
+        assert not ok, (fake, text, rows)
 
 
 def test_many_citations_on_one_line_stay_fast(ca):
@@ -323,16 +281,12 @@ def test_an_error_shaped_misquote_attributed_to_a_docs_page_is_checked(ca):
 def test_a_quote_under_four_words_holding_a_specific_is_checked(ca, fake):
     for text in (f"Jev's body limit is {fake} (`docs/one.md#Alpha`).\n", f"For your requests, Jev's body limit is {fake} (`docs/one.md#Alpha`).\n"):
         rows, _, ok = ca.check(text)
-        assert not ok or ca.unquoted_facts(text), (text, rows)
+        assert not ok, (text, rows)
 
 
 def test_a_price_quoted_with_the_pages_own_escapes_is_found(ca):
     rows, _, ok = ca.check('Price: "\\$42 / \\$0.042" (`docs/three.md#Price`)\n')
     assert ok and verdicts(rows) == ["FOUND"], rows
-
-
-def test_a_line_labeled_unverified_is_not_an_unquoted_fact_even_with_a_specific_quote(ca):
-    assert ca.unquoted_facts(CITED + 'Unverified: "Jev answers in under 50 ms" (a blog figure I did not find in the docs).\n') == []
 
 
 # --- re-gate 3 must-fixes ---------------------------------------------------------------------------------------
@@ -382,16 +336,12 @@ def test_a_quoted_question_the_docs_are_said_to_ask_is_checked(ca):
     assert ca.check('Jev.\n\nAsk a Choice question such as "Which of these 3 tickets is urgent?"\n')[2]
 
 
-def test_the_users_error_line_beside_a_citation_is_not_an_unquoted_fact(ca):
-    assert ca.unquoted_facts('- You got "RateLimitError: 429 after 60 requests per second" (`docs/one.md#Alpha`).\n') == []
-
-
 def test_many_quotes_stay_fast_and_past_the_cap_fail_once(ca):
     import time
     t = time.perf_counter()
     rows, _, ok = ca.check("Jev " + ('"2 MiB" ' * 25000)[:200000])
     rows2, _, _ = ca.check("Jev.\n\n" + '- "every box answers within five seconds" (`docs/one.md#Alpha`)\n' * 2000)
-    ca.unquoted_facts("Jev.\n\n" + 'When you send, the body limit is "64 MiB" and "$40" per `x_y`. ' * 3000)
+    ca.check("Jev.\n\n" + 'When you send, the body limit is "64 MiB" and "$40" per `x_y`. ' * 3000)
     assert time.perf_counter() - t < 3
     assert not ok and rows == [r for r in rows if r.startswith("UNCITED")] and len(rows) == 1  # one block: checked once
     assert rows2[-1].startswith("TOO MANY") and len(rows2) == ca.MAX_QUOTES + 1
@@ -409,14 +359,6 @@ def test_a_label_counts_only_beside_its_quote_and_not_when_negated(ca):
     assert not ca.check(f'- The speed is "{MIS}" (`docs/one.md#Alpha`) and the retry header name is unverified.\n')[2]
     assert not ca.check(f'- Nothing here is unverified: the speed is "{MIS}" (`docs/one.md#Alpha`).\n')[2]
     assert ca.check(f'- The speed is "{MIS}" (unverified, `docs/one.md#Alpha`).\n')[2]
-
-
-def test_unquoted_facts_reuses_the_checks_seen_quotes(ca, monkeypatch):
-    t = f'- The limit is "{MIS}" (`docs/one.md#Alpha`)\n'
-    seen = set()
-    ca.check(t, seen)
-    monkeypatch.setattr(ca, "check", lambda *a, **k: (_ for _ in ()).throw(AssertionError("checked twice")))
-    ca.unquoted_facts(t, seen)
 
 
 ERR = "RateLimitError: too many calls, retry in 60 seconds"
@@ -496,8 +438,7 @@ def test_correct_answers_with_user_text_or_example_questions_are_not_sent_back(c
               '- Ask Jev "Is this email about billing?" as a Noul (`docs/one.md#Alpha`).\n',
               '- See "How to build with the box" for the steps (`docs/three.md#How to build with the box`).\n'):
         rows, _, ok = ca.check(t)
-        assert ok and ca.unquoted_facts(t) == [], (t, rows)
-    assert ca.unquoted_facts("Jev.\n\nJev's batch limit is `max_batch`.\n")  # a backticked name is still a fact
+        assert ok, (t, rows)
 
 
 def test_a_label_covers_only_its_own_quote_and_not_an_adjective(ca):
@@ -549,19 +490,6 @@ def test_a_short_quote_with_a_time_or_rate_unit_is_checked(ca, q):
         assert not ca.check(t)[2], t
 
 
-@pytest.mark.parametrize("s", ["Jev's cache lasts 24 hours.", "Jev times out after 30s.", "Jev's batch limit is 64.",
-                               "Jev's API caps the body at `40 MiB per request`.", "Jev's rate limit is `600 requests per minute`."])
-def test_an_unquoted_fact_with_a_time_unit_a_bare_limit_or_a_backticked_phrase_is_listed(ca, s):
-    assert ca.unquoted_facts("Jev.\n\n" + s + "\n"), s
-
-
-def test_a_backticked_phrase_tied_to_the_users_output_is_not_a_fact(ca):
-    for s in ("The Jev run printed `body over the limit, retrying` twice.", "Your Jev log shows `waiting on the queue now`.",
-              "The Jev SDK logged `retrying in 4 seconds (attempt 2 of 5)` before it gave up.",
-              "The Jev API returned `RateLimitError: too many calls` on the third batch."):
-        assert ca.unquoted_facts("Jev.\n\n" + s + "\n") == [], s
-
-
 @pytest.mark.parametrize("lead", ["The error reads", "Jev replies", "The FAQ asks", "The API returns the message"])
 def test_a_quoted_question_given_as_the_docs_or_the_apis_words_is_checked(ca, lead):
     assert not ca.check(f'- {lead} "Did you exceed 600 requests per minute?" (`docs/one.md#Alpha`).\n')[2]
@@ -609,6 +537,8 @@ def test_the_not_found_hint_is_bounded(ca, monkeypatch):
 def test_the_citation_memo_is_bounded(ca):
     for i in range(2500):
         ca._resolve(f"docs/one.md#Alpha {i}")
+    assert len(ca._CACHE["resolved"]) > ca.MAX_MEMO  # never cleared mid-answer
+    ca.check("- A box answers within five seconds (`docs/one.md#Alpha`).\n")  # cleared between answers
     assert len(ca._CACHE["resolved"]) <= ca.MAX_MEMO + 1
 
 
@@ -629,3 +559,69 @@ def test_a_page_missing_mid_check_fails_the_answer_once_and_names_it(ca):
     os.remove(os.path.join(read.ROOT, "docs", "one.md"))
     rows, summary, ok = ca.check('- "every box answers within five seconds" (`docs/one.md#Alpha`)\n')
     assert not ok and any(r.startswith("BAD CITE") and "docs/one.md" in r for r in rows), rows
+
+
+# --- Ruling 17: paraphrase with citations; every citation must name a real section ---------------------------------
+
+def test_a_citation_with_no_quote_must_name_a_real_section(ca):
+    rows, _, ok = ca.check("- A box answers within five seconds (`docs/one.md#Alpha`).\n"
+                           "- A state holds at most nine fields (`docs/one.md#Gamma`).\n")
+    assert not ok and verdicts(rows) == ["BAD CITE"] and "docs/one.md#Gamma" in rows[0] and "names no section" in rows[0]
+
+
+def test_a_paraphrase_with_real_citations_passes_with_no_rows(ca):
+    rows, summary, ok = ca.check("- A box answers within five seconds (`docs/one.md#Alpha`, reference rule).\n"
+                                 "- A state holds at most nine fields (`docs/one.md#Beta`).\n")
+    assert ok and rows == [] and summary
+
+
+def test_a_long_exact_quote_given_on_request_is_found(ca):
+    rows, _, ok = ca.check('TypeSafe\'s exact words: "Alpha holds the first secret rule: every box answers within five seconds." '
+                           '(`docs/one.md#Alpha`)\n')
+    assert ok and verdicts(rows) == ["FOUND"], rows
+
+
+def test_citations_in_tables_and_nested_bullets_are_each_checked(ca):
+    text = ("| Limit | Source |\n|---|---|\n| nine fields | `docs/one.md#Beta` |\n| ten fields | `docs/one.md#Delta` |\n\n"
+            "- Speed (`docs/one.md#Alpha`)\n  - Size (`docs/two.md#Omega`)\n")
+    rows, _, ok = ca.check(text)
+    assert not ok and sorted(r.split(" | ")[1] for r in rows) == ["docs/one.md#Delta", "docs/two.md#Omega"], rows
+
+
+def test_a_bad_citation_repeated_is_named_once(ca):
+    rows, _, ok = ca.check("".join(f"- Fact {i} (`docs/one.md#Gamma`).\n" for i in range(20)))
+    assert not ok and verdicts(rows) == ["BAD CITE"], rows
+
+
+def test_a_quote_with_a_bad_citation_is_named_once(ca):
+    rows, _, ok = ca.check('- "every box answers within five seconds" (`docs/one.md#Gamma`)\n')
+    assert not ok and verdicts(rows) == ["BAD CITE"], rows
+
+
+def test_the_unquoted_fact_detector_is_gone(ca):
+    assert not hasattr(ca, "unquoted_facts")
+    rows, _, ok = ca.check(CITED + "Jev bills $42 per billion input tokens.\n")
+    assert ok, rows
+
+
+def test_whitespace_padded_quotes_stay_fast(ca):
+    import time
+    text = "Jev.\n\n" + "".join(f'- "made up line {i} that is long enough here"' + " " * 590 + "(`docs/one.md#Alpha`)\n"
+                                for i in range(20))
+    t = time.time()
+    ca.check(text)
+    assert time.time() - t < 2, time.time() - t
+
+
+def test_many_folderless_comma_citations_stay_fast(ca):
+    import time
+    text = "Jev.\n\n" + "".join(f"- See one.md#Alpha, z{i}, b, c, d, e, f, g, h, i, j, k.\n" for i in range(100))
+    t = time.time()
+    ca.check(text)
+    assert time.time() - t < 1.5, time.time() - t
+
+
+def test_a_page_path_with_no_heading_and_no_quote_is_not_checked(ca):
+    rows, _, ok = ca.check("- Put the prompt notes in `docs/jev-notes.md` and link it from `docs/README.md`.\n"
+                           "- A box answers within five seconds (`docs/one.md#Alpha`).\n")
+    assert ok and rows == [], rows

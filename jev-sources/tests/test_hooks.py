@@ -583,12 +583,18 @@ def test_answer_hook_blocks_a_wrong_quote_with_its_row_and_no_page_text(tmp_path
     assert "backticks" in out["reason"] and "no note about this check" in out["reason"]
 
 
-def test_answer_hook_asks_once_about_a_stated_jev_fact_with_no_quote(tmp_path, monkeypatch):
+def test_answer_hook_passes_a_stated_jev_fact_with_no_quote(tmp_path, monkeypatch):
     data = reader_lib(tmp_path, monkeypatch)
     code, out, _ = answer_run(data, A_GOOD + "\nJev bills $42 per billion input tokens.\n")
-    assert code == 0 and out["decision"] == "block" and "UNQUOTED | Jev bills $42" in out["reason"]
-    assert "quote it with its citation" in out["reason"]
-    assert _lines(data, "answer_check")[-1]["unquoted"] == 1
+    assert code == 0 and out is None
+    assert _lines(data, "answer_check")[-1]["decision"] == "clean"
+
+
+def test_answer_hook_blocks_a_citation_that_names_no_section(tmp_path, monkeypatch):
+    data = reader_lib(tmp_path, monkeypatch)
+    code, out, _ = answer_run(data, A_GOOD + "\n- A state holds nine fields (`docs/one.md#Nowhere`).\n")
+    assert code == 0 and out["decision"] == "block" and "BAD CITE | docs/one.md#Nowhere | names no section" in out["reason"]
+    assert "cite the section that holds the fact" in out["reason"]
 
 
 def test_answer_hook_never_blocks_twice_in_a_row(tmp_path, monkeypatch):
