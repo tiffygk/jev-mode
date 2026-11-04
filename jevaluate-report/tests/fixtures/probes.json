@@ -1,0 +1,122 @@
+[
+ {
+  "id": "p01",
+  "text": "---\nrepo: https://github.com/acme/widgets\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n### S1 Pin the parser version\n\n**What we saw.** The parser accepts any release of the date library.\n\n**Why it matters.** A new release can change how dates are read.\n\n**Source.** [setup file](https://github.com/acme/widgets/blob/0123456789abcdef0123456789abcdef01234567/setup.py)\n\n**Suggested change.** Pin the date library to one release in the setup file.\n\n**How to check it.** Rerun the test suite and compare the failure count with the baseline of 3.",
+  "expect": "pass",
+  "why": "Complete section, link pinned to the exact commit, measure named."
+ },
+ {
+  "id": "p02",
+  "text": "---\nrepo: https://github.com/acme/widgets\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n### S1 Add a retry\n\n**What we saw.** Uploads fail once on a slow network.\n\n**Source.** [upload code](https://github.com/acme/widgets/blob/0123456789abcdef0123456789abcdef01234567/upload.py)\n\n**Suggested change.** Retry the upload twice before giving up.\n\n**How to check it.** Throttle the network and count at least 10 uploads.",
+  "expect": "labels",
+  "why": "The 'Why it matters.' label is missing."
+ },
+ {
+  "id": "p03",
+  "text": "### S1 Clarify the retention section\n\n**What we saw.** The retention section gives two different periods.\n\n**Why it matters.** Readers cannot tell which period applies to backups.\n\n**Source.** See the section titled Data retention in the design doc, and the docs page at https://docs.example.org/tree/main/design/retention for background.\n\n**Suggested change.** State one period for backups and one for logs.\n\n**How to check it.** Ask 5 readers to name the backup period and compare their answers.",
+  "expect": "pass",
+  "why": "Design doc with no repo or commit in front matter: pinned-links does not apply, so the main URL on another site is fine."
+ },
+ {
+  "id": "p04",
+  "text": "---\nrepo: https://github.com/acme/widgets\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n### S2 Name the config keys\n\n**What we saw.** Two config keys share a name.\n\n**Why it matters.** One silently overrides the other.\n\n**Source.** [config loader](https://github.com/acme/widgets/blob/main/config.py)\n\n**Suggested change.** Rename the second key.\n\n**How to check it.** Load the config and confirm 0 keys collide.",
+  "expect": "pinned-links",
+  "why": "Blob link uses main instead of the pinned commit."
+ },
+ {
+  "id": "p05",
+  "text": "---\nrepo: https://github.com/acme/widgets\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n### S2 Split the long module\n\n**What we saw.** One folder holds all the helpers.\n\n**Why it matters.** New contributors cannot find anything.\n\n**Source.** [helpers folder](https://github.com/acme/widgets/tree/89abcdef0123456789abcdef0123456789abcdef/helpers)\n\n**Suggested change.** Group helpers into three folders by purpose.\n\n**How to check it.** Ask two new contributors to find the date helper and compare the time taken.",
+  "expect": "pinned-links",
+  "why": "Tree link uses a different 40-hex commit than the front matter."
+ },
+ {
+  "id": "p06",
+  "text": "---\nrepo: https://github.com/acme/widgets\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n### S3 Follow the upstream pattern\n\n**What we saw.** Our retry loop differs from the one in [the sibling project](https://github.com/acme/gadgets/blob/main/retry.py).\n\n**Why it matters.** The two projects handle timeouts differently, per the [style guide](https://example.com/blob/main/style).\n\n**Source.** [timeout code](https://github.com/acme/widgets/blob/0123456789abcdef0123456789abcdef01234567/net.py)\n\n**Suggested change.** Reuse the sibling's timeout handling.\n\n**How to check it.** Rerun the network tests and compare timeouts against the baseline.",
+  "expect": "pass",
+  "why": "Links to another repo and another site on main are fine; the repo's own link is pinned."
+ },
+ {
+  "id": "p07",
+  "text": "### S1 Add column types\n\n**What we saw.** The schema leaves column types open. This is the same gap as S2 in the list below.\n\n**Why it matters.** Loads can store numbers as text.\n\n**Source.** The schema file in the pipeline folder.\n\n**Suggested change.** Declare a type for each column.\n\n**How to check it.** Load a sample of 100 rows and count type errors.",
+  "expect": "bare-ref",
+  "why": "'S2' appears in running prose, not a heading, anchor or table."
+ },
+ {
+  "id": "p08",
+  "text": "### S2 Pin the model\n\n**What we saw.** The pipeline calls the latest model alias. The related note is [Pin the model](#s2-pin-the-model) in the index.\n\n**Why it matters.** Output changes when the alias moves.\n\n**Source.** The pipeline config file.\n\n**Suggested change.** Name one model version in the config.\n\n**How to check it.** Run the job twice and check the outputs are the same.\n\n| Fix | Effort |\n| --- | --- |\n| S1 | small |\n| S2 | medium |",
+  "expect": "pass",
+  "why": "Fix numbers appear only in a heading, a link anchor and a table first column."
+ },
+ {
+  "id": "p09",
+  "text": "### S1 Document the cache folder\n\n**What we saw.** The readme does not say where the cache lives. On our machine it sat in \/Users\/dana/projects/cache.\n\n**Why it matters.** Users cannot clear a stale cache.\n\n**Source.** The readme, install section.\n\n**Suggested change.** Name the default cache folder in the readme.\n\n**How to check it.** Ask 3 new users to find the folder and compare the time taken.",
+  "expect": "private",
+  "why": "Contains a home-folder path (\/Users\/...)."
+ },
+ {
+  "id": "p10",
+  "text": "### S1 Explain the error codes\n\n**What we saw.** Error codes appear in logs with no meaning attached. Item Q12 in our notes covers the worst case.\n\n**Why it matters.** Users cannot tell a retry from a stop.\n\n**Source.** The logging module.\n\n**Suggested change.** List each code and its meaning in the readme.\n\n**How to check it.** Count the codes in the logs that are missing from the list; the target is 0.",
+  "expect": "private",
+  "why": "Contains an internal claim ID (Q12)."
+ },
+ {
+  "id": "p11",
+  "text": "### S1 Link the court-data source\n\n**What we saw.** The data pipeline reads court filings but gives no source link.\n\n**Why it matters.** Users cannot trace a record back to its origin.\n\n**Source.** The ingest step, which reads from https://example.gov/court-rulings/2024/index.json.\n\n**Suggested change.** Add the source URL to each output row.\n\n**How to check it.** Sample 20 rows and count how many carry a working link.",
+  "expect": "pass",
+  "why": "'rulings' appears only inside a URL path, not as the word 'ruling'."
+ },
+ {
+  "id": "p12",
+  "text": "### S2 Trim the install steps\n\n**What we saw.** The install section has nine steps -- four of them repeat the same command.\n\n**Why it matters.** New users give up before the first run.\n\n**Source.** The install section of the readme.\n\n**Suggested change.** Merge the repeated steps into one.\n\n**How to check it.** Count the steps after the change; fewer than six is the target.",
+  "expect": "pass",
+  "why": "A single '--' in a paragraph is allowed."
+ },
+ {
+  "id": "p13",
+  "text": "### S1 Rename the export\n\n**What we saw.** The export is called data in one place and output in another — readers trip on it.\n\n**Why it matters.** Searches for the name miss half the uses.\n\n**Source.** The export script.\n\n**Suggested change.** Use one name everywhere.\n\n**How to check it.** Search for both names and confirm the count of old names is 0.",
+  "expect": "dashes",
+  "why": "Contains an em-dash."
+ },
+ {
+  "id": "p14",
+  "text": "### S1 Warn on empty input\n\n**What we saw.** ⚠️ The tool exits with no message on an empty file.\n\n**Why it matters.** Users think the run worked.\n\n**Source.** The main entry point.\n\n**Suggested change.** Print a one-line warning on empty input.\n\n**How to check it.** Run on an empty file and confirm 1 warning line appears.",
+  "expect": "dashes",
+  "why": "Contains an emoji."
+ },
+ {
+  "id": "p15",
+  "text": "### S2 Shorten the intro\n\n**What we saw.** The intro runs long -- three pages before the first example -- and buries the goal.\n\n**Why it matters.** Readers leave before the example.\n\n**Source.** Page one of the design doc.\n\n**Suggested change.** Move the first example to page one.\n\n**How to check it.** Ask 4 readers to find the goal and compare how long each takes.",
+  "expect": "dashes",
+  "why": "'--' used twice in one paragraph."
+ },
+ {
+  "id": "p16",
+  "text": "### S1 Quote the maintainer's own rule\n\n**What we saw.** The contributing guide says \"every change must include a test\", but three merged changes have none.\n\n**Why it matters.**\n\n> The guide says changes \"must\" be tested, and the current gap undercuts it.\n\n**Source.** The contributing guide, testing section.\n\n**Suggested change.** Add a check that fails a pull request with no test, as the guide's \"must\" already implies.\n\n**How to check it.** Open a test pull request with no test and confirm the check fails.",
+  "expect": "pass",
+  "why": "'must' appears only inside quotations or a blockquote; the how-to names a comparison via 'no test'... uses 'fails' only, so measure comes from 'at least' absent; see note"
+ },
+ {
+  "id": "p17",
+  "text": "### S3 Add a data freshness check\n\n**What we saw.** The nightly pipeline loads files without checking their age.\n\n**Why it matters.** Stale files can reach the dashboard unseen.\n\n**Source.** The load step of the pipeline.\n\n**Suggested change.** Skip any file older than 24 hours and log it.\n\n**How to check it.** Rerun last week's load and compare the number of skipped files with the held-out list.",
+  "expect": "pass",
+  "why": "Data pipeline subject, all labels present, measure named (rerun, compare, number)."
+ },
+ {
+  "id": "p18",
+  "text": "{{PAD_60000}} Add a short note about the missing section.",
+  "expect": "size",
+  "why": "Expands to 60,000 characters, at the size limit."
+ },
+ {
+  "id": "p19",
+  "text": "### S1 Retry dropped rows\n\n**What we saw.** The loader drops rows when the network blips.\n\n**Why it matters.** Missing rows skew the weekly totals.\n\n**Source.** The loader module.\n\n**Suggested change.** Wrap the fetch in a retry. This fixes the dropped rows.\n\n**How to check it.** Rerun the load 5 times and count missing rows.",
+  "expect": "certainty",
+  "why": "'this fixes' in a Suggested change paragraph, unquoted."
+ },
+ {
+  "id": "p20",
+  "text": "### S2 Simplify the nav menu\n\n**What we saw.** The design doc's nav menu has twelve entries.\n\n**Why it matters.** Readers lose their place.\n\n**Source.** The nav diagram in the design doc.\n\n**Suggested change.** Group the entries under four headings.\n\n**How to check it.** Look at the new menu and think about whether it feels right.",
+  "expect": "test-named",
+  "why": "How-to paragraph names no number, comparison word, or baseline/rerun/held-out."
+ }
+]

@@ -13,7 +13,7 @@
       "name": "jevaluate",
       "source": "./",
       "strict": false,
-      "description": "Rates how well a project uses Jev, with provenance for every finding. Includes the harness for rating rounds, re-rates and rubric tuning.",
+      "description": "Rates how well a project uses Jev, with provenance for every finding. Includes the harness for rating rounds, re-rates and rubric tuning, and a report that turns a rating into fixes your coding agents work through before a pull request.",
       "author": {
         "name": "tiffygk",
         "url": "https://github.com/tiffygk"
@@ -32,7 +32,8 @@
       "skills": [
         "./jevaluate",
         "./jevaluate-private",
-        "./jevaluate-harness"
+        "./jevaluate-harness",
+        "./jevaluate-report"
       ]
     },
     {

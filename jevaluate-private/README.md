@@ -4,7 +4,7 @@ Rate a project you can't publish: a client's codebase, your employer's pipeline,
 
 ## Use it
 
-Ask your agent: `/jevaluate-private https://github.com/you/project`, or point it at a folder: `/jevaluate-private ~/work/retrieval-graph`. "Rate this privately" works too.
+Ask your agent to run `jevaluate-private https://github.com/you/project`, or give it a folder: `jevaluate-private ~/work/retrieval-graph`. "Rate this privately" works too.
 
 ## How it stays private
 
@@ -14,4 +14,4 @@ Ask your agent: `/jevaluate-private https://github.com/you/project`, or point it
 
 ## Needs
 
-[Jevaluate](../jevaluate/) itself, Python 3.8+, and the GitHub CLI only when you rate a GitHub link.
+Claude Code or Codex, [Jevaluate](../jevaluate/) itself, Python 3.8+, and the GitHub CLI only when you rate a GitHub link. In Codex, approve the prompt to save to the private library, which sits outside your project folder.

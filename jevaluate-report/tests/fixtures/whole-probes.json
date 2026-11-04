@@ -1,0 +1,100 @@
+[
+ {
+  "id": "w01",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite reached an F1 score of 0.82 on the sample set, and the last release shipped in Q3. See also [Pin the model](#s1-pin-the-model).\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** The README says the cache \"must be cleared before each run\", and results differ when it is not.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "pass",
+  "why": "Self-review repo write-up with near misses: F1 score, Q3, quoted must in double quotes, fix number only in a link anchor."
+ },
+ {
+  "id": "w02",
+  "text": "---\ntitle: Review of parser\ndate: 2026-10-19\nmethod: Read the docs and ran the examples\nverdict: Useful parser with a testing gap\nscores: 3, 4, 3, 2\nfixes:\n  - S1: Add a held-out file\nrepo: https://github.com/otherorg/parser\ncommit: fedcba9876543210fedcba9876543210fedcba98\n---\n\n# Review of parser\n\nHello, we read your project and wrote this up for you. The [rating](#rating) is below.\n\n- One fix came up.\n- Let me know how it goes if you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Add a held-out file |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Fair |\n| Coverage | Fair |\n| Evidence | Weak |\n\n## What already works\n\nThe parser handles court rulings well, and we ruled out a network fault as the cause of the slow runs.\n\n### S1: Add a held-out file\n\n**What we saw.** The tests all draw from one sample file.\n\n**Why it matters.** Passing counts on one file may not reflect new inputs.\n\n**Source.** [tests](https://github.com/otherorg/parser/blob/fedcba9876543210fedcba9876543210fedcba98/tests/run.py)\n\n**Suggested change.** Consider adding a held-out file that the tests never touch.\n\n**How to check it.** Count the failures on the held-out file and compare with the baseline. Let me know what you get.\n",
+  "note": "Tell me if any of this reads as unfair.",
+  "expect": "pass",
+  "why": "Outside-maintainer write-up with near misses: court rulings, ruled out; blob links use the front-matter commit."
+ },
+ {
+  "id": "w03",
+  "text": "---\ntitle: Review of queue design\ndate: 2026-10-19\nmethod: Read the design doc end to end\nverdict: Clear plan with two open questions\nscores: 4, 3, 3, 2\nfixes:\n  - S1: State the retry limit\n  - S2: Name the owner\ntarget: https://example.com/design/queue-v2\n---\n\n# Review of queue design\n\nThis is a read of your design doc. The [rating](#rating) is below the table.\n\n- Two fixes are suggested.\n- Please report back on which one helps.\n\n| ID | Fix |\n| --- | --- |\n| S1 | State the retry limit |\n| S2 | Name the owner |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Weak |\n\n## What already works\n\nThe doc explains the queue flow clearly, and a sample run with a score of 0.9 is shown. See [Name the owner](#s2-name-the-owner).\n\n### S1: State the retry limit\n\n**What we saw.** The doc says failed jobs retry but gives no limit.\n\n**Why it matters.** Readers cannot tell when a job stops retrying.\n\n**Source.** [design doc](https://example.com/design/queue-v2#retries)\n\n**Suggested change.** Try adding one sentence with the maximum retry count.\n\n**How to check it.** Ask three readers for the limit and count how many answer the same. Tell me what you find.\n\n### S2: Name the owner\n\n**What we saw.** No section names who runs the queue.\n\n**Why it matters.** Questions about failures have no clear first contact.\n\n**Source.** [design doc](https://example.com/design/queue-v2#ops)\n\n**Suggested change.** Consider adding an owner line to the ops section.\n\n**How to check it.** Reread the ops section and see whether it passes the test of naming one person. Let me know.\n",
+  "note": "Tell me whether the retry question is already settled elsewhere.",
+  "expect": "pass",
+  "why": "Design doc using target and no repo; two fixes; all rules met."
+ },
+ {
+  "id": "w04",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "front-matter",
+  "why": "The verdict key is missing from the front matter; everything else is valid."
+ },
+ {
+  "id": "w05",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef0123456\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** The config file at the repo root.\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "front-matter",
+  "why": "The commit is 39 hex characters, not 40. The Source line has no github link, so only front-matter fails."
+ },
+ {
+  "id": "w06",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- Two fixes are suggested.\n- Please tell me what you see when you try them.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n| S2 | Add a changelog |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "table-match",
+  "why": "The summary table lists two IDs but only one section and one front-matter fix exist."
+ },
+ {
+  "id": "w07",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n\n## What already works\n\nThe test suite runs in under a minute.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "order",
+  "why": "The What already works section comes after the first fix heading instead of before it."
+ },
+ {
+  "id": "w08",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo with one fix. The overall [rating](#rating) sits below the table, and please tell me what you see when you try the fix.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "opening",
+  "why": "The opening links to the rating and asks for a report back but has no bullet line."
+ },
+ {
+  "id": "w09",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Here is a short write-up of the repo for the team.",
+  "expect": "report-back",
+  "why": "The opening is fine but the note has none of the report-back phrases."
+ },
+ {
+  "id": "w10",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "invite",
+  "why": "How to check it names a rerun and comparison but has no invite phrase."
+ },
+ {
+  "id": "w11",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Name one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "advice",
+  "why": "The Suggested change starts with Name, not Try or Consider."
+ },
+ {
+  "id": "w12",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first. This fixes the drift problem.",
+  "expect": "certainty",
+  "why": "The note contains the unquoted phrase this fixes; it also has Tell me, so only certainty fails."
+ },
+ {
+  "id": "w13",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read notes in ~/notes and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [config.yml](https://github.com/acme/tools/blob/0123456789abcdef0123456789abcdef01234567/config.yml)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "private",
+  "why": "The method line in the front matter contains a local path starting with a tilde and slash."
+ },
+ {
+  "id": "w14",
+  "text": "---\ntitle: Review of tools\ndate: 2026-10-19\nmethod: Read the README and ran the test suite twice\nverdict: Solid core with one gap\nscores: 4, 4, 3, 3\nfixes:\n  - S1: Pin the model\nrepo: https://github.com/acme/tools\ncommit: 0123456789abcdef0123456789abcdef01234567\n---\n\n# Review of tools\n\nThis is a short write-up of our own repo. The overall [rating](#rating) sits below the table.\n\n- One fix is suggested.\n- Please tell me what you see when you try it.\n\n| ID | Fix |\n| --- | --- |\n| S1 | Pin the model |\n\n## Rating\n\n| Area | Rating |\n| --- | --- |\n| Execution | Good |\n| Fit | Good |\n| Coverage | Fair |\n| Evidence | Fair |\n\n## What already works\n\nThe test suite runs in under a minute.\n\n### S1: Pin the model\n\n**What we saw.** The config names no model version.\n\n**Why it matters.** Results can drift between runs.\n\n**Source.** [our notes](\/Users\/dev/notes/plan.md)\n\n**Suggested change.** Try naming one version in the config.\n\n**How to check it.** Rerun the suite twice and compare the counts. I would like to hear what you find.\n",
+  "note": "Tell me which fix you try first.",
+  "expect": "private",
+  "why": "The Source link target is a local path under \/Users\/."
+ }
+]
