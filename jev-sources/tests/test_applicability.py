@@ -110,6 +110,30 @@ def test_aliases_fall_back_when_the_table_has_no_jev_latest(lib, tmp_path):
     assert A.aliases() == A.ALIASES
 
 
+def test_aliases_fall_back_when_jev_latest_is_not_a_version(lib, tmp_path):
+    """A target that doesn't parse would make version() None, and allowed() would then allow everything."""
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "system-one-2"))
+    assert A.aliases()["jev-latest"] == A.ALIASES["jev-latest"]
+    assert not A.allowed({"needs": "jev-1.15.0"}, "jev-latest")  # newer than the fallback, so a NEEDS label still appears
+
+
+def test_aliases_keep_the_fallback_for_an_alias_the_table_lacks(lib, tmp_path, capsys):
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-1.15.0"))
+    assert A.aliases()["jev-latest"] == "jev-1.15.0"
+    assert A.aliases()["jev-preview"] == A.ALIASES["jev-preview"]
+    assert A.checked("jev-preview") == "jev-preview"
+    assert "warning" not in capsys.readouterr().err
+
+
+def test_aliases_keep_the_fallback_for_a_preview_row_that_is_not_a_version(lib, tmp_path):
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-1.15.0"), ("jev-preview", "system-one-2"))
+    assert A.aliases()["jev-latest"] == "jev-1.15.0"
+    assert A.aliases()["jev-preview"] == A.ALIASES["jev-preview"]
+
+
 def test_aliases_are_read_once_per_process(lib, tmp_path):
     _, A, _ = lib
     _models_page(tmp_path, ("jev-latest", "jev-1.15.0"))
@@ -156,11 +180,13 @@ def test_aliases_parse_the_real_table():
         pytest.skip("real library not present")
     import applicability as A
     table = A.aliases()
+    assert table is not A.ALIASES              # aliases() returns ALIASES itself only when the parser found no usable table
     assert table and "jev-latest" in table
     r = next(x for x in map(json.loads, open(sections)) if x["path"] == "docs/models.md" and x["heading"] == "Aliases")
     text = "\n".join(open(os.path.join(REAL, "docs/models.md"), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]])
     for alias, target in table.items():
-        assert re.search(r"`%s`\s*\|\s*`%s`" % (re.escape(alias), re.escape(target)), text), (alias, target)
+        if alias == "jev-latest" or f"`{alias}`" in text:  # an alias the page dropped keeps its fallback value
+            assert re.search(r"`%s`\s*\|\s*`%s`" % (re.escape(alias), re.escape(target)), text), (alias, target)
 
 
 def _by_path(res):
@@ -171,6 +197,8 @@ def test_route_labels_needs_and_experimental(lib):
     R, _, _ = lib
     s = _by_path(R.route("where is the mug in a photo"))["docs/primitives__box.md"]
     assert s["needs"] is None and s["status"] == "experimental"   # no model named means jev-latest, which runs Box
+    s = _by_path(R.route("where is the mug in a photo", model="jev-latest"))["docs/primitives__box.md"]
+    assert s["needs"] is None and s["status"] == "experimental"   # jev-latest named outright, same answer
     s = _by_path(R.route("where is the mug in a photo", model="jev-1.13.0"))["docs/primitives__box.md"]
     assert s["needs"] == "jev-1.14.0" and s["status"] == "experimental"
     assert _by_path(R.route("where is the mug in a photo"))["docs/concepts__state.md"]["needs"] is None
