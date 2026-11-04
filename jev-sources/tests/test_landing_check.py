@@ -494,6 +494,25 @@ def test_refresh_carries_on_when_the_check_fails(tmp_path):
     assert r.returncode == 0 and "library_tests.py" in log.read_text()
 
 
+# --- the index file itself ------------------------------------------------------------------------------------
+
+def test_a_killed_index_write_leaves_the_old_file(lib, monkeypatch):
+    before = open(lib.path("sections.jsonl"), "rb").read()
+    real, calls = json.dumps, []
+    def dies_midway(*a, **k):
+        calls.append(1)
+        if len(calls) == 3:
+            raise KeyboardInterrupt
+        return real(*a, **k)
+    import build_index
+    monkeypatch.setattr(json, "dumps", dies_midway)
+    with pytest.raises(KeyboardInterrupt):
+        build_index.main(prepare=False)
+    monkeypatch.undo()
+    assert open(lib.path("sections.jsonl"), "rb").read() == before
+    assert [f for f in os.listdir(lib.root) if f.endswith(".tmp")] == []
+
+
 def test_the_rows_the_build_writes_are_the_rows_the_check_expects(lib):
     import build_index
     assert build_index.expected_rows() == lib.rows()

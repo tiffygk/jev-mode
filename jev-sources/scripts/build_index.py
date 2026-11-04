@@ -217,9 +217,8 @@ def main(prepare=True):
         semantic.clear()  # vectors from an older index must never outlive it
     except Exception:
         pass
-    with open(os.path.join(ROOT, "sections.jsonl"), "w") as fh:
-        for r in out:
-            fh.write(json.dumps(r) + "\n")
+    import pages
+    pages._atomic_write(os.path.join(ROOT, "sections.jsonl"), "".join(json.dumps(r) + "\n" for r in out))  # a killed build leaves the old index whole
     print(f"{len(out)} sections from {len({r['path'] for r in out})} files")
     try:
         for line in health(out):
