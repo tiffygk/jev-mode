@@ -36,6 +36,16 @@ def _pytest_run(env, timeout):
         return code, out.read()
 
 
+def child_env():
+    """The test run's environment: models read from the library's models folder (unless HF_HOME is already set), and
+    never a download, so a background run can't fetch a model."""
+    import paths
+    env = dict(os.environ, JEV_CHECK="off", JEV_LOG="off", JEV_SOURCES_DATA=paths.DATA, JEV_LIBRARY_TESTS="off", HF_HUB_OFFLINE="1")
+    env.setdefault("HF_HOME", os.path.join(paths.DATA, "models"))
+    env.pop("PYTEST_CURRENT_TEST", None)
+    return env
+
+
 def run(timeout=None):
     """Runs the tests. Returns a dict whose state is passed, failed, written, skipped or unfinished."""
     timeout = TIMEOUT if timeout is None else timeout
@@ -51,9 +61,7 @@ def run(timeout=None):
             return _result("skipped", "pytest did not answer in time")
         if probe != 0:
             return _result("skipped", "pytest is not installed")
-        import paths
-        env = dict(os.environ, JEV_CHECK="off", JEV_LOG="off", JEV_SOURCES_DATA=paths.DATA, JEV_LIBRARY_TESTS="off")
-        env.pop("PYTEST_CURRENT_TEST", None)
+        env = child_env()
         code, out = _pytest_run(env, timeout)
         lines = out.splitlines()
         last = lines[-1] if lines else ""

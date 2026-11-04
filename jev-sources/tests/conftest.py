@@ -13,6 +13,18 @@ def no_side_effects(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def keep_hf_home():
+    """semantic.py sets HF_HOME at import, which a temp-library test points into its temp folder; monkeypatch can't undo
+    that (it never set it). Restore it after every test, removing it if it was unset."""
+    before = os.environ.get("HF_HOME")
+    yield
+    if before is None:
+        os.environ.pop("HF_HOME", None)
+    else:
+        os.environ["HF_HOME"] = before
+
+
+@pytest.fixture(autouse=True)
 def fresh_route_modules():
     """route and its helpers read the library path at import time; drop them after each test so the next import
     sees that test's library, not a temp one that is already gone."""

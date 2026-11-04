@@ -260,3 +260,19 @@ def test_pytest_is_called_without_color_so_failing_names_stay_plain(env, tmp_pat
     monkeypatch.setenv("FORCE_COLOR", "1")
     library_tests.run()
     assert "--color=no" in json.load(open(log))["argv"]
+
+
+def test_the_child_run_is_offline_and_reads_models_under_the_data_folder(monkeypatch):
+    import library_tests, paths
+    monkeypatch.delenv("HF_HOME", raising=False)
+    env = library_tests.child_env()
+    assert env["HF_HUB_OFFLINE"] == "1"
+    assert env["HF_HOME"] == os.path.join(paths.DATA, "models")
+
+
+def test_the_child_run_keeps_a_preset_hf_home_and_still_goes_offline(monkeypatch):
+    import library_tests
+    monkeypatch.setenv("HF_HOME", "/somewhere/else")
+    monkeypatch.setenv("HF_HUB_OFFLINE", "0")
+    env = library_tests.child_env()
+    assert env["HF_HOME"] == "/somewhere/else" and env["HF_HUB_OFFLINE"] == "1"
