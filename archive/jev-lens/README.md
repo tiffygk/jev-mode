@@ -63,7 +63,7 @@ Every rule cites TypeSafe's docs or cookbooks, dated, in [`shared/jev-rules.md`]
 
 ## Install and use
 
-Needs Claude Code or Codex, Python 3.9+, and [uv](https://docs.astral.sh/uv/) (or `pip install pillow typesafe-sdk`). The Jev check needs `TYPESAFE_API_KEY`; everything else runs without it. Install the plugin from the marketplace ([Install](../README.md#install)) or copy it:
+Needs Claude Code or Codex, Python 3.9+, and [uv](https://docs.astral.sh/uv/) (or `pip install pillow typesafe-sdk`). The Jev check needs `TYPESAFE_API_KEY`; everything else runs without it. It is no longer in the plugin marketplace; copy it by hand:
 
 ```
 git clone https://github.com/tiffygk/jev-mode
