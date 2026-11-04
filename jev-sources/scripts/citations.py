@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import CODE, DATA
 import pages
 
-SCAN = ("jev-sources", "shared", "jevaluate", "jevaluate-harness", "jevaluate-eval", "jev-lens", "ratings", "README.md")
+SCAN = ("jev-sources", "shared", "jevaluate", "jevaluate-harness", "jevaluate-eval", "ratings", "README.md")
 EXT = (".md", ".json", ".py", ".txt")
 PATH_RX = re.compile(r"\b((?:docs|cookbooks|patterns)/[A-Za-z0-9_.-]+?)\.md(?:#([^`\"')\]\n|]+))?")
 URL_RX = re.compile(r"https://docs\.typesafe\.ai/([A-Za-z0-9_./-]+?)(?:\.md)?(?:#([A-Za-z0-9-]+))?(?=[\s)\]`\"'>,|]|$)")
