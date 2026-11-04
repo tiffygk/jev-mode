@@ -64,12 +64,19 @@
   },
   {
    "name": "dependent questions / chains (added 2026-10-05)",
-   "match": "chain|chained|sequential|second request|two requests|depends on|dependent|call pattern|next question|follow.?up (call|request)|previous (step|answer|question|call)|earlier (answer|step|call)|first answer|one after (the )?other|same request|separate requests?|multi.?step|step by step|needs? the (answer|result|output)|before (asking|the next)|in (sequence|order)|(fed|feeds?) into",
+   "match": "chain|chained|sequential|second request|two requests|depends on|dependent|call pattern|next question|follow.?up (call|request)|previous (step|answer|question|call)|earlier (answer|step|call)|first answer|one after (the )?other|same request|separate requests?|multi.?step|step by step|needs? the (answer|result|output)|before (asking|the next)|in (sequence|order)|(fed|feeds?) into (the )?(others?|another|next)",
    "paths": [
     "docs/primitives.md#When one question depends on another",
     "cookbooks/hierarchical_classification.md",
     "cookbooks/autoformat.md",
     "cookbooks/skill_suggestion.md"
+   ]
+  },
+  {
+   "name": "pricing",
+   "match": "billed|pric(e|es|ing)\\b|how much (does|do|will|would) [^?]*\\bcost|what (does|do) [^?]*\\bcost",
+   "paths": [
+    "docs/models.md#Current models"
    ]
   },
   {
@@ -88,7 +95,7 @@
   },
   {
    "name": "how many questions fit in a request",
-   "match": "cap on how many|how many questions|max(imum)? (number of )?questions|limit on (the number of )?questions",
+   "match": "how many questions|max(imum)? (number of )?questions|limit on (the number of )?questions",
    "paths": [
     "docs/primitives.md#How many questions you can ask",
     "docs/models.md#Context length"
@@ -114,7 +121,7 @@
   },
   {
    "name": "re-ranking results",
-   "match": "rerank|re-rank|retriev|passages?",
+   "match": "rerank|re-rank|retrieval|passages?",
    "paths": [
     "cookbooks/rerank_typesafe.md#Re-ranking moves the right answer toward the top"
    ]
@@ -136,7 +143,7 @@
   },
   {
    "name": "input full of irrelevant detail",
-   "match": "irrelevant|loosely related|unrelated (data|detail|content|information|text)|dump(ing)? |huge amount",
+   "match": "irrelevant|loosely related|unrelated (data|detail|content|information|text)|dump(ed|ing|s)?\\b[^?]*\\binto\\b",
    "paths": [
     "docs/model-jaggedness.md#Large state full of irrelevant detail"
    ]
@@ -201,7 +208,7 @@
   },
   {
    "name": "size limits",
-   "match": "(?<!output )(?<!input )tokens|64k|32k|too (long|large)|size limit|large state|truncat|per.?request|per.?question|context (length|limit|window)|long context|262k",
+   "match": "(?<!output )tokens|64k|32k|too (long|large)|size limit|large state|truncat|per.?request|per.?question|context (length|limit|window)|long context|262k",
    "paths": [
     "docs/models.md",
     "docs/model-jaggedness.md",
@@ -249,13 +256,6 @@
    ]
   },
   {
-   "name": "pricing",
-   "match": "billed|pric(e|es|ing)\\b|how much (does|do|will|would) [^?]*\\bcost",
-   "paths": [
-    "docs/models.md#Current models"
-   ]
-  },
-  {
    "name": "cascades / cost",
    "match": "cascade|cheap(er)? model|cost|escalat",
    "paths": [
@@ -281,7 +281,7 @@
   },
   {
    "name": "box / locating things",
-   "match": "bounding box|\\bbox(es)?\\b|coordinates|where (is|in the image)|locate|location of",
+   "match": "bounding box|\\bbox(es)?\\b|coordinates|where (is|in the image)|locate|location of [^?]*\\b(image|photo|picture|scan|scanned|form|page|screenshot|frame)\\b",
    "paths": [
     "docs/primitives__box.md",
     "docs/primitives__box.md#Box",
