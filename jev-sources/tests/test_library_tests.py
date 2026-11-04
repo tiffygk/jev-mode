@@ -302,3 +302,26 @@ def test_the_rerun_command_quotes_a_folder_with_spaces(tmp_path):
     finally:
         sys.path[:] = saved
     assert shlex.split(mod.RERUN)[-1] == str(dest.parent.resolve())
+
+
+def test_main_says_the_run_takes_about_two_minutes_before_it_starts(env, tmp_path, monkeypatch, capsys):
+    import library_tests
+    fake_pytest(tmp_path, monkeypatch, out="1 passed in 0.01s\n")
+    assert library_tests.main() == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "running the library tests (about 2 minutes)" and lines[1].startswith("library tests: all passed")
+
+
+def test_the_notice_path_prints_no_running_line(env, tmp_path, monkeypatch, capsys):
+    import library_tests
+    fake_pytest(tmp_path, monkeypatch, out="1 passed in 0.01s\n")
+    monkeypatch.setenv("JEV_LIBRARY_TESTS", "on")
+    library_tests.notice_lines()
+    assert capsys.readouterr().out == ""
+
+
+def test_the_child_gets_an_absolute_library_path_from_a_relative_setting(env, tmp_path, monkeypatch):
+    import library_tests, paths
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(paths, "DATA", "data")
+    assert library_tests.child_env()["JEV_SOURCES_DATA"] == str(tmp_path / "data")

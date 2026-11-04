@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 CODE = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 TESTS = os.path.join(CODE, "tests")
 FILES = ("test_applicability.py", "test_route.py", "test_index.py", "test_jev.py", "test_usage_log.py")
+ABOUT_MINUTES = 2
 TIMEOUT = 300  # seconds; the run takes about 95
 PROBE_TIMEOUT = 10  # seconds for the "is pytest installed" check; a hang counts as skipped
 RERUN = f"python3 -m pytest {shlex.quote(CODE)}"  # names the skill's folder, so it runs the right tests from any project
@@ -40,14 +41,15 @@ def child_env():
     """The test run's environment: models read from the library's models folder (unless HF_HOME is already set), and
     never a download, so a background run can't fetch a model."""
     import paths
-    env = dict(os.environ, JEV_CHECK="off", JEV_LOG="off", JEV_SOURCES_DATA=paths.DATA, JEV_LIBRARY_TESTS="off", HF_HUB_OFFLINE="1")
+    env = dict(os.environ, JEV_CHECK="off", JEV_LOG="off", JEV_SOURCES_DATA=os.path.abspath(paths.DATA), JEV_LIBRARY_TESTS="off", HF_HUB_OFFLINE="1")
     env.setdefault("HF_HOME", os.path.join(paths.DATA, "models"))
     env.pop("PYTEST_CURRENT_TEST", None)
     return env
 
 
-def run(timeout=None):
-    """Runs the tests. Returns a dict whose state is passed, failed, written, skipped or unfinished."""
+def run(timeout=None, announce=None):
+    """Runs the tests. Returns a dict whose state is passed, failed, written, skipped or unfinished. announce, when given,
+    is called once just before the pytest run starts (not when the run is skipped)."""
     timeout = TIMEOUT if timeout is None else timeout
     try:
         if os.environ.get("JEV_LIBRARY_TESTS") == "off":
@@ -62,6 +64,8 @@ def run(timeout=None):
         if probe != 0:
             return _result("skipped", "pytest is not installed")
         env = child_env()
+        if announce:
+            announce()
         code, out = _pytest_run(env, timeout)
         lines = out.splitlines()
         last = lines[-1] if lines else ""
@@ -119,7 +123,7 @@ def notice_lines():
 
 
 def main():
-    for line in report(run()):
+    for line in report(run(announce=lambda: print(f"running the library tests (about {ABOUT_MINUTES} minutes)", flush=True))):
         print(line)
     return 0
 

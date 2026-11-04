@@ -83,7 +83,8 @@ def test_passing_library_tests_print_one_line(tmp_path):
     bin_, _, _, _, fake = fake_python_with_pytest(tmp_path, pytest_out="...\n3 passed in 1.00s\n")
     r = run_refresh(tmp_path, bin_, JEV_SEMANTIC="off", JEV_LIBRARY_TESTS="", PYTHONPATH=fake)
     assert r.returncode == 0, r.stderr
-    assert [l for l in r.stdout.splitlines() if "library tests" in l] == ["library tests: all passed (3 passed in 1.00s)"]
+    assert [l for l in r.stdout.splitlines() if "library tests" in l] == ["running the library tests (about 2 minutes)",
+                                                                         "library tests: all passed (3 passed in 1.00s)"]
 
 def test_library_tests_are_skipped_without_pytest(tmp_path):
     bin_, log, _, call, fake = fake_python_with_pytest(tmp_path, broken=True)

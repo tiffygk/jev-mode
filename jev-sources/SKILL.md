@@ -19,7 +19,7 @@ Add `--model <id>` when the project pins a model. The docs' words are the terms 
 
 - A section printed under `NOT YET READ` comes with its `read.py` command: run it before relying on that section. These leftovers are at most a third of the cap; more go to readers.
 - An `EXTRACT` line points somewhere (`read.py '<id>' --extract <word> <word>`). A claim resting on it is labeled **unverified**.
-- If it prints "no section found", say so, then run `bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory, even when asked to answer from memory or in a hurry: the lookup takes seconds, so run it, keep the answer to a few lines, and cite.
+- If it prints "no section found", say so, then run `JEV_LIBRARY_TESTS=off bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory, even when asked to answer from memory or in a hurry: the lookup takes seconds, so run it, keep the answer to a few lines, and cite.
 
 ## Questions and builds
 

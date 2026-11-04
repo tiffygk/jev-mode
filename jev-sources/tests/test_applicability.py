@@ -56,7 +56,7 @@ def test_lookup_gives_page_and_heading_entries_and_a_heading_wins(lib):
 
 def test_lookup_of_an_unlisted_page_gives_nones(lib):
     _, A, _ = lib
-    assert A.lookup("docs/other.md", "X", ENTRIES) == {"needs": None, "status": None, "source": None, "quote": None, "note": None}
+    assert A.lookup("docs/other.md", "X", ENTRIES) == {"needs": None, "status": None, "source": None, "quote": None, "note": None, "needs_source": None}
 
 
 def test_real_box_page_needs_1_14_and_is_experimental(lib):
@@ -254,7 +254,8 @@ def test_read_prints_an_applies_line_under_the_source_line(lib, tmp_path):
     out = subprocess.run([sys.executable, os.path.join(CODE, "scripts", "read.py"), sid], capture_output=True, text=True, check=True,
                          env=dict(os.environ, JEV_LOG="off", JEV_SOURCES_DATA=str(tmp_path))).stdout.splitlines()
     assert out[0].startswith("SOURCE: docs/primitives__box.md#Box")
-    assert out[1] == "APPLIES: needs jev-1.14.0 or newer | experimental (docs/images.md#Sending images in a request)"
+    assert out[1] == ("APPLIES: needs jev-1.14.0 or newer (docs/images.md#Sending images in a request) "
+                      "| experimental (docs/primitives__box.md#Box)")
 
 
 def test_read_of_an_unlabeled_section_has_no_applies_line(lib, tmp_path):
@@ -366,3 +367,12 @@ def test_a_huge_number_in_an_alias_target_counts_as_unusable_and_the_fallback_ap
     assert A.version("jev-latest") == A.version(A.ALIASES["jev-latest"])
     assert A.version("jev-" + "9" * 5000) is None
     assert A.version("jev-1.14.0") == (1, 14, 0)
+
+
+def test_box_readiness_cites_the_box_section_and_the_model_cites_the_images_section(lib):
+    _, A, _ = lib
+    e = A.lookup("docs/primitives__box.md", "Box")
+    assert e["source"] == "docs/primitives__box.md#Box" and e["quote"].startswith("Images and Box questions aren't yet")
+    assert e["needs_source"] == "docs/images.md#Sending images in a request"
+    assert ("docs/images.md#Sending images in a request", "questions need Jev 1.14") in A.quotes(
+        next(x for x in A.entries() if x["match"] == "docs/primitives__box.md"))

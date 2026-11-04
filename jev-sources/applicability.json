@@ -5,12 +5,12 @@
    "match": "docs/primitives__box.md",
    "needs": "jev-1.14.0",
    "status": "experimental",
-   "source": "docs/images.md#Sending images in a request",
-   "quote": "questions need Jev 1.14",
+   "source": "docs/primitives__box.md#Box",
+   "quote": "Images and Box questions aren't yet up to our standards to call ready for production",
    "also": [
     {
-     "source": "docs/primitives__box.md#Box",
-     "quote": "Images and Box questions aren't yet up to our standards to call ready for production"
+     "source": "docs/images.md#Sending images in a request",
+     "quote": "questions need Jev 1.14"
     }
    ]
   },

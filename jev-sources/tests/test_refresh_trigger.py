@@ -168,3 +168,7 @@ def test_a_bad_check_days_setting_falls_back_to_two(trig, monkeypatch):
     monkeypatch.setenv("JEV_CHECK_DAYS", "abc")
     mod = importlib.reload(trig)  # the reminder imports this module; a crash here would lose the reminder
     assert mod.CHECK_DAYS == 2
+
+
+def test_the_refresh_the_stale_warning_asks_a_model_to_run_skips_the_library_tests(trig):
+    assert trig.REFRESH.startswith("JEV_LIBRARY_TESTS=off bash ") and trig.REFRESH.endswith("refresh.sh --fetch")

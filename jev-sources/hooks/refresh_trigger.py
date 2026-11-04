@@ -4,7 +4,7 @@ import json, os, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 SCRIPT = os.environ.get("JEV_CHECK_SCRIPT") or os.path.join(HERE, "scripts", "check_new.py")
-REFRESH = f"bash {os.path.join(HERE, 'refresh.sh')} --fetch"
+REFRESH = f"JEV_LIBRARY_TESTS=off bash {os.path.join(HERE, 'refresh.sh')} --fetch"  # a model runs this: the library tests would outlast its 2-minute limit
 try:  # the reminder imports this module, so a bad setting must not crash it
     CHECK_DAYS = float(os.environ.get("JEV_CHECK_DAYS") or 2)
 except ValueError:

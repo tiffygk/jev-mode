@@ -48,6 +48,9 @@ def aliases():
     return _aliases
 
 
+MODEL_QUOTE = re.compile(r"\bJev\s+\d")  # a quote that names a model: the section that states what the entry needs
+
+
 def quotes(entry):
     return [(entry["source"], entry["quote"])] + [(a["source"], a["quote"]) for a in entry.get("also", [])]
 
@@ -57,8 +60,9 @@ def lookup(path, heading, entries_=None):
     for key in (path + "#" + heading, path):
         for e in es:
             if e["match"] == key:
-                return {"needs": e.get("needs"), "status": e.get("status"), "source": e["source"], "quote": e["quote"], "note": e.get("note")}
-    return {"needs": None, "status": None, "source": None, "quote": None, "note": None}
+                return {"needs": e.get("needs"), "status": e.get("status"), "source": e["source"], "quote": e["quote"], "note": e.get("note"),
+                        "needs_source": next((s for s, q in quotes(e) if MODEL_QUOTE.search(q)), e["source"])}
+    return {"needs": None, "status": None, "source": None, "quote": None, "note": None, "needs_source": None}
 
 
 def version(model):
