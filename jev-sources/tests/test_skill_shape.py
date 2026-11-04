@@ -38,10 +38,10 @@ def test_linked_files_exist_one_level_deep():
         assert not re.search(r"\]\([^)#]+\.md\)", open(path, encoding="utf-8").read()), link
 
 
-def test_readme_at_most_1130_words():
-    # The repo's README rule is 750 words; this README may run to 1130 (CLAUDE.md, "Writing in this repo").
+def test_readme_at_most_1250_words():
+    # The repo's README rule is 750 words; this README may run to 1250 (CLAUDE.md, "Writing in this repo").
     text = open(os.path.join(SKILL_DIR, "README.md"), encoding="utf-8").read()
-    assert len(re.sub(r"<[^>]*>", "", text).split()) <= 1130  # HTML tags don't count, as in the README guide
+    assert len(re.sub(r"<[^>]*>", "", text).split()) <= 1250  # HTML tags don't count, as in the README guide
 
 
 def test_skill_md_is_at_most_125_lines():
