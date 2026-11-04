@@ -27,6 +27,13 @@
    ]
   },
   {
+   "name": "images: sending in a request",
+   "match": "(?=.*(image|picture|photo|png|jpe?g|webp|screenshot))(?=.*(attach|how (do|can|should) (i|we|you) (send|include|pass|add|give)|(send|pass|include)(ing)? (an?|the|my) (image|picture|photo)))",
+   "paths": [
+    "docs/images.md#Sending images in a request"
+   ]
+  },
+  {
    "name": "images: uploading",
    "match": "upload|local (file|jpe?g|png|image|photo)|from disk|file path",
    "paths": [
@@ -49,14 +56,15 @@
   },
   {
    "name": "box: reading the answer",
-   "match": "crop|location answer|box answer|read(ing)? (a |the )?box|what does the (location|box)",
+   "match": "crop|location answer|box answer|read(ing)? (a |the )?box|what does the (location|box)|box\\b[^?]*\\b(fields?|returns?|response)\\b",
    "paths": [
-    "docs/primitives__box.md#Reading a Box"
+    "docs/primitives__box.md#Reading a Box",
+    "docs/primitives__box.md#Response structure"
    ]
   },
   {
    "name": "dependent questions / chains (added 2026-10-05)",
-   "match": "chain|chained|sequential|second request|two requests|depends on|dependent|call pattern|next question|follow.?up (call|request)|previous (step|answer|question|call)|earlier (answer|step|call)|first answer|one after (the )?other|same request|separate requests?|multi.?step|step by step|needs? the (answer|result|output)|before (asking|the next)|in (sequence|order)",
+   "match": "chain|chained|sequential|second request|two requests|depends on|dependent|call pattern|next question|follow.?up (call|request)|previous (step|answer|question|call)|earlier (answer|step|call)|first answer|one after (the )?other|same request|separate requests?|multi.?step|step by step|needs? the (answer|result|output)|before (asking|the next)|in (sequence|order)|(fed|feeds?) into",
    "paths": [
     "docs/primitives.md#When one question depends on another",
     "cookbooks/hierarchical_classification.md",
@@ -79,6 +87,14 @@
    ]
   },
   {
+   "name": "how many questions fit in a request",
+   "match": "cap on how many|how many questions|max(imum)? (number of )?questions|limit on (the number of )?questions",
+   "paths": [
+    "docs/primitives.md#How many questions you can ask",
+    "docs/models.md#Context length"
+   ]
+  },
+  {
    "name": "datasets of rows",
    "match": "dataset|rows\\b|records|spreadsheet|table of|inverted",
    "paths": [
@@ -97,6 +113,13 @@
    ]
   },
   {
+   "name": "re-ranking results",
+   "match": "rerank|re-rank|retriev|passages?",
+   "paths": [
+    "cookbooks/rerank_typesafe.md#Re-ranking moves the right answer toward the top"
+   ]
+  },
+  {
    "name": "atomic questions / decomposition",
    "match": "compound|atomic|decompos|split (the|a) question|two things|broad question",
    "paths": [
@@ -109,6 +132,13 @@
    "paths": [
     "docs/primitives.md",
     "docs/primitives__score.md"
+   ]
+  },
+  {
+   "name": "input full of irrelevant detail",
+   "match": "irrelevant|loosely related|unrelated (data|detail|content|information|text)|dump(ing)? |huge amount",
+   "paths": [
+    "docs/model-jaggedness.md#Large state full of irrelevant detail"
    ]
   },
   {
@@ -129,7 +159,7 @@
   },
   {
    "name": "no invented values (counting, dates, math)",
-   "match": "count(s|ing)?\\b|arithmetic|math|calculat|days\\b|dates?\\b|numbers|compute|timestamps?|age\\b|subtract",
+   "match": "count(s|ing)?\\b(?! as\\b)|arithmetic|math|calculat|days\\b|dates?\\b|numbers|compute|timestamps?|age\\b|subtract",
    "paths": [
     "docs/model-jaggedness.md",
     "cookbooks/date_extraction_cookbook.md",
@@ -171,7 +201,7 @@
   },
   {
    "name": "size limits",
-   "match": "tokens|64k|32k|too (long|large)|size limit|large state|truncat|per.?request|per.?question|context (length|limit|window)|long context|262k",
+   "match": "(?<!output )(?<!input )tokens|64k|32k|too (long|large)|size limit|large state|truncat|per.?request|per.?question|context (length|limit|window)|long context|262k",
    "paths": [
     "docs/models.md",
     "docs/model-jaggedness.md",
@@ -219,6 +249,13 @@
    ]
   },
   {
+   "name": "pricing",
+   "match": "billed|pric(e|es|ing)\\b|how much (does|do|will|would) [^?]*\\bcost",
+   "paths": [
+    "docs/models.md#Current models"
+   ]
+  },
+  {
    "name": "cascades / cost",
    "match": "cascade|cheap(er)? model|cost|escalat",
    "paths": [
@@ -244,9 +281,10 @@
   },
   {
    "name": "box / locating things",
-   "match": "bounding box|\\bbox(es)?\\b|coordinates|where (is|in the image)|locate",
+   "match": "bounding box|\\bbox(es)?\\b|coordinates|where (is|in the image)|locate|location of",
    "paths": [
     "docs/primitives__box.md",
+    "docs/primitives__box.md#Box",
     "docs/images.md#Turning on images"
    ]
   },
