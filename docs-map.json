@@ -123,18 +123,6 @@
    "why": "CONTRIBUTING.md says what each repo check does and when it runs"
   },
   {
-   "name": "jev-lens",
-   "sources": [
-    "jev-lens/scripts/*",
-    "jev-lens/*.py"
-   ],
-   "docs": [
-    "jev-lens/README.md",
-    "jev-lens/SKILL.md"
-   ],
-   "why": "the Jev Lens README and skill describe its steps"
-  },
-  {
    "name": "the pr-contents check",
    "sources": [
     ".github/scripts/pr_contents_check.py",

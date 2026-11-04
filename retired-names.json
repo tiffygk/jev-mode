@@ -23,7 +23,7 @@
     "jevaluate/ratings-template/README.md": "Jev's calibrated probabilities",
     "ratings/*.md": "published ratings describe and quote rated projects",
     "ratings/full/*.md": "published ratings describe and quote rated projects",
-    "jev-lens/*.md": "Jev Lens tunes its decoder to the user (calibrate.md)",
+    "archive/jev-lens/*.md": "Jev Lens, archived, tunes its decoder to the user (calibrate.md)",
     "jev-sources/*.json": "routing words for TypeSafe's confidence and calibration docs",
     "study/index.html": "the study course quotes TypeSafe's docs on calibration",
     "scripts/test_docs_check.py": "tests of this check",

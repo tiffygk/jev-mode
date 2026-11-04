@@ -1,6 +1,6 @@
 # jev-mode
 
-Skills for building with Jev, TypeSafe's System One model. Each skill has its own folder: `jevaluate/`, `jevaluate-private/`, `jevaluate-harness/`, `jevaluate-eval/`, `jev-lens/`, `jev-sources/`. `ratings/` holds published ratings, `shared/` holds rules more than one skill reads, `study/` is the Cookbook Study site and `system/` its start page.
+Skills for building with Jev, TypeSafe's System One model. Each skill has its own folder: `jevaluate/`, `jevaluate-private/`, `jevaluate-harness/`, `jevaluate-eval/`, `jev-sources/`. `ratings/` holds published ratings, `shared/` holds rules more than one skill reads, `study/` is the Cookbook Study site and `system/` its start page. `archive/` holds retired skills, kept unmaintained and out of the plugin marketplace.
 
 ## Locked files
 

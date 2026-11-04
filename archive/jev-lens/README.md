@@ -1,6 +1,6 @@
 # Jev Lens
 
-**Legacy.** Don't use Jev Lens if you can send the `TypeSafe-Danger-Zone-Images: true` header. Since October 14, 2026, that header lets Jev 1.13 and 1.14 read images directly, so there is no state to design by description.
+**Archived.** Kept here unmaintained and out of the plugin marketplace. Jev reads images directly when a request sends the `TypeSafe-Danger-Zone-Images: true` header, and that works better than describing an image as a state.
 
 Jev Lens uses an LLM with good vision, in Claude Code or Codex, to decode images for Jev, TypeSafe's System One model, and hands back a JSON state for each image, all built on one shared schema.
 
@@ -59,7 +59,7 @@ Reuse a run's package on a similar set to skip calibration.
 
 ## Where the rules come from
 
-Every rule cites TypeSafe's docs or cookbooks, dated, in [`shared/jev-rules.md`](../shared/jev-rules.md). The certainty tags follow the date-extraction cookbook: a combined value is as certain as its weakest part.
+Every rule cites TypeSafe's docs or cookbooks, dated, in [`shared/jev-rules.md`](../../shared/jev-rules.md). The certainty tags follow the date-extraction cookbook: a combined value is as certain as its weakest part.
 
 ## Install and use
 
@@ -67,7 +67,7 @@ Needs Claude Code or Codex, Python 3.9+, and [uv](https://docs.astral.sh/uv/) (o
 
 ```
 git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jev-lens jev-mode/shared ~/.claude/skills/
+cp -r jev-mode/archive/jev-lens jev-mode/shared ~/.claude/skills/
 ```
 
 Then ask your agent: `turn these photos into a Jev state`. Ten images take about 155k tokens in Light mode and 445k in Heavy; the Jev API costs under a cent.
