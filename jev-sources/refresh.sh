@@ -54,4 +54,5 @@ fi
 python3 "$HERE/scripts/build_index.py"
 python3 "$HERE/scripts/route_check.py" || true
 JEV_LIBRARY_TESTS=off python3 "$HERE/scripts/check_new.py" >/dev/null || true  # downloads pages TypeSafe changed or added since the last save, and appends a notice for the reminder hook to show
+python3 "$HERE/scripts/landing_check.py" || true  # says whether the index and vectors match the pages just saved; it only reports
 python3 "$HERE/scripts/library_tests.py" || true  # last, so it reads the pages just downloaded; the off settings above keep one refresh from running it twice

@@ -186,6 +186,19 @@ def health(rows):
     return notes
 
 
+def expected_rows(blocked=None):
+    """The rows the index should hold for the pages saved now. The build writes them and landing_check.py compares with them,
+    so both apply the same skip rule. blocked: blog files the privacy check refused; None asks the check."""
+    blocked = blocked_blog_files() if blocked is None else blocked
+    out = []
+    for sub in ("docs", "cookbooks", "patterns", "blog"):
+        for f in sorted((os.listdir(os.path.join(ROOT, sub)) if os.path.isdir(os.path.join(ROOT, sub)) else [])):
+            p = f"{sub}/{f}"
+            if f.endswith((".md", ".txt") if sub == "blog" else ".md") and not p.startswith(SKIP) and p not in blocked:
+                out += sections(p)
+    return out
+
+
 def main(prepare=True):
     if prepare:  # migrate old pages and re-clean after a cleaner version change; --no-prepare when the caller just did
         import pages
@@ -193,15 +206,10 @@ def main(prepare=True):
         for slug, path in pages.library().items():
             if pages.cleaner_of(path) == f"failed:{pages.clean.VERSION}" and slug not in pages.FAILED_NOW:
                 print(f"NOTICE: could not clean {os.path.relpath(path, ROOT).replace(os.sep, '/')} (cleaner failed {pages.clean.VERSION}; the raw text is indexed)")
-    out = []
     blocked = blocked_blog_files()
     for b in blocked:
         print(f"NOTICE: {b} was not indexed: the local privacy check refused it. Fix the text, then rebuild.")
-    for sub in ("docs", "cookbooks", "patterns", "blog"):
-        for f in sorted((os.listdir(os.path.join(ROOT, sub)) if os.path.isdir(os.path.join(ROOT, sub)) else [])):
-            p = f"{sub}/{f}"
-            if f.endswith((".md", ".txt") if sub == "blog" else ".md") and not p.startswith(SKIP) and p not in blocked:
-                out += sections(p)
+    out = expected_rows(blocked)
     if not out:
         sys.exit(f"no pages in {ROOT}; run {REFRESH}")
     try:

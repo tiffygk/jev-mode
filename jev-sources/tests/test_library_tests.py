@@ -49,8 +49,10 @@ def failing(n):
 
 
 def changes(cn):
-    return cn.record_changes({"changed": ["models"], "added": [], "removed": [], "moved": {}, "removed_sections": [], "added_sections": []},
-                             cn.pages.datetime.datetime(2026, 11, 4, tzinfo=cn.pages.UTC), False, None)
+    """record_changes' lines from the other checks and this step. The update check also speaks on this empty library; test_landing_check.py covers it."""
+    lines = cn.record_changes({"changed": ["models"], "added": [], "removed": [], "moved": {}, "removed_sections": [], "added_sections": []},
+                              cn.pages.datetime.datetime(2026, 11, 4, tzinfo=cn.pages.UTC), False, None)
+    return [l for l in lines if not l.startswith("Update check")]
 
 
 def test_failures_reach_the_notice_after_the_other_checks(env, tmp_path, monkeypatch):
@@ -146,7 +148,7 @@ def test_the_helper_runs_only_the_files_that_read_the_library(env, tmp_path, mon
     log = fake_pytest(tmp_path, monkeypatch, "1 passed in 1.00s\n")
     library_tests.run()
     named = [a for a in json.load(open(log))["argv"] if a.startswith("tests/")]
-    assert sorted(named) == sorted(f"tests/test_{n}.py" for n in ("applicability", "route", "index", "jev", "usage_log"))
+    assert sorted(named) == sorted(f"tests/test_{n}.py" for n in ("applicability", "route", "index", "jev", "usage_log", "landing_check"))
     assert all(os.path.exists(os.path.join(CODE, f)) for f in named)
 
 

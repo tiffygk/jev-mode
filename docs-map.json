@@ -113,6 +113,17 @@
    "why": "the README and the skill's Enforced by table say when the tests that read the library run and where a failure shows"
   },
   {
+   "name": "jev-sources update check",
+   "sources": [
+    "jev-sources/scripts/landing_check.py"
+   ],
+   "docs": [
+    "jev-sources/README.md",
+    "jev-sources/SKILL.md"
+   ],
+   "why": "the README and the skill say what the update check reports"
+  },
+  {
    "name": "jev-sources hooks",
    "sources": [
     "jev-sources/hooks/*"

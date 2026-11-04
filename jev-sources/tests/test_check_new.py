@@ -82,9 +82,13 @@ def test_refresh_run_logs_one_line_with_counts(env, tmp_path, monkeypatch):
     assert rec["changed"] == 1 and rec["ts"].endswith("Z")
 
 
-def test_redated_same_text_is_quiet(env):
+def test_redated_same_text_is_quiet(env, monkeypatch):
     pg, cn = env
+    monkeypatch.setenv("JEV_SEMANTIC", "off")
     pg.write_page("models", "same", T13)
+    import build_index
+    monkeypatch.setattr(build_index, "embed", lambda rows: None)
+    build_index.main(prepare=False)  # a library with a matching index, so the update check has nothing to say either
     res = cn.run(site(pg, {"models": "same"}, {"models": "2026-10-14T21:00:00Z"}, ["models"], []), now=T14, rebuild=False)
     assert res["redated"] == ["models"] and res["changed"] == [] and res["notice"] == ""
     assert pg.saved_at(pg.dest("models")) == T14
@@ -386,7 +390,8 @@ def test_a_library_test_failure_survives_the_notice_cap_end_to_end(env, tmp_path
     f = site(pg, {s: "# Page\n\nsome text\n" for s in slugs}, {s: None for s in slugs}, slugs, [])
     res = cn.run(f, T13, rebuild=False)
     assert len(res["added"]) == 15
-    assert res["notice"].startswith("Library tests: 1 failed") and "tests/test_route.py::test_x" in res["notice"]
+    assert "tests/test_route.py::test_x" in res["notice"]
+    assert res["notice"].index("Library tests: 1 failed") < res["notice"].index("TypeSafe added")
     assert "Library tests: 1 failed" in open(cn.NOTICE).read()
 
 

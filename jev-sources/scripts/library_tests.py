@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 CODE = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 TESTS = os.path.join(CODE, "tests")
-FILES = ("test_applicability.py", "test_route.py", "test_index.py", "test_jev.py", "test_usage_log.py")
+FILES = ("test_applicability.py", "test_route.py", "test_index.py", "test_jev.py", "test_usage_log.py", "test_landing_check.py")
 ABOUT_MINUTES = 2
 TIMEOUT = 300  # seconds; the run takes about 95
 PROBE_TIMEOUT = 10  # seconds for the "is pytest installed" check; a hang counts as skipped
