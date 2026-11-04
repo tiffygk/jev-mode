@@ -3,7 +3,7 @@
 A page that fails (404, rate limit) or has moved is named and skipped; the run carries on. Exit 1 if any failed or is gone.
 A blog post with nothing below its title (a video post) is named as skipped and does not fail the run.
 A page whose text changed is archived first (archive/<run time>/changed/), and the changed and removed sections go
-through the same record and checks as check_new.py: section_changes.json, STALE_CITATIONS.md, the routing retest."""
+through the same record and checks as check_new.py: section_changes.json, STALE_CITATIONS.md, the routing retest, the library tests."""
 import datetime, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pages, blog, check_new
@@ -35,8 +35,9 @@ def _main(fetch):
         found, _ = pages.live_pages(fetch)
     except RuntimeError as e:
         if half:  # already rewritten and indexed: record them before giving up
-            check_new.record_changes({"changed": half, "added": [], "removed": [], "moved": {}, "removed_sections": [], "added_sections": []},
-                                     now, False, before)
+            for line in check_new.record_changes({"changed": half, "added": [], "removed": [], "moved": {}, "removed_sections": [], "added_sections": []},
+                                                 now, False, before):
+                print(line)
         sys.exit(f"fetch: {e}")
     slugs = sorted(found)
     lib = pages.library()

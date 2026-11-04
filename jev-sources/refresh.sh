@@ -2,6 +2,7 @@
 # Refresh the Jev source library, then rebuild the section index.
 #   bash refresh.sh --fetch   download every page in TypeSafe's docs sitemap and llms.txt, the cookbook list and typesafe.ai's blog (run this first)
 #   bash refresh.sh           rebuild the index, then run the change check (downloads pages TypeSafe changed or added)
+# Last, it runs the tests that read the library and prints the result (scripts/library_tests.py); that step never fails the refresh.
 # Pages go to $JEV_SOURCES_DATA (default ~/.claude/jev-sources-data), never into the repo.
 # Installs model2vec with pip if it's missing, for routing by meaning; JEV_SEMANTIC=off skips that.
 # Optional: set JEV_VAULT to a folder holding docs/, cookbooks/ and patterns/ copies to keep in step with it.
@@ -19,25 +20,8 @@ copy() {  # copy src/{docs,cookbooks,patterns}/*.md into dst, skipping extracts 
     done
   done
 }
-library_tests() {  # the tests that read the live library, so a docs change that breaks them shows here. Reports only; never fails the refresh.
-  if [ ! -d "$HERE/tests" ]; then echo "library tests skipped: no tests folder in this install"; return 0; fi
-  if ! python3 -c "import pytest" 2>/dev/null; then echo "library tests skipped: pytest is not installed"; return 0; fi
-  local out names rc=0
-  out="$(cd "$HERE" && JEV_CHECK=off JEV_LOG=off JEV_SOURCES_DATA="$DATA" python3 -m pytest -q --tb=no -rfE -p no:cacheprovider \
-    tests/test_applicability.py tests/test_route.py tests/test_index.py tests/test_jev.py tests/test_usage_log.py 2>&1)" || rc=$?
-  names="$(printf '%s\n' "$out" | sed -n -E 's/^(FAILED|ERROR) //p' | sed -E 's/ - .*$//')"
-  if [ -n "$names" ]; then
-    echo "library tests: $(printf '%s\n' "$names" | wc -l | tr -d ' ') failed (a docs change may have broken them; run them with python3 -m pytest):"
-    printf '%s\n' "$names"
-  elif [ "$rc" -eq 0 ]; then
-    echo "library tests: all passed ($(printf '%s\n' "$out" | tail -n 1))"
-  else
-    echo "library tests: could not finish (pytest exit $rc): $(printf '%s\n' "$out" | tail -n 1)"
-  fi
-  printf '%s\n' "$out" | grep '^LIBRARY WRITTEN' || true
-}
 if [ "${1:-}" = "--fetch" ]; then
-  python3 "$HERE/scripts/fetch.py" || echo "the fetch reported problems (above); building the index from what was downloaded"
+  JEV_LIBRARY_TESTS=off python3 "$HERE/scripts/fetch.py" || echo "the fetch reported problems (above); building the index from what was downloaded"
   [ -n "${JEV_VAULT:-}" ] && copy "$DATA" "$JEV_VAULT"
 elif [ -n "${JEV_VAULT:-}" ]; then
   copy "$JEV_VAULT" "$DATA"
@@ -69,5 +53,5 @@ if [ -f "$CHECKER" ] && [ -f "$PRIVATE_CFG" ] && [ -d "$DATA/blog" ]; then
 fi
 python3 "$HERE/scripts/build_index.py"
 python3 "$HERE/scripts/route_check.py" || true
-library_tests || true
-python3 "$HERE/scripts/check_new.py" >/dev/null || true  # downloads pages TypeSafe changed or added since the last save, and appends a notice for the reminder hook to show
+JEV_LIBRARY_TESTS=off python3 "$HERE/scripts/check_new.py" >/dev/null || true  # downloads pages TypeSafe changed or added since the last save, and appends a notice for the reminder hook to show
+python3 "$HERE/scripts/library_tests.py" || true  # last, so it reads the pages just downloaded; the off settings above keep one refresh from running it twice

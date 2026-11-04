@@ -5,6 +5,7 @@ are downloaded, and a download is kept only when its text changed against the ra
 cleaned, go to archive/<run time>/changed/). A cleaner version change re-cleans pages from raw and is never a change.
 A library page that is in neither the sitemap nor llms.txt and returns 404 or redirects goes to archive/<run time>/removed/.
 Blog posts (typesafe.ai's sitemap): only posts not yet saved are fetched, and a saved post is never pruned.
+After a change it runs the routing, applicability and citation checks and the tests that read the library (scripts/library_tests.py).
 Writes NEW_PAGES.txt (shown once by the reminder hook), section_changes.json and last_check.json.
 Started in the background by hooks/refresh_trigger.py; safe to run by hand."""
 import datetime, json, os, subprocess, sys, time
@@ -12,6 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import pages, blog
 from paths import DATA, SCRIPTS, REFRESH
 import usage_log
+import library_tests
 
 STATE, NOTICE = os.path.join(DATA, "last_check.json"), os.path.join(DATA, "NEW_PAGES.txt")
 NOTICE_CAP = 1500  # the hook shows this to the model; page names and errors come from TypeSafe's site
@@ -71,6 +73,17 @@ def after_change(result):
     return lines
 
 
+def notice_text(parts, notes):
+    """The notice, capped. A library test result goes first, so page names can't cut off its count."""
+    first = [n for n in notes if n.startswith(library_tests.NOTICE_PREFIX)]
+    return " ".join(first + parts + [n for n in notes if n not in first])[:NOTICE_CAP]
+
+
+def append_notice(text):
+    with open(NOTICE, "a") as f:  # append: a notice not yet shown is never overwritten
+        f.write(text + "\n")
+
+
 def rebuild_index():
     """Rebuild the index from the saved pages. Returns None, or a NOTICE line when the build failed."""
     r = subprocess.run([sys.executable, os.path.join(SCRIPTS, "build_index.py"), "--no-prepare"], check=False, capture_output=True, text=True)
@@ -83,7 +96,8 @@ def rebuild_index():
 
 def record_changes(res, now, rebuild=True, before=None):
     """After pages changed: rebuild the index, record which sections went and came in section_changes.json, then run
-    the routing, applicability and citation checks. Returns their notice lines. Shared with fetch.py (full refresh).
+    the routing, applicability and citation checks, then the tests that read the library. Returns their notice lines.
+    Shared with fetch.py (full refresh).
     `before`: the section list from before pages were rewritten, when an earlier step already rebuilt the index."""
     lines, rebuilt_before = [], before is not None
     before = headings() if before is None else before
@@ -98,7 +112,7 @@ def record_changes(res, now, rebuild=True, before=None):
         res["added_sections"] = sorted([p, h] for p, h in after - before)
     with open(CHANGES, "w") as f:
         json.dump({"date": pages.stamp(now), **{k: res[k] for k in ("changed", "added", "removed", "moved", "removed_sections", "added_sections")}}, f, indent=1)
-    return lines + after_change(res)
+    return lines + after_change(res) + library_tests.notice_lines()
 
 
 MARGIN = datetime.timedelta(hours=12)  # sitemap dates look like build time; a fetch between build and deploy saves
@@ -124,7 +138,9 @@ def run(fetch=None, now=None, rebuild=True):
         live, read = pages.live_pages(fetch)  # RuntimeError when neither list reads
     except RuntimeError:
         if half:  # the half-written pages are already rewritten and indexed: record them before giving up
-            record_changes(res, now, False, before)
+            tested = [l for l in record_changes(res, now, False, before) if l.startswith(library_tests.NOTICE_PREFIX)]
+            if tested:  # this run writes no notice of its own, and the next one won't test these pages again
+                append_notice(" ".join(tested)[:NOTICE_CAP])
         raise
     both = read == {"sitemap", "llms"}
     if not both:
@@ -207,10 +223,9 @@ def run(fetch=None, now=None, rebuild=True):
         parts.append(f"{len(shown['failed'])} page(s) couldn't be fetched: {', '.join(shown['failed'][:5])}.")
     if shown["listed_missing"]:
         parts.append(f"TypeSafe lists {len(shown['listed_missing'])} page(s) that return 404: {', '.join(shown['listed_missing'][:5])}.")
-    res["notice"] = " ".join(parts + notes)[:NOTICE_CAP]
+    res["notice"] = notice_text(parts, notes)
     if res["notice"]:
-        with open(NOTICE, "a") as f:  # append: a notice not yet shown is never overwritten
-            f.write(res["notice"] + "\n")
+        append_notice(res["notice"])
     state_update(last_success=time.time(), last_counts={k: len(v) for k, v in res.items() if isinstance(v, (list, dict))}, last_error=None,
                  reported={k: res[k] for k in ("listed_missing", "failed")})
     usage_log.write("refresh", **{k: len(v) for k, v in res.items() if isinstance(v, (list, dict))})

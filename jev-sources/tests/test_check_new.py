@@ -368,3 +368,35 @@ def test_the_notice_is_capped(env):
     many = {"p%03d" % i: OSError("x" * 200) for i in range(40)}
     res = cn.run(site(pg, {}, {"other": None}, ["other"], [], posts=many), now=T14, rebuild=False)
     assert len(res["notice"]) <= cn.NOTICE_CAP
+
+
+def stand_in_pytest(tmp_path, monkeypatch, out, code):
+    d = tmp_path / "fake-pytest"
+    d.mkdir()
+    (d / "pytest.py").write_text(f"import sys\nif __name__ == '__main__':\n    sys.stdout.write({out!r})\n    sys.exit({code})\n")
+    monkeypatch.setenv("PYTHONPATH", str(d))
+    monkeypatch.setenv("JEV_LIBRARY_TESTS", "on")
+
+
+def test_a_library_test_failure_survives_the_notice_cap_end_to_end(env, tmp_path, monkeypatch):
+    pg, cn = env
+    monkeypatch.setattr(cn, "after_change", lambda res: [])
+    stand_in_pytest(tmp_path, monkeypatch, "FAILED tests/test_route.py::test_x - y\n1 failed in 1.00s\n", 1)
+    slugs = [f"{'p' * 180}{i}" for i in range(15)]  # 12 of these names alone pass the cap
+    f = site(pg, {s: "# Page\n\nsome text\n" for s in slugs}, {s: None for s in slugs}, slugs, [])
+    res = cn.run(f, T13, rebuild=False)
+    assert len(res["added"]) == 15
+    assert res["notice"].startswith("Library tests: 1 failed") and "tests/test_route.py::test_x" in res["notice"]
+    assert "Library tests: 1 failed" in open(cn.NOTICE).read()
+
+
+def test_a_half_written_page_keeps_its_library_test_result_when_the_site_is_down(env, tmp_path, monkeypatch):
+    pg, cn = env
+    monkeypatch.setattr(cn, "after_change", lambda res: [])
+    stand_in_pytest(tmp_path, monkeypatch, "FAILED tests/test_route.py::test_x - y\n1 failed in 1.00s\n", 1)
+    monkeypatch.setattr(pg, "prepare", lambda **k: ["models"])
+    monkeypatch.setattr(pg, "HALF_WRITTEN", ["models"])
+    down = site(pg, {}, None, None, [])
+    with pytest.raises(RuntimeError):
+        cn.run(down, T13, rebuild=False)
+    assert "Library tests: 1 failed" in open(cn.NOTICE).read()
