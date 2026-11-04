@@ -1,6 +1,6 @@
 # Jev Mode
 
-Skills for Claude Code and Codex, and a study course, for building with Jev, TypeSafe's System One model. In the Ratings folder find the list of rated Jev projects and our eval methodology for user safety and quality.
+Context and eval tools for building with Jev, TypeSafe's System One model, in Claude Code and Codex, plus a study course. In the Ratings folder find the list of rated Jev projects and our eval methodology for user safety and quality.
 
 None of these skills calls Jev, so none needs a TypeSafe key: the LLM in your coding agent does the work. Each skill is its own plugin, named in the table.
 
@@ -20,12 +20,18 @@ How the Jevaluate skills work together, with diagrams: the [system page](https:/
 
 ## Install
 
-This repo is a plugin marketplace for Claude Code and Codex, with one plugin per skill. Install the ones you want by name. To build and check your own Jev project, the first three below are enough. If you installed `jevaluate` before November 2026, it held five skills; it now holds Jevaluate alone.
+This repo is a plugin marketplace for Claude Code and Codex. The `jev-mode` plugin installs every skill. Each skill is also its own plugin. Install `jev-mode` or single plugins: a skill installed both ways loads twice.
 
 In Claude Code:
 
 ```
 claude plugin marketplace add tiffygk/jev-mode
+claude plugin install jev-mode@jev-mode
+```
+
+To pick skills instead, use any of these in place of the `jev-mode` line:
+
+```
 claude plugin install jev-sources@jev-mode
 claude plugin install jevaluate-private@jev-mode
 claude plugin install jevaluate-report@jev-mode
@@ -40,6 +46,12 @@ In Codex:
 
 ```
 codex plugin marketplace add tiffygk/jev-mode
+codex plugin add jev-mode@jev-mode
+```
+
+To pick skills instead, use any of these in place of the `jev-mode` line:
+
+```
 codex plugin add jev-sources@jev-mode
 codex plugin add jevaluate-private@jev-mode
 codex plugin add jevaluate-report@jev-mode

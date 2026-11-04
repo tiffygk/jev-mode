@@ -10,6 +10,92 @@
   },
   "plugins": [
     {
+      "name": "jev-mode",
+      "source": "./",
+      "strict": false,
+      "description": "Every jev-mode skill in one plugin: Jev Sources, Jevaluate, Jevaluate Private, Jevaluate Report, Jevaluate Harness and Jevaluate Eval. Install this or the single plugins, not both.",
+      "author": {
+        "name": "tiffygk",
+        "url": "https://github.com/tiffygk"
+      },
+      "homepage": "https://github.com/tiffygk/jev-mode",
+      "repository": "https://github.com/tiffygk/jev-mode",
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "keywords": [
+        "jev",
+        "typesafe",
+        "system-one",
+        "docs",
+        "evaluation",
+        "rating"
+      ],
+      "category": "development",
+      "skills": [
+        "./jevaluate",
+        "./jevaluate-private",
+        "./jevaluate-report",
+        "./jevaluate-harness",
+        "./jevaluate-eval",
+        "./jev-sources"
+      ],
+      "hooks": {
+        "UserPromptSubmit": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-prompt-reminder.py\""
+              }
+            ]
+          }
+        ],
+        "PreToolUse": [
+          {
+            "matcher": "Agent",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-dispatch-check.py\""
+              }
+            ]
+          }
+        ],
+        "PostToolUse": [
+          {
+            "matcher": "Bash",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-ledger.py\""
+              }
+            ]
+          }
+        ],
+        "SubagentStop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-reader-check.py\"",
+                "timeout": 15
+              }
+            ]
+          }
+        ],
+        "Stop": [
+          {
+            "hooks": [
+              {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/jev-sources/hooks/jev-answer-check.py\"",
+                "timeout": 15
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "jevaluate",
       "source": "./",
       "strict": false,
