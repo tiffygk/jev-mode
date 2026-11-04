@@ -1,0 +1,242 @@
+[
+ {
+  "id": "t01",
+  "why": "Docs quote re-wrapped across line breaks on the page",
+  "text": "The [limits page](https://docs.typesafe.ai/limits) says \"Larger batches must be split by the client before sending\".",
+  "docs": {
+   "https://docs.typesafe.ai/limits": "# Limits\n\nEach request may include up to 20\nquestions. Larger batches must be split by the\nclient before sending.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t02",
+  "why": "Page has emphasis and backticks the quote lacks",
+  "text": "The [timeouts section](https://docs.typesafe.ai/timeouts#batch) says \"Set the timeout to a value under 30 seconds for batch calls\".",
+  "docs": {
+   "https://docs.typesafe.ai/timeouts": "# Timeouts\n\n## Batch\n\nSet the *timeout* to a value under `30` seconds for **batch** calls.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t03",
+  "why": "Ellipsis joins two parts found in order",
+  "text": "Per the [auth docs](https://docs.typesafe.ai/auth), \"Requests are authenticated ... expires after one hour\".",
+  "docs": {
+   "https://docs.typesafe.ai/auth": "# Auth\n\nRequests are authenticated with a bearer token. The token is passed in the\nAuthorization header and expires after one hour.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t04",
+  "why": "Curly quotes in the report",
+  "text": "The [guide](https://docs.typesafe.ai/guide) notes “retries use exponential backoff by default” for all clients.",
+  "docs": {
+   "https://docs.typesafe.ai/guide": "# Guide\n\nIn this client, retries use exponential backoff by default, capped at five attempts.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t05",
+  "why": "First-letter case of the quote differs from the page",
+  "text": "Per [scoring](https://docs.typesafe.ai/scoring), \"scores are returned as integers between 0 and 10\".",
+  "docs": {
+   "https://docs.typesafe.ai/scoring": "# Scoring\n\nScores are returned as integers between 0 and 10, with 10 meaning full agreement.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t06",
+  "why": "Quote ends in a period the page does not have at that spot",
+  "text": "The [models page](https://docs.typesafe.ai/models) advises: \"Choose a model id from the models page before sending traffic.\"",
+  "docs": {
+   "https://docs.typesafe.ai/models": "# Models\n\nChoose a model id from the models page before sending traffic\nand pin it in your config.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t07",
+  "why": "Two-word scare quote with no source is not checked",
+  "text": "The team calls this a \"soft limit\" in practice.\nSee [pricing](https://docs.typesafe.ai/pricing) for the tiers.",
+  "docs": {
+   "https://docs.typesafe.ai/pricing": "# Pricing\n\nThere are three tiers: free, team and enterprise.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t08",
+  "why": "Backticked identifier with no space is not checked even though no file has it",
+  "text": "Set `max_tokens` as described in [config.py](https://github.com/acme/widget/blob/{commit}/src/config.py#L1-L4).",
+  "docs": {},
+  "files": {
+   "src/config.py": "import os\n\nTIMEOUT = 30\nRETRIES = 3\n"
+  },
+  "expect": "pass"
+ },
+ {
+  "id": "t09",
+  "why": "Quote from an outside paper is never checked",
+  "text": "A [survey](https://arxiv.org/abs/2401.00001) argues that \"calibration drifts under distribution shift\" in most deployed systems.",
+  "docs": {},
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t10",
+  "why": "Quote belongs to the link before it, not the docs link after it",
+  "text": "The [overview](https://docs.typesafe.ai/overview) explains that \"every call returns a typed result\" and the [errors page](https://docs.typesafe.ai/errors) lists codes.",
+  "docs": {
+   "https://docs.typesafe.ai/overview": "# Overview\n\nEvery call returns a typed result with a status field.\n",
+   "https://docs.typesafe.ai/errors": "# Errors\n\nAn error code is a short string such as bad_request.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t11",
+  "why": "Reference-style link, with lowercase first letter",
+  "text": "The [retry docs][r] say \"retries stop after five attempts\" for batch jobs.\n\n[r]: https://docs.typesafe.ai/retries",
+  "docs": {
+   "https://docs.typesafe.ai/retries": "# Retries\n\nRetries stop after five attempts for batch jobs, then the job fails.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t12",
+  "why": "Quote with its link after it in the same paragraph",
+  "text": "The client \"closes idle connections after sixty seconds\" according to the [connections page](https://docs.typesafe.ai/connections).",
+  "docs": {
+   "https://docs.typesafe.ai/connections": "# Connections\n\nThe client closes idle connections after sixty seconds to free resources.\n"
+  },
+  "files": {},
+  "expect": "pass"
+ },
+ {
+  "id": "t13",
+  "why": "Fenced block with an ellipsis-only line splits into two parts found in order",
+  "text": "The [loader](https://github.com/acme/widget/blob/{commit}/src/setup.py#L1-L7) reads its home directory first:\n\n```python\ndef load():\n    path = os.environ.get('WIDGET_HOME', '.')\n...\n    return parse(data)\n```",
+  "docs": {},
+  "files": {
+   "src/setup.py": "import os\n\ndef load():\n    path = os.environ.get('WIDGET_HOME', '.')\n    with open(path + '/widget.cfg') as f:\n        data = f.read()\n    return parse(data)\n"
+  },
+  "expect": "pass"
+ },
+ {
+  "id": "t14",
+  "why": "Multi-line fenced code quote inside the linked line range",
+  "text": "The retry loop in [retry.py](https://github.com/acme/widget/blob/{commit}/src/retry.py#L4-L8) is:\n\n```python\nfor i in range(attempts):\n    try:\n        return fn()\n    except IOError:\n        time.sleep(2 ** i)\n```",
+  "docs": {},
+  "files": {
+   "src/retry.py": "import time\n\ndef with_retry(fn, attempts=3):\n    for i in range(attempts):\n        try:\n            return fn()\n        except IOError:\n            time.sleep(2 ** i)\n    raise RuntimeError('gave up')\n"
+  },
+  "expect": "pass"
+ },
+ {
+  "id": "t15",
+  "why": "Docs page linked is not in the library",
+  "text": "The [rate limits](https://docs.typesafe.ai/rate-limits) page states \"requests above the limit receive a 429 response\".",
+  "docs": {
+   "https://docs.typesafe.ai/limits": "# Limits\n\nRequests above the limit receive a 429 response.\n"
+  },
+  "files": {},
+  "expect": "docs-page"
+ },
+ {
+  "id": "t16",
+  "why": "Blog post linked is not in the library",
+  "text": "The [launch post](https://typesafe.ai/blog/launch-notes) says \"we built the model for typed judgments\".",
+  "docs": {
+   "https://typesafe.ai/blog/other-post": "# Another post\n\nWe built the model for typed judgments and fast answers.\n"
+  },
+  "files": {},
+  "expect": "docs-page"
+ },
+ {
+  "id": "t17",
+  "why": "One word changed in a docs quote",
+  "text": "As the [validation page](https://docs.typesafe.ai/validation) puts it, \"Each batch is verified before any question is scored\".",
+  "docs": {
+   "https://docs.typesafe.ai/validation": "# Validation\n\nEach batch is validated before any question is scored.\nInvalid batches are rejected whole.\n"
+  },
+  "files": {},
+  "expect": "docs-quote"
+ },
+ {
+  "id": "t18",
+  "why": "Quote ends mid-number: up to 5 against up to 50",
+  "text": "The [rates page](https://docs.typesafe.ai/rates) says \"Free accounts may send up to 5\" requests a minute.",
+  "docs": {
+   "https://docs.typesafe.ai/rates": "# Rates\n\nFree accounts may send up to 50 requests per minute.\nTeam accounts may send up to 500.\n"
+  },
+  "files": {},
+  "expect": "docs-quote"
+ },
+ {
+  "id": "t19",
+  "why": "Ellipsis parts appear on the page in the wrong order",
+  "text": "The [sessions page](https://docs.typesafe.ai/sessions) describes the flow: \"Finally close the session ... Open a session first\".",
+  "docs": {
+   "https://docs.typesafe.ai/sessions": "# Sessions\n\nOpen a session first. Then submit questions. Finally close the session.\n"
+  },
+  "files": {},
+  "expect": "docs-quote"
+ },
+ {
+  "id": "t20",
+  "why": "Quote is on a different docs page than the one linked",
+  "text": "The [pricing page](https://docs.typesafe.ai/pricing) says enterprise accounts \"can request a custom concurrency cap\".",
+  "docs": {
+   "https://docs.typesafe.ai/pricing": "# Pricing\n\nThere are three tiers: free, team and enterprise.\n",
+   "https://docs.typesafe.ai/limits": "# Limits\n\nEnterprise accounts can request a custom concurrency cap.\n"
+  },
+  "files": {},
+  "expect": "docs-quote"
+ },
+ {
+  "id": "t21",
+  "why": "Code link points to a file that does not exist at the commit",
+  "text": "The [builder](https://github.com/acme/widget/blob/{commit}/src/builders/widget.py#L1-L2) defines `def make_widget(spec)` as the factory.",
+  "docs": {},
+  "files": {
+   "src/build.py": "def make_widget(spec):\n    return Widget(spec)\n"
+  },
+  "expect": "code-file"
+ },
+ {
+  "id": "t22",
+  "why": "Code link has the right file name under the wrong folder",
+  "text": "The factory in [factory.ts](https://github.com/acme/widget/blob/{commit}/src/widgets/factory.ts) starts with `export function make(kind: string)`.",
+  "docs": {},
+  "files": {
+   "src/factory.ts": "export function make(kind: string) {\n  return new Widget(kind);\n}\n"
+  },
+  "expect": "code-file"
+ },
+ {
+  "id": "t23",
+  "why": "Code line exists in the file but outside the linked lines",
+  "text": "The [limits module](https://github.com/acme/widget/blob/{commit}/src/limits.py#L1-L2) caps values with `return min(n, MAX_ITEMS)` in the helper.",
+  "docs": {},
+  "files": {
+   "src/limits.py": "MAX_ITEMS = 100\nDEFAULT_TIMEOUT = 30\n\ndef clamp(n):\n    return min(n, MAX_ITEMS)\n\ndef timeout():\n    return DEFAULT_TIMEOUT\n"
+  },
+  "expect": "code-quote"
+ },
+ {
+  "id": "t24",
+  "why": "One method name changed in a code quote, no line range given",
+  "text": "The helper in [label.ts](https://github.com/acme/widget/blob/{commit}/src/label.ts) builds the text with `const label = prefix + name.toUpperCase();` before returning.",
+  "docs": {},
+  "files": {
+   "src/label.ts": "export function label(prefix: string, name: string) {\n  const label = prefix + name.trim();\n  return label;\n}\n"
+  },
+  "expect": "code-quote"
+ }
+]

@@ -26,7 +26,8 @@
     "jev-lens/*.md": "Jev Lens tunes its decoder to the user (calibrate.md)",
     "jev-sources/*.json": "routing words for TypeSafe's confidence and calibration docs",
     "study/index.html": "the study course quotes TypeSafe's docs on calibration",
-    "scripts/test_docs_check.py": "tests of this check"
+    "scripts/test_docs_check.py": "tests of this check",
+    "jevaluate-report/tests/fixtures/trace-probes.json": "a blind probe set, never edited: a made-up outside quote about model calibration"
    }
   }
  ]

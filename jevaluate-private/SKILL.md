@@ -21,9 +21,11 @@ Rates a project exactly as `jevaluate` does, with the same rubric, steps and che
    - the project's own files may be private, while the rules still come only from docs.typesafe.ai;
    - a local folder's `url` is `local:<short-name>`.
 4. Add `visibility: private` to the rating's front matter, then log it with `../jevaluate/scripts/library.py` add as usual. `add` refuses a private rating into a public library, and refuses a non-private rating into a private one.
-5. Finish with the rating's verdict and its fixes in plain words, for the person who asked. Offer a page if they want one to share. Never run `../jevaluate/scripts/library.py` export, never copy the rating into a repo, and never push.
+5. Finish with the rating's verdict and its fixes in plain words, for the person who asked. Offer a page if they want one to share. If they agree with the rating, offer `jevaluate-report`: it writes a file of the fixes, each with a test, for their coding agents to work through before a pull request, saved where they choose. Never run `../jevaluate/scripts/library.py` export, never copy the rating into a repo, and never push.
 
 Comparisons with past ratings come only from the private library, so a private rating is never shown beside a public one.
+
+In Codex, follow `jevaluate`'s Codex note. The private library sits outside the workspace, so `library.py add` and `init-private` need the user's approval. Ask for it; never move the library to a temporary folder to avoid the prompt.
 
 ## Enforced by
 

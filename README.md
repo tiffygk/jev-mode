@@ -8,6 +8,7 @@ Not every skill calls Jev: some are guides and LLM evaluators for building with 
 |---|---|---|---|
 | [Jevaluate](jevaluate/) | Reads a Jev project's code and rates how well it uses Jev, with provenance for every finding | No: an LLM rates, and code checks the rating | Available |
 | [Jevaluate, privately](jevaluate-private/) | Rates a project you can't publish, such as a client's code or a local folder, with the same rubric, and keeps the rating private. Run `/jevaluate-private <link or folder>` | No | Available |
+| [Jevaluate Report](jevaluate-report/) | After you agree with a rating from Jevaluate, privately, writes one file your coding agents work through before a pull request: the verdict, a ranked fix table, and each fix as a change to try with a test to run. Run `/jevaluate-report <repo or rating>` | No | Available |
 | [Jevaluate Harness](jevaluate-harness/) | Runs rating rounds, re-rates and rubric tuning for Jevaluate | No | Available |
 | [Jevaluate Eval](jevaluate-eval/) | Tests whether Jevaluate's rubric leads graders to the right answers, before a rubric change reaches any rating | No | Available |
 | [Jev Sources](jev-sources/) | Finds the TypeSafe docs, patterns, cookbook and blog sections that answer a Jev question, by keyword and by meaning, and tells your coding agent (Claude or Codex) to read them before any claim | No | Available. Updated for Jev 1.14, including image input and Box questions |
@@ -22,7 +23,7 @@ How the Jevaluate skills work together, with diagrams: the [system page](https:/
 
 This repo is a plugin marketplace for Claude Code and Codex. It has three plugins:
 
-- `jevaluate`: the Jevaluate, Jevaluate Privately and Jevaluate Harness skills
+- `jevaluate`: the Jevaluate, Jevaluate Privately, Jevaluate Harness and Jevaluate Report skills
 - `jev-lens`: the Jev Lens skill
 - `jev-sources`: the Jev Sources skill and its hooks
 
@@ -57,6 +58,7 @@ cp -r jev-mode/jevaluate ~/.claude/skills/
 cp -r jev-mode/jevaluate-private ~/.claude/skills/
 cp -r jev-mode/jev-lens ~/.claude/skills/
 cp -r jev-mode/jevaluate-harness ~/.claude/skills/
+cp -r jev-mode/jevaluate-report ~/.claude/skills/
 cp -r jev-mode/jevaluate-eval ~/.claude/skills/
 cp -r jev-mode/jev-sources ~/.claude/skills/
 cp -r jev-mode/shared ~/.claude/skills/

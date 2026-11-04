@@ -45,6 +45,16 @@
    "why": "the Jevaluate README says how to rate privately"
   },
   {
+   "name": "reports",
+   "sources": [
+    "jevaluate-report/*"
+   ],
+   "docs": [
+    "jevaluate-report/README.md"
+   ],
+   "why": "the Jevaluate Report README says what the skill writes and what its checks catch"
+  },
+  {
    "name": "the rubric",
    "sources": [
     "jevaluate/rubric.md"
