@@ -143,7 +143,7 @@ def run(fetch=None, now=None, rebuild=True):
         live, read = pages.live_pages(fetch)  # RuntimeError when neither list reads
     except RuntimeError:
         if half:  # the half-written pages are already rewritten and indexed: record them before giving up
-            tested = [l for l in record_changes(res, now, False, before) if l.startswith(library_tests.NOTICE_PREFIX)]
+            tested = [l for l in record_changes(res, now, False, before) if l.startswith((landing_check.NOTICE_MATCH, library_tests.NOTICE_PREFIX))]
             if tested:  # this run writes no notice of its own, and the next one won't test these pages again
                 append_notice(" ".join(tested)[:NOTICE_CAP])
         raise

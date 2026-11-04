@@ -6,7 +6,7 @@ A page whose text changed is archived first (archive/<run time>/changed/), and t
 through the same record and checks as check_new.py: section_changes.json, STALE_CITATIONS.md, the routing retest, the library tests."""
 import datetime, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import pages, blog, check_new
+import pages, blog, check_new, usage_log
 
 
 def main(fetch=None):
@@ -85,6 +85,7 @@ def _main(fetch):
         for line in check_new.record_changes(res, now, True, before):
             print(line)
         build_failed = build_failed or res.get("build_failed", False)
+        usage_log.write("refresh", **{k: len(v) for k, v in res.items() if isinstance(v, (list, dict))})  # same row as check_new.run
     return 1 if failed or build_failed else 0
 
 

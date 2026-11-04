@@ -124,6 +124,9 @@ def notice_lines(result, changes):
     """What a reader sees. A pass or a note shows only when something changed; a failure or a check that couldn't run always shows."""
     import paths
     lines = [f"{NOTICE_PREFIX} {p}; run {paths.REFRESH}." for p in result["problems"][:PROBLEMS_SHOWN]]
+    cut = len(result["problems"]) - PROBLEMS_SHOWN
+    if cut > 0:  # the reader should know the list was cut
+        lines[-1] = lines[-1][:-1] + f", and {cut} more."
     if result["state"] == "unavailable":
         return lines + [UNAVAILABLE.format(result["notes"][-1])]
     if changes:
