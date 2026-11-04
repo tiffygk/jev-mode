@@ -131,6 +131,26 @@ def test_skimmer_docs_quotes_are_in_the_library(tmp_path):
     assert r.returncode == 0 and "counts docs 15," in r.stdout, r.stdout + r.stderr
 
 
+
+@pytest.mark.skipif(not os.path.isdir(os.path.expanduser(os.environ.get("JEV_SOURCES_DATA", "~/.claude/jev-sources-data"))),
+                    reason="no Jev Sources library here (the script reads $JEV_SOURCES_DATA, else this default)")
+def test_report_in_the_current_template_docs_quotes_are_in_the_library(tmp_path):
+    """The same docs quotes, in the report rebuilt in the current template; its code links move to another commit."""
+    import re
+    text = re.sub(SKIMMER_COMMIT_RE, "commit: " + "0" * 40, (HERE / "fixtures" / "skimmer-report.md").read_text(), flags=re.M)
+    report = tmp_path / "skimmer.md"
+    report.write_text(text)
+    r = subprocess.run([sys.executable, "-I", str(CHECK), str(report)], capture_output=True, text=True)
+    assert r.returncode == 0 and "counts docs 15," in r.stdout, r.stdout + r.stderr
+
+
+@pytest.mark.skipif(not os.environ.get("JEVALUATE_REPORT_SKIMMER_CHECKOUT"),
+                    reason="set JEVALUATE_REPORT_SKIMMER_CHECKOUT to a clone of dorkitude/skimmer to check its code quotes")
+def test_report_in_the_current_template_code_quotes_are_at_the_commit():
+    r = subprocess.run([sys.executable, "-I", str(CHECK), str(HERE / "fixtures" / "skimmer-report.md"),
+                        "--checkout", os.environ["JEVALUATE_REPORT_SKIMMER_CHECKOUT"]], capture_output=True, text=True)
+    assert r.returncode == 0 and "counts docs 15, code 18," in r.stdout, r.stdout + r.stderr
+
 # Security review (2026-11-04): an option-shaped commit never reaches git, a very long paragraph is skipped rather than
 # scanned, and text from the report is printed as printable characters only.
 def test_option_shaped_commit_is_refused_before_git_runs(tmp_path):
