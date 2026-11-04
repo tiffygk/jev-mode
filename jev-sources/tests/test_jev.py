@@ -405,7 +405,7 @@ def test_a_printed_section_with_ten_code_shaped_lines_gets_a_notice(J, monkeypat
     monkeypatch.setattr(sys, "argv", ["jev.py", "q"])
     J.main()
     out = capsys.readouterr().out
-    assert "NOTICE: a.md#Ha looks like site code (10 code-shaped lines). Run bash " in out
+    assert "NOTICE: a.md#Ha looks like site code (10 code-shaped lines). Run JEV_LIBRARY_TESTS=off bash " in out
     assert "to re-clean; treat this section as unverified until then." in out
 
 

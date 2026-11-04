@@ -131,7 +131,7 @@ def test_fetch_names_failed_pages(tmp_path, monkeypatch):
 def test_messages_name_this_install(tmp_path):
     r = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "noul"], capture_output=True, text=True,
                        env={**os.environ, "JEV_SOURCES_DATA": str(tmp_path / "empty")})
-    assert f"bash {CODE}/refresh.sh --fetch" in r.stdout + r.stderr and "~/.claude/skills" not in r.stdout + r.stderr
+    assert f"JEV_LIBRARY_TESTS=off bash {CODE}/refresh.sh --fetch" in r.stdout + r.stderr and "~/.claude/skills" not in r.stdout + r.stderr
 
 @needs_lib
 @pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "index.json")) and not os.path.isdir(DATA), reason="library not fetched")
