@@ -276,3 +276,29 @@ def test_the_child_run_keeps_a_preset_hf_home_and_still_goes_offline(monkeypatch
     monkeypatch.setenv("HF_HUB_OFFLINE", "0")
     env = library_tests.child_env()
     assert env["HF_HOME"] == "/somewhere/else" and env["HF_HUB_OFFLINE"] == "1"
+
+
+def test_a_pytest_file_in_the_current_folder_is_not_run_by_the_probe(env, tmp_path, monkeypatch):
+    import library_tests
+    fake_pytest(tmp_path, monkeypatch, "1 passed in 1.00s\n")
+    here = tmp_path / "hostile"
+    here.mkdir()
+    marker = tmp_path / "planted-ran"
+    (here / "pytest.py").write_text(f"open({str(marker)!r}, 'w').write('x')\n")
+    monkeypatch.chdir(here)
+    library_tests.run()
+    assert not marker.exists()
+
+
+def test_the_rerun_command_quotes_a_folder_with_spaces(tmp_path):
+    import shlex, shutil, importlib.util
+    dest = tmp_path / "a folder with spaces" / "scripts"
+    shutil.copytree(os.path.join(CODE, "scripts"), dest)
+    spec = importlib.util.spec_from_file_location("library_tests_copy", dest / "library_tests.py")
+    mod = importlib.util.module_from_spec(spec)
+    saved = list(sys.path)  # the copy puts its own folder first on the path; put it back so later tests import the real scripts
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.path[:] = saved
+    assert shlex.split(mod.RERUN)[-1] == str(dest.parent.resolve())

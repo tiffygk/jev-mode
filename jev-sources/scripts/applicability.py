@@ -14,7 +14,7 @@ from paths import CODE, DATA
 ALIASES = {"jev-preview": "jev-1.14.0", "jev-latest": "jev-1.14.0"}
 ALIAS_SECTION = re.compile(r"^#+ Aliases[ \t]*$(.*?)(?=^#|\Z)", re.M | re.S)
 ALIAS_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|", re.M)
-VERSION = re.compile(r"^jev-(\d+)(?:\.(\d+))?(?:\.(\d+))?$")
+VERSION = re.compile(r"^jev-(\d{1,6})(?:\.(\d{1,6}))?(?:\.(\d{1,6}))?$")  # a longer number is not a real ID (and int() refuses thousands of digits)
 MODEL = re.compile(r"\bjev-(?:latest|preview|\d+(?:\.\d+){0,2})", re.I)
 # A page that states a model or readiness limit: "need(s) Jev 1.15", "Dreamer-ready", "ready for production", a Danger-Zone header
 LIMIT = re.compile(r"\bneeds?\s+Jev\s+\d|Dreamer-ready|ready for production|Danger-Zone|\bis experimental\b", re.I)

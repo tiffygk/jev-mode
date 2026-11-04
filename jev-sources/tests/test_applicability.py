@@ -356,3 +356,13 @@ def test_several_models_in_a_question_use_the_oldest(lib):
     assert A.find_model("what does jev-1.14.0 add over jev-1.13.0") == "jev-1.13.0"
     assert A.find_model("jev-1.13.0 versus jev-latest") == "jev-1.13.0"
     assert A.find_model("no model here") is None
+
+
+def test_a_huge_number_in_an_alias_target_counts_as_unusable_and_the_fallback_applies(lib, tmp_path):
+    """Python 3.11 and later refuse int() on thousands of digits; the row must be skipped before that."""
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-" + "9" * 5000 + ".0.0"))
+    assert A.aliases() is A.ALIASES
+    assert A.version("jev-latest") == A.version(A.ALIASES["jev-latest"])
+    assert A.version("jev-" + "9" * 5000) is None
+    assert A.version("jev-1.14.0") == (1, 14, 0)

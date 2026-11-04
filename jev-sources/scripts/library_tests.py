@@ -3,7 +3,7 @@
 arrive use this: check_new.record_changes (the background check, and fetch.py) puts the result in the notice, and
 refresh.sh prints it. It only reports, and never raises.
 JEV_LIBRARY_TESTS=off skips it. Under pytest, record_changes skips it unless JEV_LIBRARY_TESTS=on."""
-import os, signal, subprocess, sys, tempfile
+import os, shlex, signal, subprocess, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 CODE = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -11,7 +11,7 @@ TESTS = os.path.join(CODE, "tests")
 FILES = ("test_applicability.py", "test_route.py", "test_index.py", "test_jev.py", "test_usage_log.py")
 TIMEOUT = 300  # seconds; the run takes about 95
 PROBE_TIMEOUT = 10  # seconds for the "is pytest installed" check; a hang counts as skipped
-RERUN = f"python3 -m pytest {CODE}"  # names the skill's folder, so it runs the right tests from any project
+RERUN = f"python3 -m pytest {shlex.quote(CODE)}"  # names the skill's folder, so it runs the right tests from any project
 NOTICE_PREFIX = "Library tests:"  # check_new keeps a line with this start ahead of its notice cap
 NAMES_SHOWN, NAME_CAP, TEXT_CAP = 5, 150, 200  # together they keep the longest notice line under check_new.NOTICE_CAP
 
@@ -56,7 +56,7 @@ def run(timeout=None):
             return _result("skipped", "no tests folder in this install")
         try:
             probe = subprocess.run([sys.executable, "-c", "import pytest"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL, check=False, timeout=PROBE_TIMEOUT).returncode
+                                   stderr=subprocess.DEVNULL, check=False, timeout=PROBE_TIMEOUT, cwd=CODE).returncode
         except subprocess.TimeoutExpired:
             return _result("skipped", "pytest did not answer in time")
         if probe != 0:

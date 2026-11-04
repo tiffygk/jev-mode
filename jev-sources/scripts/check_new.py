@@ -155,12 +155,12 @@ def run(fetch=None, now=None, rebuild=True):
             text = fetch(pages.BASE + s + ".md")
         except pages.Gone as g:
             if g.moved_to:
-                res["moved"][s] = g.moved_to
+                res["moved"][s] = pages.moved_name(g.moved_to)
             elif s not in lib:
                 res["listed_missing"].append(s)  # listed by TypeSafe but 404: named once in the notice
             continue  # still listed somewhere: not pruned
         except Exception as e:
-            res["failed"].append(f"{s} ({e})")
+            res["failed"].append(f"{s} ({pages.why(e)})")
             continue
         if s in lib:
             raw = pages.raw_text(lib[s])
@@ -188,9 +188,9 @@ def run(fetch=None, now=None, rebuild=True):
                 continue  # unlisted but still served: keep
             except pages.Gone as g:
                 if g.moved_to:
-                    res["moved"][s] = g.moved_to
+                    res["moved"][s] = pages.moved_name(g.moved_to)
             except Exception as e:
-                res["failed"].append(f"{s} ({e})")
+                res["failed"].append(f"{s} ({pages.why(e)})")
                 continue
             pages.archive(lib[s], "removed", now)
             res["removed"].append(s)

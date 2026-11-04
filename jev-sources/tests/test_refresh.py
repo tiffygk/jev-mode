@@ -146,3 +146,29 @@ def test_the_refresh_turns_the_step_off_inside_its_own_check_and_fetch(tmp_path,
 def test_the_shell_no_longer_holds_the_test_logic():
     text = open(f"{CODE}/refresh.sh").read()
     assert "pytest" not in text and "library_tests()" not in text
+
+
+def test_refresh_runs_its_python_checks_from_the_skill_folder_not_the_current_one(tmp_path):
+    """python -c and python -m put the current folder first on the path, so a hostile project's model2vec.py or pip.py would run."""
+    log = tmp_path / "cwd.log"
+    bin_ = tmp_path / "bin"; bin_.mkdir()
+    py = bin_ / "python3"
+    py.write_text(f"""#!/bin/bash
+case "$1" in
+  -c) echo "$PWD" >> {log}; exec {sys.executable} "$@";;
+  -m) echo "$PWD" >> {log}; exit 0;;
+esac
+exit 0
+""")
+    py.chmod(py.stat().st_mode | stat.S_IEXEC)
+    hostile = tmp_path / "hostile"; hostile.mkdir()
+    marker = tmp_path / "planted-ran"
+    (hostile / "model2vec.py").write_text(f"open({str(marker)!r}, 'w').write('x')\n")
+    e = dict(os.environ, PATH=f"{bin_}:{os.environ['PATH']}", JEV_SOURCES_DATA=str(tmp_path / "data"))
+    e.pop("JEV_VAULT", None)
+    r = subprocess.run(["bash", f"{CODE}/refresh.sh"], capture_output=True, text=True, env=e, cwd=hostile)
+    assert r.returncode == 0, r.stderr
+    assert not marker.exists()
+    here = os.path.realpath(CODE)
+    cwds = [os.path.realpath(l) for l in log.read_text().split()]
+    assert cwds and all(c == here for c in cwds), cwds

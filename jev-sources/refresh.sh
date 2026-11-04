@@ -26,9 +26,9 @@ if [ "${1:-}" = "--fetch" ]; then
 elif [ -n "${JEV_VAULT:-}" ]; then
   copy "$JEV_VAULT" "$DATA"
 fi
-if [ "${JEV_SEMANTIC:-}" != "off" ] && ! python3 -c "import model2vec" 2>/dev/null; then
+if [ "${JEV_SEMANTIC:-}" != "off" ] && ! (cd "$HERE" && python3 -c "import model2vec") 2>/dev/null; then
   echo "installing model2vec for routing by meaning (once; JEV_SEMANTIC=off skips this)"
-  python3 -m pip install --user --quiet model2vec || echo "model2vec install failed; routing stays keyword-only"
+  (cd "$HERE" && python3 -m pip install --user --quiet model2vec) || echo "model2vec install failed; routing stays keyword-only"
 fi
 # Local privacy check on saved blog posts: only where the checker and the owner's private config exist.
 CHECKER="${JEV_PRIVATE_CHECKER:-$HERE/../scripts/private_text_check.py}"
