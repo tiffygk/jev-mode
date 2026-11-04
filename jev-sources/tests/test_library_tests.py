@@ -212,3 +212,51 @@ def test_the_count_survives_a_notice_full_of_page_names(env):
     text = env.notice_text(parts, ["routing line", f"{library_tests.NOTICE_PREFIX} 3 failed"])
     assert text.startswith(f"{library_tests.NOTICE_PREFIX} 3 failed")
     assert len(text) == env.NOTICE_CAP
+
+
+def test_the_message_names_this_installs_folder(env, tmp_path, monkeypatch):
+    import library_tests
+    fake_pytest(tmp_path, monkeypatch, failing(1), 1)
+    monkeypatch.setenv("JEV_LIBRARY_TESTS", "on")
+    assert f"python3 -m pytest {CODE}" in changes(env)[-1]
+    r = library_tests.run()
+    assert f"python3 -m pytest {CODE}" in library_tests.report(r)[0]
+
+
+def test_every_test_passing_but_the_library_written_leads_with_the_library(env, tmp_path, monkeypatch):
+    import library_tests
+    fake_pytest(tmp_path, monkeypatch, "...\nLIBRARY WRITTEN BY THE SUITE: docs changed under /lib\n3 passed in 1.00s\n", 1)
+    monkeypatch.setenv("JEV_LIBRARY_TESTS", "on")
+    r = library_tests.run()
+    assert r["state"] == "written"
+    assert library_tests.report(r)[0].startswith("library tests: the suite wrote into the library")
+    assert "could not finish" not in " ".join(library_tests.report(r))
+    line = changes(env)[-1]
+    assert line.startswith("Library tests: the suite wrote into the library") and "could not finish" not in line
+    assert "LIBRARY WRITTEN BY THE SUITE: docs changed under /lib" in line and len(line) < env.NOTICE_CAP
+
+
+def test_a_failing_name_with_a_written_library_is_still_a_failure(env, tmp_path, monkeypatch):
+    import library_tests
+    fake_pytest(tmp_path, monkeypatch, failing(1) + "LIBRARY WRITTEN BY THE SUITE: x\n", 1)
+    assert library_tests.run()["state"] == "failed"
+
+
+def test_the_pytest_probe_has_a_short_timeout_and_a_timeout_counts_as_skipped(env, monkeypatch):
+    import library_tests
+    seen = {}
+    def slow(*a, **k):
+        seen.update(k)
+        raise library_tests.subprocess.TimeoutExpired("python3", k.get("timeout"))
+    monkeypatch.setattr(library_tests.subprocess, "run", slow)
+    r = library_tests.run()
+    assert seen.get("timeout") == 10
+    assert r["state"] == "skipped" and "pytest" in r["why"]
+
+
+def test_pytest_is_called_without_color_so_failing_names_stay_plain(env, tmp_path, monkeypatch):
+    import library_tests
+    log = fake_pytest(tmp_path, monkeypatch, "1 passed in 1.00s\n")
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    library_tests.run()
+    assert "--color=no" in json.load(open(log))["argv"]

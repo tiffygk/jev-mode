@@ -6,9 +6,10 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def no_side_effects(monkeypatch):
-    """Every test: no usage log, no background docs check. Subprocess hooks inherit this environment."""
+    """Every test: no usage log, no background docs check, no library-tests step. Subprocess hooks inherit this environment."""
     monkeypatch.setenv("JEV_LOG", "off")
     monkeypatch.setenv("JEV_CHECK", "off")
+    monkeypatch.setenv("JEV_LIBRARY_TESTS", "off")  # only the tests of the step itself turn it on
 
 
 @pytest.fixture(autouse=True)

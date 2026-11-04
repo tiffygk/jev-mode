@@ -400,3 +400,15 @@ def test_a_half_written_page_keeps_its_library_test_result_when_the_site_is_down
     with pytest.raises(RuntimeError):
         cn.run(down, T13, rebuild=False)
     assert "Library tests: 1 failed" in open(cn.NOTICE).read()
+
+
+def test_a_full_refresh_prints_a_half_written_page_library_test_result_when_the_site_is_down(env, tmp_path, monkeypatch, capsys):
+    pg, cn = env
+    import fetch
+    monkeypatch.setattr(cn, "after_change", lambda res: [])
+    stand_in_pytest(tmp_path, monkeypatch, "FAILED tests/test_route.py::test_x - y\n1 failed in 1.00s\n", 1)
+    monkeypatch.setattr(pg, "prepare", lambda **k: ["models"])
+    monkeypatch.setattr(pg, "HALF_WRITTEN", ["models"])
+    with pytest.raises(SystemExit):
+        fetch.main(site(pg, {}, None, None, []))
+    assert "Library tests: 1 failed" in capsys.readouterr().out

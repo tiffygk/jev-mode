@@ -1,4 +1,4 @@
-import json, os, subprocess, sys
+import importlib.util, json, os, subprocess, sys
 import pytest
 CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
@@ -142,7 +142,26 @@ def test_route_prints_runnable_read_commands():
 
 PARA = json.load(open(os.path.join(CODE, "tests", "paraphrases.json")))
 
+def meaning_matching_off(environ, has_package, has_vectors):
+    """Why route.py would run on keywords alone, or None when meaning-matching is on (the checks route.py/semantic.py make)."""
+    if environ.get("JEV_SEMANTIC") == "off":
+        return "JEV_SEMANTIC=off"
+    if not has_package:
+        return "model2vec is not installed"
+    if not has_vectors:
+        return "no embeddings.npy in the library"
+    return None
+
+def test_meaning_matching_off_is_told_apart_from_on():
+    assert meaning_matching_off({"JEV_SEMANTIC": "off"}, True, True) == "JEV_SEMANTIC=off"
+    assert "model2vec" in meaning_matching_off({}, False, True)
+    assert "embeddings" in meaning_matching_off({}, True, False)
+    assert meaning_matching_off({}, True, True) is None
+
+_OFF = meaning_matching_off(os.environ, importlib.util.find_spec("model2vec") is not None, os.path.exists(os.path.join(DATA, "embeddings.npy")))
+
 @needs_lib
+@pytest.mark.skipif(_OFF is not None, reason=f"the bar needs meaning-matching, which is off here ({_OFF}); keywords alone reach 14/20")
 def test_paraphrase_set_finds_its_section():
     hits = sum(any(s["heading"] == p["heading"] for s in route(p["q"])["sections"]) for p in PARA)
     # bar lowered from 17 to 16 after measurement: 16/20 exact, baseline 14/20 on keywords alone
