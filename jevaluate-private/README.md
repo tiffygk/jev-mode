@@ -1,6 +1,13 @@
-# Jevaluate, privately
+# Jevaluate-private
 
-Rate a project you can't publish: a client's codebase, your employer's pipeline, a design you were sent, or your own work in progress. It uses the same rubric, steps and checks as [Jevaluate](../jevaluate/), so a private verdict means what a public one does. The rating stays on your machine.
+Updated private version of Jevaluate for how devs and teams build and eval their own projects. Rate a project you can't publish: a client's codebase, your employer's pipeline, a design you were sent, or your own work in progress. It uses the same rubric, steps and checks as [Jevaluate](../jevaluate/), so a private verdict means the same a public one does. The rating stays on your machine, so the skill doesn't load the publish steps of Jevaluate. 
+
+After receiving your Jevaluate-private rating:
+- Read the verdict and tune the rating at the end to your own product judgement by conferring with the skill, as the rater may have missed some of your API calls or made calls you don't agree with.
+-  Run Jevaluate-report to generate a ready to work off of md file for your agents to incorporate and test proposed improvements to your Jev project
+
+How is this different than Jevaluate (classic)?
+Jevaluate classic is meant to be used as a comprehensive rating of a project that publishes to the ratings page of this repo, so the community can separate quality Jev integrations. Jevaluate classic ratings should not be tuned as they are an unbiased eval for the community.
 
 ## Use it
 
