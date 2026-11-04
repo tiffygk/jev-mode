@@ -20,6 +20,6 @@
 {"q":"Should I ask lots of questions even if I might not need every answer?","path":"docs/primitives.md","heading":"Ask speculative questions"},
 {"q":"Can the answer to one question feed into another question in the same call?","path":"docs/primitives.md","heading":"When one question depends on another"},
 {"q":"On jev-1.13.0, how do I get the pixel box around the mug in a photo?","path":"docs/primitives__box.md","heading":"Box","model":"jev-1.13.0","expect":"needs-newer"},
-{"q":"My project sends jev-latest. Can I ask for the location of the signature on a scanned form?","path":"docs/primitives__box.md","heading":"Box","model":"jev-latest","expect":"needs-newer"},
+{"q":"My project sends jev-latest. Can I ask for the location of the signature on a scanned form?","path":"docs/primitives__box.md","heading":"Box","model":"jev-latest","expect":"experimental"},
 {"q":"On jev-1.13.0, how do I attach a picture to a request so the model can look at it?","path":"docs/images.md","heading":"Sending images in a request","model":"jev-1.13.0","expect":"experimental"}
 ]

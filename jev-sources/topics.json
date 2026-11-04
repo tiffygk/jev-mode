@@ -69,7 +69,7 @@
    "match": "one (call|request)|per (call|request|candidate|pair|passage)|batch|together|at once|parallel|many questions|several questions|fan.?out|\\d+ (passages|questions|candidates|items)|\\d+ (passage|question|candidate|item)s?|single (call|request|api)|thirty",
    "paths": [
     "docs/primitives__noul.md#Structured instructions",
-    "docs/primitives__noul.md#Good practice: ask more than one question per call",
+    "docs/primitives__noul.md#Good practice: ask more than one question per request",
     "docs/concepts__state.md",
     "docs/primitives.md",
     "patterns/fan-out.md",
@@ -131,7 +131,7 @@
    "name": "no invented values (counting, dates, math)",
    "match": "count(s|ing)?\\b|arithmetic|math|calculat|days\\b|dates?\\b|numbers|compute|timestamps?|age\\b|subtract",
    "paths": [
-    "docs/model-jaggedness__jev-1.13.md",
+    "docs/model-jaggedness.md",
     "cookbooks/date_extraction_cookbook.md",
     "cookbooks/pre_parsed_value_extraction_cookbook.md"
    ]
@@ -174,7 +174,7 @@
    "match": "tokens|64k|32k|too (long|large)|size limit|large state|truncat|per.?request|per.?question|context (length|limit|window)|long context|262k",
    "paths": [
     "docs/models.md",
-    "docs/model-jaggedness__jev-1.13.md",
+    "docs/model-jaggedness.md",
     "docs/models.md#Context length",
     "docs/models.md#Long context",
     "docs/primitives.md#How many questions you can ask"
@@ -198,7 +198,7 @@
    "name": "untrusted text / injection",
    "match": "inject|adversarial|untrusted|steer|jailbreak|guardrail",
    "paths": [
-    "docs/model-jaggedness__jev-1.13.md",
+    "docs/model-jaggedness.md",
     "cookbooks/classifying_rag_passages.md",
     "cookbooks/llm_guardrails.md"
    ]

@@ -8,14 +8,17 @@ carry "also": more {source, quote} pairs. tests/test_applicability.py checks eve
 import json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import CODE
+from paths import CODE, DATA
 
-# Update when TypeSafe moves jev-latest (docs/models.md#Aliases; a test checks this table against that page).
-ALIASES = {"jev-preview": "jev-1.14.0", "jev-latest": "jev-1.13.0"}
+# Used only when the library has no usable docs/models.md#Aliases table; aliases() reads that table.
+ALIASES = {"jev-preview": "jev-1.14.0", "jev-latest": "jev-1.14.0"}
+ALIAS_SECTION = re.compile(r"^#+ Aliases[ \t]*$(.*?)(?=^#|\Z)", re.M | re.S)
+ALIAS_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|", re.M)
 MODEL = re.compile(r"\bjev-(?:latest|preview|\d+(?:\.\d+){0,2})", re.I)
 # A page that states a model or readiness limit: "need(s) Jev 1.15", "Dreamer-ready", "ready for production", a Danger-Zone header
 LIMIT = re.compile(r"\bneeds?\s+Jev\s+\d|Dreamer-ready|ready for production|Danger-Zone|\bis experimental\b", re.I)
 _entries = None
+_aliases = None
 
 
 def entries():
@@ -26,6 +29,20 @@ def entries():
         except (OSError, ValueError, KeyError):
             _entries = []
     return _entries
+
+
+def aliases():
+    """Alias to versioned ID, from the rows of docs/models.md#Aliases; ALIASES when the page, the section or its jev-latest row is missing."""
+    global _aliases
+    if _aliases is None:
+        try:
+            text = open(os.path.join(DATA, "docs", "models.md"), encoding="utf-8").read()
+        except (OSError, ValueError):
+            text = ""
+        section = ALIAS_SECTION.search(text)
+        table = {a.lower(): t.lower() for a, t in ALIAS_ROW.findall(section.group(1))} if section else {}
+        _aliases = table if "jev-latest" in table else ALIASES
+    return _aliases
 
 
 def quotes(entry):
@@ -43,7 +60,7 @@ def lookup(path, heading, entries_=None):
 
 def version(model):
     """(1, 14, 0) for 'jev-1.14' or 'jev-1.14.0' (aliases resolved); None when it isn't a version."""
-    model = ALIASES.get((model or "").lower(), (model or "").lower())
+    model = aliases().get((model or "").lower(), (model or "").lower())
     m = re.match(r"^jev-(\d+)(?:\.(\d+))?(?:\.(\d+))?$", model)
     return tuple(int(x or 0) for x in m.groups()) if m else None
 

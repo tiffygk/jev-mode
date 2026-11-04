@@ -13,10 +13,10 @@ def route(q):
 CASES = [
     ("can I put 30 passages in one call", ["docs/concepts__state.md", "docs/primitives.md", "patterns/fan-out.md", "cookbooks/rerank_typesafe.md"]),
     ("how do I pick a threshold", ["docs/confidence.md", "patterns/confidence-routing.md"]),
-    ("should Jev count days between dates", ["docs/model-jaggedness__jev-1.13.md", "cookbooks/date_extraction_cookbook.md"]),
+    ("should Jev count days between dates", ["docs/model-jaggedness.md", "cookbooks/date_extraction_cookbook.md"]),
     ("does choice option order change the answer", ["cookbooks/consistency_choice_cookbook.md"]),
     ("too many categories for one choice", ["docs/primitives__advanced.md", "cookbooks/hierarchical_classification.md"]),
-    ("prompt injection in the state", ["docs/model-jaggedness__jev-1.13.md", "cookbooks/classifying_rag_passages.md"]),
+    ("prompt injection in the state", ["docs/model-jaggedness.md", "cookbooks/classifying_rag_passages.md"]),
     ("pin the model version", ["docs/models.md"]),
     ("score a dataset of rows", ["patterns/fan-out.md", "cookbooks/parallel_questions.md"]),
     # 2026-10-05: "chain" wording missed the dependency rule; a map step was mislabeled one call
