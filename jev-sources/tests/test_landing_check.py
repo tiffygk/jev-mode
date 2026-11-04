@@ -447,7 +447,7 @@ def full_refresh_with_a_bad_index(lib, monkeypatch):
     lib.page("b", 3)
     new = "# b heading 0\n\nNew words about b, a little more than before.\n"
     slugs = list(lib.pg.library())
-    f = site(lib.pg, {s: ("# %s\n\nx\n" % s) for s in slugs} | {"b": new}, {s: None for s in slugs}, slugs, [])
+    f = site(lib.pg, {**{s: ("# %s\n\nx\n" % s) for s in slugs}, "b": new}, {s: None for s in slugs}, slugs, [])
     monkeypatch.setattr(lib.cn, "rebuild_index", lambda: None)  # the index stays as it was, so it can't match the new page
     return fetch.main(f)
 
@@ -599,3 +599,30 @@ def test_the_real_library_raises_no_flags():
     fresh_modules()
     r = landing_check.run()
     assert r["state"] == "passed", r
+
+
+def _crash(lib, monkeypatch):
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+    monkeypatch.setattr(lib.cn.landing_check, "_check", boom)
+
+
+def test_a_crashed_check_on_a_quiet_run_counts_as_a_problem_in_the_log(lib, monkeypatch):
+    monkeypatch.delenv("JEV_LOG", raising=False)
+    _crash(lib, monkeypatch)
+    res = lib.cn.run(lib.quiet_site(), now=T14)
+    assert len(res["landing_problems"]) >= 1
+    log = open(lib.path("logs/refresh.jsonl"), encoding="utf-8").read().splitlines()
+    assert json.loads(log[-1])["landing_problems"] >= 1
+
+
+def test_a_crashed_check_after_a_change_counts_as_a_problem_in_the_log(lib, monkeypatch):
+    monkeypatch.delenv("JEV_LOG", raising=False)
+    _crash(lib, monkeypatch)
+    monkeypatch.setattr(lib.cn, "rebuild_index", lib.build)
+    slugs = list(lib.pg.library())
+    dates = {s: "2026-10-12T00:00:00Z" for s in slugs}
+    dates["b"] = "2026-10-14T21:00:00Z"
+    new = "# b heading 0\n\nNew words about b, a little more than before.\n"
+    res = lib.cn.run(site(lib.pg, {"b": new}, dates, slugs, []), now=T14)
+    assert res["changed"] == ["b"] and len(res["landing_problems"]) >= 1

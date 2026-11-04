@@ -172,3 +172,17 @@ def test_a_bad_check_days_setting_falls_back_to_two(trig, monkeypatch):
 
 def test_the_refresh_the_stale_warning_asks_a_model_to_run_skips_the_library_tests(trig):
     assert trig.REFRESH.startswith("JEV_LIBRARY_TESTS=off bash ") and trig.REFRESH.endswith("refresh.sh --fetch")
+
+
+def test_the_refresh_command_quotes_a_folder_with_spaces(tmp_path, monkeypatch):
+    import shlex, shutil, importlib.util
+    dest = tmp_path / "a folder with spaces" / "hooks"
+    shutil.copytree(HOOKS, dest)
+    spec = importlib.util.spec_from_file_location("refresh_trigger_copy", dest / "refresh_trigger.py")
+    mod = importlib.util.module_from_spec(spec)
+    saved = list(sys.path)
+    try:
+        spec.loader.exec_module(mod)
+    finally:
+        sys.path[:] = saved
+    assert shlex.split(mod.REFRESH)[-2] == str(dest.parent.resolve() / "refresh.sh")

@@ -12,7 +12,7 @@ FILES = ("test_applicability.py", "test_route.py", "test_index.py", "test_jev.py
 ABOUT_MINUTES = 2
 TIMEOUT = 300  # seconds; the run takes about 95
 PROBE_TIMEOUT = 10  # seconds for the "is pytest installed" check; a hang counts as skipped
-RERUN = f"python3 -m pytest {shlex.quote(CODE)}"  # names the skill's folder, so it runs the right tests from any project
+RERUN = "python3 " + shlex.quote(os.path.join(CODE, "scripts", "library_tests.py"))  # the same subset, about 87 s; names the skill's folder, so it runs the right tests from any project
 NOTICE_PREFIX = "Library tests:"  # check_new keeps a line with this start ahead of its notice cap
 NAMES_SHOWN, NAME_CAP, TEXT_CAP = 5, 150, 200  # together they keep the longest notice line under check_new.NOTICE_CAP
 

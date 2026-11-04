@@ -116,8 +116,13 @@ def record_changes(res, now, rebuild=True, before=None):
         json.dump({"date": pages.stamp(now), **{k: res[k] for k in ("changed", "added", "removed", "moved", "removed_sections", "added_sections")}}, f, indent=1)
     lines += after_change(res)
     landed = landing_check.run(res["changed"], res["added"], before, now)
-    res["landing_problems"] = landed["problems"]
+    res["landing_problems"] = landed["problems"] or _unavailable_note(landed)
     return lines + landing_check.notice_lines(landed, True) + library_tests.notice_lines()
+
+
+def _unavailable_note(landed):
+    """A crashed landing check has no problems listed; store its note so the log counts it as at least one."""
+    return [f"landing check unavailable ({landed['notes'][-1]})"] if landed["state"] == "unavailable" else []
 
 
 MARGIN = datetime.timedelta(hours=12)  # sitemap dates look like build time; a fetch between build and deploy saves
@@ -215,7 +220,7 @@ def run(fetch=None, now=None, rebuild=True):
         notes += record_changes(res, now, rebuild, before)
     else:  # nothing changed, so a pass stays quiet; a problem still shows, since this check stores nothing between runs
         landed = landing_check.run()
-        res["landing_problems"] = landed["problems"]
+        res["landing_problems"] = landed["problems"] or _unavailable_note(landed)
         notes += landing_check.notice_lines(landed, False)
     reported = state_read().get("reported", {})  # a page that stays listed-but-404 or unfetchable is named once
     name = lambda x: x.split(" (")[0]  # compare by page, not by its error text, which can vary run to run

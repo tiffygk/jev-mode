@@ -48,3 +48,12 @@ def test_skill_md_is_at_most_125_lines():
     import os
     p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "SKILL.md")
     assert len(open(p, encoding="utf-8").read().splitlines()) <= 125
+
+
+def test_every_refresh_fetch_command_in_skill_md_skips_the_library_tests():
+    # a bare refresh takes about 155 s, past a model's 2-minute command limit
+    text = open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "SKILL.md"), encoding="utf-8").read()
+    found = re.findall(r"[^`\n]*refresh\.sh --fetch", text)
+    assert found
+    for cmd in found:
+        assert "JEV_LIBRARY_TESTS=off bash " in cmd, cmd

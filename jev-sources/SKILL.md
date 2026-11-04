@@ -107,7 +107,7 @@ Relay each finding in your own words with its `CITE AS` path#heading and label, 
 
 ## Refresh
 
-With the reminder hook installed (the Claude Code plugin, or hooks added by hand), the library checks TypeSafe's pages every two days and fetches only new or re-dated pages and new posts. Codex runs no hooks from a plugin: run `python3 <skill>/scripts/codex_hooks.py install` once (again after moving the skill folder). Without the hooks, nothing refreshes on its own: run `bash <skill>/refresh.sh --fetch` on first install, and again when a source is missing or older than the question needs. That command downloads every page TypeSafe lists (the docs sitemap, llms.txt, the cookbook list and typesafe.ai's blog) and rebuilds the index. `SOURCES.md` in the data folder lists every page held and when it was saved. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`).
+With the reminder hook installed (the Claude Code plugin, or hooks added by hand), the library checks TypeSafe's pages every two days and fetches only new or re-dated pages and new posts. Codex runs no hooks from a plugin: run `python3 <skill>/scripts/codex_hooks.py install` once (again after moving the skill folder). Without the hooks, nothing refreshes on its own: run `JEV_LIBRARY_TESTS=off bash <skill>/refresh.sh --fetch` on first install, and again when a source is missing or older than the question needs. That command downloads every page TypeSafe lists (the docs sitemap, llms.txt, the cookbook list and typesafe.ai's blog) and rebuilds the index. `SOURCES.md` in the data folder lists every page held and when it was saved. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`).
 
 ## Enforced by
 

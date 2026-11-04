@@ -220,9 +220,10 @@ def test_the_message_names_this_installs_folder(env, tmp_path, monkeypatch):
     import library_tests
     fake_pytest(tmp_path, monkeypatch, failing(1), 1)
     monkeypatch.setenv("JEV_LIBRARY_TESTS", "on")
-    assert f"python3 -m pytest {CODE}" in changes(env)[-1]
+    script = os.path.join(CODE, "scripts", "library_tests.py")
+    assert f"python3 {script}" in changes(env)[-1]
     r = library_tests.run()
-    assert f"python3 -m pytest {CODE}" in library_tests.report(r)[0]
+    assert f"python3 {script}" in library_tests.report(r)[0]
 
 
 def test_every_test_passing_but_the_library_written_leads_with_the_library(env, tmp_path, monkeypatch):
@@ -303,7 +304,7 @@ def test_the_rerun_command_quotes_a_folder_with_spaces(tmp_path):
         spec.loader.exec_module(mod)
     finally:
         sys.path[:] = saved
-    assert shlex.split(mod.RERUN)[-1] == str(dest.parent.resolve())
+    assert shlex.split(mod.RERUN) == ["python3", str(dest.resolve() / "library_tests.py")]
 
 
 def test_main_says_the_run_takes_about_two_minutes_before_it_starts(env, tmp_path, monkeypatch, capsys):
