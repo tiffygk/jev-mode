@@ -212,3 +212,10 @@ def test_promise_in_the_rating_section_is_caught(tmp_path):
                          ("The rating says that fix could reach a 4 if its test passes.", [])]:
         f = probe_file(tmp_path, "w01", t.replace("## What already works", f"{line}\n\n## What already works", 1))
         assert run_w(f)[1] == expect, line
+
+
+def test_a_whole_report_in_the_current_template_passes():
+    """The skimmer report rebuilt in the current template (the 2026-11-04 dry run) passes as a whole, so a template or
+    checker change has to keep a real report passing. Before it, no fixture in the current template ran end to end."""
+    code, rules, out = run(FIX / "skimmer-report.md")
+    assert code == 0 and rules == [] and "counts fixes 16, labels 80, links 84," in out, out

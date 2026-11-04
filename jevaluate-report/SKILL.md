@@ -86,5 +86,6 @@ Ask for it by name: `jevaluate-report <repo>`. Codex's default sandbox blocks th
 | Opening links the Rating section and lists the top fixes as bullets; Rating has all four scores | `scripts/report_check.py` (opening) |
 | Opening says the fixes are to be tested | `scripts/report_check.py` (opening-test) |
 | Every docs quote is on the Jev Sources page it links; every quoted line of code is in the linked file and lines at the commit | `scripts/trace_check.py` |
+| A real report in the current template (skimmer's, rebuilt) passes both checks | `tests/test_report_check.py`, `tests/test_trace_check.py` (`fixtures/skimmer-report.md`) |
 | The checks behave as stated, on three fixed blind probe sets | `tests/test_report_check.py` (`fixtures/probes.json`, `fixtures/whole-probes.json`), `tests/test_trace_check.py` (`fixtures/trace-probes.json`) |
 | A rating the user agreed with as the input, praise and claims no wider than the rating, target verdict traced, review edits traced before they are applied, quotes from sources other than the docs and the repo, numbers check, fix ranking, an opening a newcomer can act on | the session running the skill, then the review agent |
