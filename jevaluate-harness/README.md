@@ -38,14 +38,27 @@ The [system page](https://tiffygk.github.io/jev-mode/system/) also shows the rou
 
 ## Install and use
 
-Needs Claude Code or Codex, Python 3.8+, the GitHub CLI (`gh`, logged in) and Jevaluate itself.
+Needs Claude Code or Codex, Python 3.8+, the GitHub CLI (`gh`, logged in) and [Jevaluate Publish](../jevaluate/).
+
+In Claude Code:
 
 ```
-git clone https://github.com/tiffygk/jev-mode
-cp -r jev-mode/jevaluate jev-mode/jevaluate-harness jev-mode/shared ~/.claude/skills/
+claude plugin marketplace add tiffygk/jev-mode
+claude plugin install jevaluate-harness@jev-mode
+claude plugin install jevaluate@jev-mode
+```
+
+In Codex:
+
+```
+codex plugin marketplace add tiffygk/jev-mode
+codex plugin add jevaluate-harness@jev-mode
+codex plugin add jevaluate@jev-mode
 ```
 
 Put your never-publish regexes in `$JEVALUATE_LIBRARY/private-terms.txt`, and optionally set `$JEVALUATE_OVERLAY` to a markdown note of your own rules for these workflows (see the skill's Settings). Then ask Claude Code: `run a jevaluate re-rate round`.
+
+To install every jev-mode skill at once, or to copy skills by hand, see the [repo README](../README.md#install).
 
 ## Limits
 

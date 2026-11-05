@@ -13,7 +13,7 @@
       "name": "jev-mode",
       "source": "./",
       "strict": false,
-      "description": "Every jev-mode skill in one plugin: Jev Sources, Jevaluate, Jevaluate Private, Jevaluate Report, Jevaluate Harness and Jevaluate Eval. Install this or the single plugins, not both.",
+      "description": "Every jev-mode skill in one plugin: Jev Sources, Jevaluate Publish, Jevaluate Private, Jevaluate Report, Jevaluate Harness and Jevaluate Eval. Install this or the single plugins, not both.",
       "author": {
         "name": "tiffygk",
         "url": "https://github.com/tiffygk"

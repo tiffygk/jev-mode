@@ -6,8 +6,8 @@ None of these skills calls Jev, so none needs a TypeSafe key: the LLM in your co
 
 | Name | What it does | Get it |
 |---|---|---|
-| [Jevaluate](jevaluate/) | Reads a Jev project's code and rates how well it uses Jev, with provenance for every finding | Plugin `jevaluate` |
-| [Jevaluate, privately](jevaluate-private/) | Rates a project you can't publish, such as a client's code or a local folder, with the same rubric, and keeps the rating private. Run `/jevaluate-private <link or folder>` | Plugin `jevaluate-private` |
+| [Jevaluate, privately](jevaluate-private/) | The usual way to rate your own, your team's or a client's project: a verdict and fixes from its code, with nothing published. Run `/jevaluate-private <link or folder>` | Plugin `jevaluate-private` |
+| [Jevaluate Publish](jevaluate/) | Rates a community Jev project with the same rubric for this repo's public ratings list, with provenance for every finding | Plugin `jevaluate` |
 | [Jevaluate Report](jevaluate-report/) | After you agree with a rating from Jevaluate, privately, writes one file your coding agents work through before a pull request: the verdict, a ranked fix table, and each fix as a change to try with a test to run. Run `/jevaluate-report <repo or rating>` | Plugin `jevaluate-report` |
 | [Jevaluate Harness](jevaluate-harness/) | Runs rating rounds, re-rates and rubric tuning for Jevaluate | Plugin `jevaluate-harness` |
 | [Jevaluate Eval](jevaluate-eval/) | Tests whether Jevaluate's rubric leads graders to the right answers, before a rubric change reaches any rating | Plugin `jevaluate-eval`; run it from a clone of this repo |
@@ -60,7 +60,7 @@ codex plugin add jevaluate-harness@jev-mode
 codex plugin add jevaluate-eval@jev-mode
 ```
 
-Pull later changes with `claude plugin marketplace update jev-mode` or `codex plugin marketplace upgrade jev-mode`.
+To pull later changes in Claude Code, run `claude plugin marketplace update jev-mode`, then update each plugin you installed, such as `claude plugin update jevaluate@jev-mode`. In Codex, run `codex plugin marketplace upgrade jev-mode`, then add each plugin again, such as `codex plugin add jevaluate@jev-mode`.
 
 To install without the plugin system, copy a skill's folder into `~/.claude/skills/` for Claude Code, or `~/.agents/skills/` for Codex:
 

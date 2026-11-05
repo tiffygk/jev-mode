@@ -1,8 +1,6 @@
 # Jevaluate Eval
 
-Tests whether graders apply the Jevaluate rubric correctly, before a rubric change reaches any rating. Graders work as LLM annotators with a codebook, the rubric, and as LLM judges on a few qualitative calls.
-
-This skill and [Jevaluate Harness](../jevaluate-harness/) are being improved so published ratings can be rerun more accurately and at scale.
+Tests whether graders apply the Jevaluate rubric correctly, before a rubric change reaches any rating. Graders are LLMs applying the rubric like a codebook.
 
 | Situation | Use |
 |---|---|
@@ -35,7 +33,7 @@ Maintainers of a Jevaluate fork who change its rubric.
 
 ## How it works
 
-1. Materials check: lint what a grader reads, then show the owner exactly what a grader receives.
+1. Materials check: lint what a grader reads, then show the owner exactly that.
 2. Quiz: a model that never saw the rubric writes most invented projects. The owner answers the key first, and the held-out set is drawn only after the key is final. A vocabulary-only grader runs first and should fail, then the real instructions, three runs each.
 3. Judgment eval: build each real project's evidence by a fixed rule. A blind model and the owner each label new projects. Every answer must be provable from the grader's evidence.
 4. Rater agreement: compare a second rater with the first outside the tuning sample, then score both against a key the owner labels blind ([rater-agreement.md](rater-agreement.md)).
@@ -68,17 +66,37 @@ The rubric in `jevaluate/rubric.md`, with each rule's source in `shared/jev-rule
 
 Needs Claude Code with the `claude` CLI logged in and Python 3.8+. The Sol grader also needs Codex.
 
+In Claude Code:
+
 ```
-git clone https://github.com/tiffygk/jev-mode
-mkdir -p ~/.claude/skills
-cp -r jev-mode/{jevaluate,jevaluate-eval,shared} ~/.claude/skills/
+claude plugin marketplace add tiffygk/jev-mode
+claude plugin install jevaluate-eval@jev-mode
+claude plugin install jevaluate@jev-mode
 ```
 
-From the repo, try `python3 jevaluate-eval/lint_materials.py`; every command is in `commands.md`. Then ask Claude Code: `test the jevaluate rubric after my change`.
+In Codex:
+
+```
+codex plugin marketplace add tiffygk/jev-mode
+codex plugin add jevaluate-eval@jev-mode
+codex plugin add jevaluate@jev-mode
+```
+
+Every command runs from a clone; all are in `commands.md`:
+
+```
+git clone https://github.com/tiffygk/jev-mode
+cd jev-mode
+python3 jevaluate-eval/lint_materials.py
+```
+
+Then ask Claude Code: `test the jevaluate rubric after my change`.
+
+To install every jev-mode skill at once, or to copy skills by hand, see the [repo README](../README.md#install).
 
 ## Limits
 
-It runs on Claude or Codex and needs no TypeSafe key. Jevaluate rates only projects that call Jev. Guides and Jev replacements aren't rated yet; a replacement that claims to use Jev is flagged as false marketing. An owner who misreads a rule tunes graders to that misreading. It doesn't test scores or the final verdict. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
+It runs on Claude or Codex and needs no TypeSafe key. Jevaluate rates only projects that call Jev. An owner who misreads a rule tunes graders to that misreading. It doesn't test scores or the final verdict. A three-run judgment eval costs about 380k tokens. Not affiliated with TypeSafe.
 
 ## License
 

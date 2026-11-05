@@ -4,7 +4,7 @@ Turn your Jevaluation of your Jev projects into a report you can feed directly t
 
 [Jevaluate-privately](../jevaluate-private/) gives your Jev project a rating against TypeSafe's docs that stays on your machine. Tune that rating to your own product judgment before creating the report. Once the rating is right, this skill turns it into a Markdown file of fixes that are checked by a review agent. Your coding agents work through them before a pull request.
 
-Each fix rests on TypeSafe's documented practice and is advice to test on your own eval. This skill never calls Jev, so it needs no TypeSafe key. This skill does not publish your rating to this repo's [ratings](../ratings/).
+Each fix rests on TypeSafe's documented practice and is advice to test on your own eval. It never calls Jev, so it needs no TypeSafe key, and never publishes your rating to this repo's [ratings](../ratings/).
 
 ## When to use it
 
@@ -87,9 +87,7 @@ codex plugin add jevaluate-private@jev-mode
 codex plugin add jev-sources@jev-mode
 ```
 
-Then ask your agent to refresh Jev Sources once, which downloads TypeSafe's docs. To copy the skills by hand, see the [repo README](../README.md#install).
-
-Once your Jevaluate-privately rating is right, ask your agent to run `jevaluate-report`.
+Then ask your agent to refresh Jev Sources once, which downloads TypeSafe's docs. To install every jev-mode skill at once, or to copy skills by hand, see the [repo README](../README.md#install).
 
 ## Limits
 
