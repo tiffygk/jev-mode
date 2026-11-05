@@ -5,7 +5,7 @@ import os, shlex
 CODE = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 DATA = os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
 SCRIPTS = os.path.join(CODE, "scripts")
-REFRESH = f"bash {shlex.quote(os.path.join(CODE, 'refresh.sh'))} --fetch"
+REFRESH = f"JEV_LIBRARY_TESTS=off bash {shlex.quote(os.path.join(CODE, 'refresh.sh'))} --fetch"  # a model runs this: the library tests would outlast its command limit
 
 
 def private_dirs(path):

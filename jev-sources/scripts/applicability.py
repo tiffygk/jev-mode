@@ -8,14 +8,18 @@ carry "also": more {source, quote} pairs. tests/test_applicability.py checks eve
 import json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import CODE
+from paths import CODE, DATA
 
-# Update when TypeSafe moves jev-latest (docs/models.md#Aliases; a test checks this table against that page).
-ALIASES = {"jev-preview": "jev-1.14.0", "jev-latest": "jev-1.13.0"}
+# Used only when the library has no usable docs/models.md#Aliases table; aliases() reads that table.
+ALIASES = {"jev-preview": "jev-1.14.0", "jev-latest": "jev-1.14.0"}
+ALIAS_SECTION = re.compile(r"^#+ Aliases[ \t]*$(.*?)(?=^#|\Z)", re.M | re.S)
+ALIAS_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|", re.M)
+VERSION = re.compile(r"^jev-(\d{1,6})(?:\.(\d{1,6}))?(?:\.(\d{1,6}))?$")  # a longer number is not a real ID (and int() refuses thousands of digits)
 MODEL = re.compile(r"\bjev-(?:latest|preview|\d+(?:\.\d+){0,2})", re.I)
 # A page that states a model or readiness limit: "need(s) Jev 1.15", "Dreamer-ready", "ready for production", a Danger-Zone header
 LIMIT = re.compile(r"\bneeds?\s+Jev\s+\d|Dreamer-ready|ready for production|Danger-Zone|\bis experimental\b", re.I)
 _entries = None
+_aliases = None
 
 
 def entries():
@@ -28,6 +32,25 @@ def entries():
     return _entries
 
 
+def aliases():
+    """Alias to versioned ID, from the rows of docs/models.md#Aliases whose target is a version; ALIASES fills in any alias the
+    table lacks, and replaces the table when the page, the section or a usable jev-latest row is missing."""
+    global _aliases
+    if _aliases is None:
+        try:
+            text = open(os.path.join(DATA, "docs", "models.md"), encoding="utf-8").read()
+        except (OSError, ValueError):
+            text = ""
+        section = ALIAS_SECTION.search(text)
+        rows = ALIAS_ROW.findall(section.group(1)) if section else []
+        table = {a.lower(): t.lower() for a, t in rows if VERSION.match(t.lower())}
+        _aliases = {**ALIASES, **table} if "jev-latest" in table else ALIASES
+    return _aliases
+
+
+MODEL_QUOTE = re.compile(r"\bJev\s+\d")  # a quote that names a model: the section that states what the entry needs
+
+
 def quotes(entry):
     return [(entry["source"], entry["quote"])] + [(a["source"], a["quote"]) for a in entry.get("also", [])]
 
@@ -37,14 +60,15 @@ def lookup(path, heading, entries_=None):
     for key in (path + "#" + heading, path):
         for e in es:
             if e["match"] == key:
-                return {"needs": e.get("needs"), "status": e.get("status"), "source": e["source"], "quote": e["quote"], "note": e.get("note")}
-    return {"needs": None, "status": None, "source": None, "quote": None, "note": None}
+                return {"needs": e.get("needs"), "status": e.get("status"), "source": e["source"], "quote": e["quote"], "note": e.get("note"),
+                        "needs_source": next((s for s, q in quotes(e) if MODEL_QUOTE.search(q)), e["source"])}
+    return {"needs": None, "status": None, "source": None, "quote": None, "note": None, "needs_source": None}
 
 
 def version(model):
     """(1, 14, 0) for 'jev-1.14' or 'jev-1.14.0' (aliases resolved); None when it isn't a version."""
-    model = ALIASES.get((model or "").lower(), (model or "").lower())
-    m = re.match(r"^jev-(\d+)(?:\.(\d+))?(?:\.(\d+))?$", model)
+    model = aliases().get((model or "").lower(), (model or "").lower())
+    m = VERSION.match(model)
     return tuple(int(x or 0) for x in m.groups()) if m else None
 
 

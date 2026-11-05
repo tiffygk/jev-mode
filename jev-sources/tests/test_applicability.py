@@ -35,6 +35,12 @@ def lib(tmp_path, monkeypatch):
     _reload()
 
 
+def _models_page(tmp_path, *rows):
+    table = "".join(f"| `{a}` | `{t}` | Meaning. |\n" for a, t in rows)
+    (tmp_path / "docs" / "models.md").write_text(
+        "# Models\n\n## Aliases\n\n| Alias | Points to | Meaning |\n| :- | :- | :- |\n" + table + "\n## Next\n\n| `jev-other` | `jev-9.9.9` | Not an alias row. |\n")
+
+
 ENTRIES = [
     {"match": "docs/p.md", "needs": "jev-1.13.0", "status": None, "source": "docs/p.md#A", "quote": "q"},
     {"match": "docs/p.md#B", "needs": "jev-1.14.0", "status": "experimental", "source": "docs/p.md#B", "quote": "q"},
@@ -50,7 +56,7 @@ def test_lookup_gives_page_and_heading_entries_and_a_heading_wins(lib):
 
 def test_lookup_of_an_unlisted_page_gives_nones(lib):
     _, A, _ = lib
-    assert A.lookup("docs/other.md", "X", ENTRIES) == {"needs": None, "status": None, "source": None, "quote": None, "note": None}
+    assert A.lookup("docs/other.md", "X", ENTRIES) == {"needs": None, "status": None, "source": None, "quote": None, "note": None, "needs_source": None}
 
 
 def test_real_box_page_needs_1_14_and_is_experimental(lib):
@@ -67,15 +73,80 @@ def test_allowed_compares_versions_and_resolves_aliases(lib):
     assert A.allowed(box, "jev-1.14")          # pads to three integers
     assert A.allowed(box, "jev-1.14.0")
     assert A.allowed(img, "jev-1.13.0")        # images need only 1.13
-    assert not A.allowed(box, "jev-latest")    # jev-latest points at 1.13.0
+    assert A.allowed(box, "jev-latest")        # no table in this library: the fallback points at 1.14.0
     assert A.allowed(box, None)                # no model known: nothing is ruled out
     assert A.allowed({"needs": None}, "jev-1.13.0")
 
 
-def test_latest_alias_follows_the_aliases_table(lib):
+def test_latest_alias_follows_the_aliases_table(lib, tmp_path):
     _, A, _ = lib
-    A.ALIASES["jev-latest"] = "jev-1.14.0"
-    assert A.allowed(A.lookup("docs/primitives__box.md", "Box"), "jev-latest")
+    _models_page(tmp_path, ("jev-latest", "jev-1.15.0"))
+    assert A.allowed({"needs": "jev-1.15.0"}, "jev-latest")  # newer than the fallback, so only the table can allow it
+
+
+def test_aliases_read_from_the_docs(lib, tmp_path):
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-1.15.0"), ("jev-preview", "jev-1.16.0"))
+    assert A.aliases()["jev-latest"] == "jev-1.15.0"
+    assert A.aliases()["jev-preview"] == "jev-1.16.0"
+    assert "jev-other" not in A.aliases()      # a row under the next heading is not an alias
+
+
+def test_aliases_fall_back_without_the_table(lib):
+    _, A, _ = lib
+    assert A.aliases() == A.ALIASES
+
+
+def test_aliases_fall_back_when_the_section_is_missing(lib, tmp_path):
+    _, A, _ = lib
+    (tmp_path / "docs" / "models.md").write_text("# Models\n\n## Current models\n\n| `jev-latest` | `jev-9.9.9` | Elsewhere. |\n")
+    assert A.aliases() == A.ALIASES
+
+
+def test_aliases_fall_back_when_the_table_has_no_jev_latest(lib, tmp_path):
+    """route() reads aliases()["jev-latest"] on every question, so a reworded table must not crash routing."""
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-preview", "jev-1.16.0"))
+    assert A.aliases() == A.ALIASES
+
+
+def test_aliases_fall_back_when_jev_latest_is_not_a_version(lib, tmp_path):
+    """A target that doesn't parse would make version() None, and allowed() would then allow everything."""
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "system-one-2"))
+    assert A.aliases()["jev-latest"] == A.ALIASES["jev-latest"]
+    assert not A.allowed({"needs": "jev-1.15.0"}, "jev-latest")  # newer than the fallback, so a NEEDS label still appears
+
+
+def test_aliases_keep_the_fallback_for_an_alias_the_table_lacks(lib, tmp_path, capsys):
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-1.15.0"))
+    assert A.aliases()["jev-latest"] == "jev-1.15.0"
+    assert A.aliases()["jev-preview"] == A.ALIASES["jev-preview"]
+    assert A.checked("jev-preview") == "jev-preview"
+    assert "warning" not in capsys.readouterr().err
+
+
+def test_aliases_keep_the_fallback_for_a_preview_row_that_is_not_a_version(lib, tmp_path):
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-1.15.0"), ("jev-preview", "system-one-2"))
+    assert A.aliases()["jev-latest"] == "jev-1.15.0"
+    assert A.aliases()["jev-preview"] == A.ALIASES["jev-preview"]
+
+
+def test_aliases_are_read_once_per_process(lib, tmp_path):
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-1.15.0"))
+    assert A.aliases()["jev-latest"] == "jev-1.15.0"
+    _models_page(tmp_path, ("jev-latest", "jev-1.16.0"))
+    assert A.aliases()["jev-latest"] == "jev-1.15.0"
+
+
+def test_route_without_a_model_uses_the_docs_alias(lib, tmp_path):
+    R, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-1.13.0"))
+    s = _by_path(R.route("where is the mug in a photo"))["docs/primitives__box.md"]
+    assert s["needs"] == "jev-1.14.0"          # the table says jev-latest is older than Box needs, so the label returns
 
 
 def test_uncovered_flags_a_page_with_a_limit_and_no_entry(lib):
@@ -102,15 +173,20 @@ def test_every_seeded_quote_is_in_its_source_section():
             assert re.sub(r"\s+", " ", quote) in re.sub(r"\s+", " ", text), (e["match"], quote)
 
 
-def test_jev_latest_alias_still_points_where_ALIASES_says():
+def test_aliases_parse_the_real_table():
+    """Reads the real library. The fallback also holds jev-latest, so each value is checked against the page's own row."""
     sections = os.path.join(REAL, "sections.jsonl")
     if not os.path.exists(sections):
         pytest.skip("real library not present")
     import applicability as A
+    table = A.aliases()
+    assert table is not A.ALIASES              # aliases() returns ALIASES itself only when the parser found no usable table
+    assert table and "jev-latest" in table
     r = next(x for x in map(json.loads, open(sections)) if x["path"] == "docs/models.md" and x["heading"] == "Aliases")
     text = "\n".join(open(os.path.join(REAL, "docs/models.md"), encoding="utf-8").read().split("\n")[r["line_start"] - 1:r["line_end"]])
-    for alias, target in A.ALIASES.items():
-        assert re.search(r"`%s`\s*\|\s*`%s`" % (re.escape(alias), re.escape(target)), text), (alias, target)
+    for alias, target in table.items():
+        if alias == "jev-latest" or f"`{alias}`" in text:  # an alias the page dropped keeps its fallback value
+            assert re.search(r"`%s`\s*\|\s*`%s`" % (re.escape(alias), re.escape(target)), text), (alias, target)
 
 
 def _by_path(res):
@@ -120,6 +196,10 @@ def _by_path(res):
 def test_route_labels_needs_and_experimental(lib):
     R, _, _ = lib
     s = _by_path(R.route("where is the mug in a photo"))["docs/primitives__box.md"]
+    assert s["needs"] is None and s["status"] == "experimental"   # no model named means jev-latest, which runs Box
+    s = _by_path(R.route("where is the mug in a photo", model="jev-latest"))["docs/primitives__box.md"]
+    assert s["needs"] is None and s["status"] == "experimental"   # jev-latest named outright, same answer
+    s = _by_path(R.route("where is the mug in a photo", model="jev-1.13.0"))["docs/primitives__box.md"]
     assert s["needs"] == "jev-1.14.0" and s["status"] == "experimental"
     assert _by_path(R.route("where is the mug in a photo"))["docs/concepts__state.md"]["needs"] is None
 
@@ -174,7 +254,8 @@ def test_read_prints_an_applies_line_under_the_source_line(lib, tmp_path):
     out = subprocess.run([sys.executable, os.path.join(CODE, "scripts", "read.py"), sid], capture_output=True, text=True, check=True,
                          env=dict(os.environ, JEV_LOG="off", JEV_SOURCES_DATA=str(tmp_path))).stdout.splitlines()
     assert out[0].startswith("SOURCE: docs/primitives__box.md#Box")
-    assert out[1] == "APPLIES: needs jev-1.14.0 or newer | experimental (docs/primitives__box.md#Box)"
+    assert out[1] == ("APPLIES: needs jev-1.14.0 or newer (docs/images.md#Sending images in a request) "
+                      "| experimental (docs/primitives__box.md#Box)")
 
 
 def test_read_of_an_unlabeled_section_has_no_applies_line(lib, tmp_path):
@@ -274,5 +355,24 @@ def test_model_flag_without_a_value_warns(lib, tmp_path):
 def test_several_models_in_a_question_use_the_oldest(lib):
     _, A, _ = lib
     assert A.find_model("what does jev-1.14.0 add over jev-1.13.0") == "jev-1.13.0"
-    assert A.find_model("jev-preview versus jev-latest") == "jev-latest"
+    assert A.find_model("jev-1.13.0 versus jev-latest") == "jev-1.13.0"
     assert A.find_model("no model here") is None
+
+
+def test_a_huge_number_in_an_alias_target_counts_as_unusable_and_the_fallback_applies(lib, tmp_path):
+    """Python 3.11 and later refuse int() on thousands of digits; the row must be skipped before that."""
+    _, A, _ = lib
+    _models_page(tmp_path, ("jev-latest", "jev-" + "9" * 5000 + ".0.0"))
+    assert A.aliases() is A.ALIASES
+    assert A.version("jev-latest") == A.version(A.ALIASES["jev-latest"])
+    assert A.version("jev-" + "9" * 5000) is None
+    assert A.version("jev-1.14.0") == (1, 14, 0)
+
+
+def test_box_readiness_cites_the_box_section_and_the_model_cites_the_images_section(lib):
+    _, A, _ = lib
+    e = A.lookup("docs/primitives__box.md", "Box")
+    assert e["source"] == "docs/primitives__box.md#Box" and e["quote"].startswith("Images and Box questions aren't yet")
+    assert e["needs_source"] == "docs/images.md#Sending images in a request"
+    assert ("docs/images.md#Sending images in a request", "questions need Jev 1.14") in A.quotes(
+        next(x for x in A.entries() if x["match"] == "docs/primitives__box.md"))

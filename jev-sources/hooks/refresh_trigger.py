@@ -1,10 +1,10 @@
 """Called by jev-prompt-reminder: starts scripts/check_new.py in the background when the last attempt is
 CHECK_DAYS old, and returns the notice to show once. Never blocks, never raises."""
-import json, os, subprocess, sys, time
+import json, os, shlex, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 SCRIPT = os.environ.get("JEV_CHECK_SCRIPT") or os.path.join(HERE, "scripts", "check_new.py")
-REFRESH = f"bash {os.path.join(HERE, 'refresh.sh')} --fetch"
+REFRESH = f"JEV_LIBRARY_TESTS=off bash {shlex.quote(os.path.join(HERE, 'refresh.sh'))} --fetch"  # a model runs this: the library tests would outlast its 2-minute limit
 try:  # the reminder imports this module, so a bad setting must not crash it
     CHECK_DAYS = float(os.environ.get("JEV_CHECK_DAYS") or 2)
 except ValueError:

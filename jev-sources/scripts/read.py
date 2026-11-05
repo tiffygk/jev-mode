@@ -264,7 +264,8 @@ def render(sid, extract_terms=None):
         out.append(EXAMPLE_NOTE)
     ap = applicability.lookup(r["path"], r["heading"])
     if ap["needs"] or ap["status"]:
-        out.append("APPLIES: " + " | ".join(([f"needs {ap['needs']} or newer"] if ap["needs"] else []) + ([ap["status"].replace("-", " ")] if ap["status"] else [])) + f" ({ap['source']})")
+        out.append("APPLIES: " + " | ".join(([f"needs {ap['needs']} or newer ({ap['needs_source']})"] if ap["needs"] else [])
+                                           + ([f"{ap['status'].replace('-', ' ')} ({ap['source']})"] if ap["status"] else [])))
     out.append(f"(lines {r['line_start']}-{r['line_end']}, ~{r['tokens']} tokens)\n")
     out.append(body)
     cav = [c for c in r["file_caveats"] if c not in "\n".join(lines)]

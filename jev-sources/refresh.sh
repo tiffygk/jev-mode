@@ -2,6 +2,7 @@
 # Refresh the Jev source library, then rebuild the section index.
 #   bash refresh.sh --fetch   download every page in TypeSafe's docs sitemap and llms.txt, the cookbook list and typesafe.ai's blog (run this first)
 #   bash refresh.sh           rebuild the index, then run the change check (downloads pages TypeSafe changed or added)
+# Last, it runs the tests that read the library and prints the result (scripts/library_tests.py); that step never fails the refresh.
 # Pages go to $JEV_SOURCES_DATA (default ~/.claude/jev-sources-data), never into the repo.
 # Installs model2vec with pip if it's missing, for routing by meaning; JEV_SEMANTIC=off skips that.
 # Optional: set JEV_VAULT to a folder holding docs/, cookbooks/ and patterns/ copies to keep in step with it.
@@ -20,14 +21,14 @@ copy() {  # copy src/{docs,cookbooks,patterns}/*.md into dst, skipping extracts 
   done
 }
 if [ "${1:-}" = "--fetch" ]; then
-  python3 "$HERE/scripts/fetch.py" || echo "the fetch reported problems (above); building the index from what was downloaded"
+  JEV_LIBRARY_TESTS=off python3 "$HERE/scripts/fetch.py" || echo "the fetch reported problems (above); building the index from what was downloaded"
   [ -n "${JEV_VAULT:-}" ] && copy "$DATA" "$JEV_VAULT"
 elif [ -n "${JEV_VAULT:-}" ]; then
   copy "$JEV_VAULT" "$DATA"
 fi
-if [ "${JEV_SEMANTIC:-}" != "off" ] && ! python3 -c "import model2vec" 2>/dev/null; then
+if [ "${JEV_SEMANTIC:-}" != "off" ] && ! (cd "$HERE" && python3 -c "import model2vec") 2>/dev/null; then
   echo "installing model2vec for routing by meaning (once; JEV_SEMANTIC=off skips this)"
-  python3 -m pip install --user --quiet model2vec || echo "model2vec install failed; routing stays keyword-only"
+  (cd "$HERE" && python3 -m pip install --user --quiet model2vec) || echo "model2vec install failed; routing stays keyword-only"
 fi
 # Local privacy check on saved blog posts: only where the checker and the owner's private config exist.
 CHECKER="${JEV_PRIVATE_CHECKER:-$HERE/../scripts/private_text_check.py}"
@@ -52,4 +53,6 @@ if [ -f "$CHECKER" ] && [ -f "$PRIVATE_CFG" ] && [ -d "$DATA/blog" ]; then
 fi
 python3 "$HERE/scripts/build_index.py"
 python3 "$HERE/scripts/route_check.py" || true
-python3 "$HERE/scripts/check_new.py" >/dev/null || true  # downloads pages TypeSafe changed or added since the last save, and appends a notice for the reminder hook to show
+JEV_LIBRARY_TESTS=off python3 "$HERE/scripts/check_new.py" >/dev/null || true  # downloads pages TypeSafe changed or added since the last save, and appends a notice for the reminder hook to show
+python3 "$HERE/scripts/landing_check.py" || true  # says whether the index and vectors match the pages just saved; it only reports
+python3 "$HERE/scripts/library_tests.py" || true  # last, so it reads the pages just downloaded; the off settings above keep one refresh from running it twice

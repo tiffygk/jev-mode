@@ -28,12 +28,23 @@ class Gone(Exception):
 
 
 SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*(/[A-Za-z0-9][A-Za-z0-9_.-]*)*$")  # no "..", no empty or hidden parts
+UNSAFE_MOVE = "an unsafe address"
 MAX_BYTES = 5000000  # a docs page or post is well under 1 MB; anything over this is a broken or hostile server
 
 
 def safe(slug):
     """A page name from TypeSafe's lists is used as a file path: only plain names pass."""
     return bool(SAFE.match(slug))
+
+
+def why(e):
+    """What a failure may say in the notice: the error type and an HTTP status code, never the server's own words."""
+    return f"HTTP {e.code}" if isinstance(e, urllib.error.HTTPError) else type(e).__name__
+
+
+def moved_name(slug):
+    """A redirect's target as the notice may show it: the page name if it passes safe(), else a fixed phrase."""
+    return slug if slug and safe(slug) else UNSAFE_MOVE
 
 
 def slug_of_url(u):

@@ -107,20 +107,40 @@ def build(rows, texts):
                    "keys": {r["id"]: _key(r) for r in rows}}, fh)
 
 
-def scores(q, rows):
+def _saved(mmap_mode=None):
+    with open(META) as fh:
+        meta = json.load(fh)
+    return meta, np.load(VEC, mmap_mode=mmap_mode)
+
+
+NO_INDEX = "no semantic index; run refresh.sh"
+
+
+def stale(rows):
+    """Why the saved vectors can't serve these rows, or None when they can. Loads no model, and maps the vectors without reading them."""
     try:
-        with open(META) as fh:
-            meta = json.load(fh)
-        v = np.load(VEC)
+        meta, v = _saved("r")
     except (FileNotFoundError, ValueError, OSError):
-        return None, "no semantic index; run refresh.sh"
+        return NO_INDEX
     if meta.get("model") != model_id():
-        return None, f"index built with model {meta.get('model')}; run refresh.sh"
+        return f"index built with model {meta.get('model')}; run refresh.sh"
+    ids, owners = set(meta.get("ids", [])), meta.get("owners", [])
+    keys = meta.get("keys", {})
+    if len(owners) != len(v) or any(r["id"] not in ids or keys.get(r["id"]) != _key(r) for r in rows):
+        return "stale semantic index; run refresh.sh"
+    return None
+
+
+def scores(q, rows):
+    why = stale(rows)
+    if why:
+        return None, why
+    try:
+        meta, v = _saved()
+    except (FileNotFoundError, ValueError, OSError):
+        return None, NO_INDEX
     ids, owners = meta.get("ids", []), meta.get("owners", [])
     pos = {i: k for k, i in enumerate(ids)}
-    keys = meta.get("keys", {})
-    if len(owners) != len(v) or any(r["id"] not in pos or keys.get(r["id"]) != _key(r) for r in rows):
-        return None, "stale semantic index; run refresh.sh"
     try:
         qv = _embed([q])[0]
     except Exception as e:

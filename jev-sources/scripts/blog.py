@@ -106,7 +106,14 @@ def fetch_posts(slugs, fetch=None, now=None):
     saved, failed = [], []
     for s in slugs:
         try:
-            text = post_text(fetch(SITE + "blog/" + s))
+            try:
+                html = fetch(SITE + "blog/" + s)
+            except pages.Gone:
+                raise
+            except Exception as e:  # the server's own words never go in the reason: the notice shows it to the model
+                failed.append((s, f"fetch failed ({pages.why(e)})"))
+                continue
+            text = post_text(html)
             if body_words(text) < MIN_WORDS:
                 failed.append((s, EMPTY))
                 continue

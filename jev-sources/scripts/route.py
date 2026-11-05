@@ -241,7 +241,7 @@ def route(q, model=None, limit=10, per_page=2):
     secs = [x for k, x in enumerate(secs) if k < n_keyword or x["id"] not in {d["id"] for d in defs}]
     for x in secs + defs:  # which model a section needs, and whether TypeSafe calls it not production-ready
         a = applicability.lookup(x["path"], x["heading"])
-        base = model or applicability.ALIASES["jev-latest"]  # NEEDS marks a model newer than the one in use (jev-latest when none is named)
+        base = model or applicability.aliases()["jev-latest"]  # NEEDS marks a model newer than the one in use (jev-latest when none is named)
         x["needs"], x["status"], x["note"] = (a["needs"] if not applicability.allowed(a, base) else None), a["status"], a["note"]
     if model:  # a section the model can't run is still listed, after every section that applies
         secs = sorted(secs, key=lambda x: not applicability.allowed(x, model))

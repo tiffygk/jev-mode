@@ -1,4 +1,4 @@
-import json, os, subprocess, sys
+import importlib.util, json, os, subprocess, sys
 import pytest
 CODE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.expanduser(os.environ.get("JEV_SOURCES_DATA") or "~/.claude/jev-sources-data")
@@ -13,10 +13,10 @@ def route(q):
 CASES = [
     ("can I put 30 passages in one call", ["docs/concepts__state.md", "docs/primitives.md", "patterns/fan-out.md", "cookbooks/rerank_typesafe.md"]),
     ("how do I pick a threshold", ["docs/confidence.md", "patterns/confidence-routing.md"]),
-    ("should Jev count days between dates", ["docs/model-jaggedness__jev-1.13.md", "cookbooks/date_extraction_cookbook.md"]),
+    ("should Jev count days between dates", ["docs/model-jaggedness.md", "cookbooks/date_extraction_cookbook.md"]),
     ("does choice option order change the answer", ["cookbooks/consistency_choice_cookbook.md"]),
     ("too many categories for one choice", ["docs/primitives__advanced.md", "cookbooks/hierarchical_classification.md"]),
-    ("prompt injection in the state", ["docs/model-jaggedness__jev-1.13.md", "cookbooks/classifying_rag_passages.md"]),
+    ("prompt injection in the state", ["docs/model-jaggedness.md", "cookbooks/classifying_rag_passages.md"]),
     ("pin the model version", ["docs/models.md"]),
     ("score a dataset of rows", ["patterns/fan-out.md", "cookbooks/parallel_questions.md"]),
     # 2026-10-05: "chain" wording missed the dependency rule; a map step was mislabeled one call
@@ -131,7 +131,7 @@ def test_fetch_names_failed_pages(tmp_path, monkeypatch):
 def test_messages_name_this_install(tmp_path):
     r = subprocess.run([sys.executable, f"{CODE}/scripts/route.py", "noul"], capture_output=True, text=True,
                        env={**os.environ, "JEV_SOURCES_DATA": str(tmp_path / "empty")})
-    assert f"bash {CODE}/refresh.sh --fetch" in r.stdout + r.stderr and "~/.claude/skills" not in r.stdout + r.stderr
+    assert f"JEV_LIBRARY_TESTS=off bash {CODE}/refresh.sh --fetch" in r.stdout + r.stderr and "~/.claude/skills" not in r.stdout + r.stderr
 
 @needs_lib
 @pytest.mark.skipif(not os.path.exists(os.path.join(DATA, "index.json")) and not os.path.isdir(DATA), reason="library not fetched")
@@ -142,7 +142,38 @@ def test_route_prints_runnable_read_commands():
 
 PARA = json.load(open(os.path.join(CODE, "tests", "paraphrases.json")))
 
+def meaning_matching_off(environ, has_package, has_vectors, model_loads=True):
+    """Why route.py would run on keywords alone, or None when meaning-matching is on (the checks route.py/semantic.py make)."""
+    if environ.get("JEV_SEMANTIC") == "off":
+        return "JEV_SEMANTIC=off"
+    if not has_package:
+        return "model2vec is not installed"
+    if not has_vectors:
+        return "no embeddings.npy in the library"
+    if not model_loads:
+        return "the embedding model is not downloaded (offline)"
+    return None
+
+def _model_loads():
+    """Asks a fresh process, so the check leaves no environment change in this one."""
+    r = subprocess.run([sys.executable, "-c", "import semantic; print(semantic.available()[0])"], cwd=os.path.join(CODE, "scripts"),
+                       capture_output=True, text=True, env=dict(os.environ, JEV_SOURCES_DATA=DATA))
+    return r.stdout.strip() == "True"
+
+def test_meaning_matching_off_is_told_apart_from_on():
+    assert meaning_matching_off({"JEV_SEMANTIC": "off"}, True, True) == "JEV_SEMANTIC=off"
+    assert "model2vec" in meaning_matching_off({}, False, True)
+    assert "embeddings" in meaning_matching_off({}, True, False)
+    assert meaning_matching_off({}, True, True) is None
+    assert "model is not downloaded" in meaning_matching_off({}, True, True, False)
+
+_HAS_PKG, _HAS_VEC = importlib.util.find_spec("model2vec") is not None, os.path.exists(os.path.join(DATA, "embeddings.npy"))
+_OFF = meaning_matching_off(os.environ, _HAS_PKG, _HAS_VEC)
+if _OFF is None:
+    _OFF = meaning_matching_off(os.environ, _HAS_PKG, _HAS_VEC, _model_loads())
+
 @needs_lib
+@pytest.mark.skipif(_OFF is not None, reason=f"the bar needs meaning-matching, which is off here ({_OFF}); keywords alone reach 14/20")
 def test_paraphrase_set_finds_its_section():
     hits = sum(any(s["heading"] == p["heading"] for s in route(p["q"])["sections"]) for p in PARA)
     # bar lowered from 17 to 16 after measurement: 16/20 exact, baseline 14/20 on keywords alone

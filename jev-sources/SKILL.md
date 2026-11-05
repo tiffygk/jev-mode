@@ -19,7 +19,7 @@ Add `--model <id>` when the project pins a model. The docs' words are the terms 
 
 - A section printed under `NOT YET READ` comes with its `read.py` command: run it before relying on that section. These leftovers are at most a third of the cap; more go to readers.
 - An `EXTRACT` line points somewhere (`read.py '<id>' --extract <word> <word>`). A claim resting on it is labeled **unverified**.
-- If it prints "no section found", say so, then run `bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory, even when asked to answer from memory or in a hurry: the lookup takes seconds, so run it, keep the answer to a few lines, and cite.
+- If it prints "no section found", say so, then run `JEV_LIBRARY_TESTS=off bash <skill>/refresh.sh --fetch` and ask again. Never fill the gap from memory, even when asked to answer from memory or in a hurry: the lookup takes seconds, so run it, keep the answer to a few lines, and cite.
 
 ## Questions and builds
 
@@ -79,7 +79,6 @@ A section labeled NEEDS or EXPERIMENTAL is never a best practice for a project o
 A cookbook's code layout, diagram or call count is an example, never an API limit. "The cookbook does one request per candidate" is a fact about that cookbook. Whether you must do it too is answered by a reference rule, or by the cookbook's own scope note, which the printout shows under "Scope notes elsewhere in this file". Read that note before citing the cookbook.
 
 When the reference pages don't settle a question, say "the docs don't say". Your own inference goes under My read and is never the verdict.
-
 - An absence is reported as one: "the pages I read don't show X". Never "X is untested", "Jev can't X", or a risk.
 - Never widen a cited fact with a "so" sentence. An inference is labeled "my read:" and is never stated as TypeSafe's view.
 - Before stating any Jev capability or limit (can, can't, reads well, poorly, untested, expects), route that capability as its own question.
@@ -108,7 +107,7 @@ Relay each finding in your own words with its `CITE AS` path#heading and label, 
 
 ## Refresh
 
-With the reminder hook installed (the Claude Code plugin, or hooks added by hand), the library checks TypeSafe's pages every two days and fetches only new or re-dated pages and new posts. Codex runs no hooks from a plugin: run `python3 <skill>/scripts/codex_hooks.py install` once (again after moving the skill folder). Without the hooks, nothing refreshes on its own: run `bash <skill>/refresh.sh --fetch` on first install, and again when a source is missing or older than the question needs. That command downloads every page TypeSafe lists (the docs sitemap, llms.txt, the cookbook list and typesafe.ai's blog) and rebuilds the index. `SOURCES.md` in the data folder lists every page held and when it was saved. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`).
+With the reminder hook installed (the Claude Code plugin, or hooks added by hand), the library checks TypeSafe's pages every two days and fetches only new or re-dated pages and new posts. Codex runs no hooks from a plugin: run `python3 <skill>/scripts/codex_hooks.py install` once (again after moving the skill folder). Without the hooks, nothing refreshes on its own: run `JEV_LIBRARY_TESTS=off bash <skill>/refresh.sh --fetch` on first install, and again when a source is missing or older than the question needs. That command downloads every page TypeSafe lists (the docs sitemap, llms.txt, the cookbook list and typesafe.ai's blog) and rebuilds the index. `SOURCES.md` in the data folder lists every page held and when it was saved. Pages live in `$JEV_SOURCES_DATA` (default `~/.claude/jev-sources-data`).
 
 ## Enforced by
 
@@ -121,5 +120,6 @@ With the reminder hook installed (the Claude Code plugin, or hooks added by hand
 | Each section carries its label, and NEEDS or EXPERIMENTAL where it applies | `scripts/read.py`, `scripts/applicability.py`; `tests/test_route.py`, `tests/test_applicability.py` |
 | Every citation in an answer names a real section, and any quoted docs words are on the section cited for them; a subagent report's citations name real sections; a finding's quote is checked | `scripts/check_answer.py`, `hooks/jev-answer-check.py`, `hooks/jev-reader-check.py`, `scripts/read.py` (`--check-quote`); `tests/test_check_answer.py`, `tests/test_hooks.py`, `tests/test_route.py` |
 | Saved pages hold no site code, and the build warns when some is left | `scripts/clean.py`, `scripts/build_index.py`; `tests/test_clean.py`, `tests/test_health.py` |
-| The library checks for new pages every two days and lists stale citations | `hooks/refresh_trigger.py`, `scripts/check_new.py`, `scripts/citations.py`; `tests/test_refresh_trigger.py`, `tests/test_check_new.py`, `tests/test_citations.py` |
+| The library checks for new pages every two days, lists stale citations, and runs the tests that read the library, naming any failure in the notice or the refresh output | `hooks/refresh_trigger.py`, `scripts/check_new.py`, `scripts/citations.py`, `scripts/library_tests.py`, `refresh.sh`; `tests/test_refresh_trigger.py`, `tests/test_check_new.py`, `tests/test_citations.py`, `tests/test_library_tests.py`, `tests/test_refresh.py` |
+| Every background check and refresh reports whether a docs update landed: the index and vectors match the saved pages, no page or library collapsed, and a pass names what it checked | `scripts/landing_check.py`, `scripts/check_new.py`, `refresh.sh`; `tests/test_landing_check.py` |
 | Running `jev.py` before a claim, the answer's five parts in order, facts in your own words with their strength kept and exact words on request, a question turn reading only what it asks and a build turn reading per part with a brief per builder, starting readers on a reading plan, relaying EXTRACT and unchecked findings as unverified, quoting readiness lines, cookbook layouts as examples, "the docs don't say", no widening "so" sentences, reading stale-citation rows, locked files | the model, following this file |

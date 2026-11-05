@@ -6,9 +6,22 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def no_side_effects(monkeypatch):
-    """Every test: no usage log, no background docs check. Subprocess hooks inherit this environment."""
+    """Every test: no usage log, no background docs check, no library-tests step. Subprocess hooks inherit this environment."""
     monkeypatch.setenv("JEV_LOG", "off")
     monkeypatch.setenv("JEV_CHECK", "off")
+    monkeypatch.setenv("JEV_LIBRARY_TESTS", "off")  # only the tests of the step itself turn it on
+
+
+@pytest.fixture(autouse=True)
+def keep_hf_home():
+    """semantic.py sets HF_HOME at import, which a temp-library test points into its temp folder; monkeypatch can't undo
+    that (it never set it). Restore it after every test, removing it if it was unset."""
+    before = os.environ.get("HF_HOME")
+    yield
+    if before is None:
+        os.environ.pop("HF_HOME", None)
+    else:
+        os.environ["HF_HOME"] = before
 
 
 @pytest.fixture(autouse=True)
