@@ -2,7 +2,7 @@
 
 Jevaluate Publish reads a Jev project's code and rates how well it uses Jev, for this repo's public ratings list. Every finding cites a file and line in the project and the TypeSafe doc or cookbook behind its rule.
 
-For your own or your team's project, use [Jevaluate, privately](../jevaluate-private/): same rubric, nothing published.
+For your own or your team's project, use [Jevaluate Private](../jevaluate-private/): same rubric, nothing published to this repo's public ratings page.
 
 ## Who it's for
 
@@ -53,7 +53,7 @@ In round 1, a rater recorded a partial read as a full one, and a rating with 10 
 
 ## Where the rules come from
 
-The 23 facts are in [`rubric.md`](rubric.md). Each rule in [`shared/jev-rules.md`](../shared/jev-rules.md) cites its source: TypeSafe's docs, one of its 18 cookbooks, or a finding from rating projects.
+The 23 facts are in [`rubric.md`](rubric.md). Each rule in [`shared/jev-rules.md`](../shared/jev-rules.md) cites its source: TypeSafe's docs, a cookbook, or a finding from rating projects.
 
 ## Install and use
 
@@ -73,7 +73,7 @@ codex plugin marketplace add tiffygk/jev-mode
 codex plugin add jevaluate@jev-mode
 ```
 
-Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex). A rating costs about 100-300k tokens, by repo size. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
+Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex). A rating costs about 100-300k tokens. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
 
 To install every jev-mode skill at once, or to copy skills by hand, see the [repo README](../README.md#install).
 

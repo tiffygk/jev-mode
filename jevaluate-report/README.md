@@ -2,7 +2,7 @@
 
 Turn your Jevaluation of your Jev projects into a report you can feed directly to your agents to loop on and incorporate best practices!
 
-[Jevaluate-privately](../jevaluate-private/) gives your Jev project a rating against TypeSafe's docs that stays on your machine. Tune that rating to your own product judgment before creating the report. Once the rating is right, this skill turns it into a Markdown file of fixes that are checked by a review agent. Your coding agents work through them before a pull request.
+[Jevaluate Private](../jevaluate-private/) gives your Jev project a rating against TypeSafe's docs that stays on your machine. Tune that rating to your own product judgment before creating the report. Once the rating is right, this skill turns it into a Markdown file of fixes that are checked by a review agent. Your coding agents work through them before a pull request.
 
 Each fix rests on TypeSafe's documented practice and is advice to test on your own eval. It never calls Jev, so it needs no TypeSafe key, and never publishes your rating to this repo's [ratings](../ratings/).
 
@@ -10,7 +10,7 @@ Each fix rests on TypeSafe's documented practice and is advice to test on your o
 
 | Situation | Do |
 |---|---|
-| You built with [Jev Sources](../jev-sources/) and rated with [Jevaluate-privately](../jevaluate-private/) | Read the rating; correct any call you disagree with |
+| You built with [Jev Sources](../jev-sources/) and rated with [Jevaluate Private](../jevaluate-private/) | Read the rating; correct any call you disagree with |
 | You agree with the rating | `jevaluate-report`, then point your agent at the file |
 | Your agents finished the fixes | Rate again; rerun the report if problems remain |
 
@@ -67,7 +67,7 @@ The format checker got 31 of 31 blind test files right, 11 held out from its dev
 
 ## Install and use
 
-Needs Claude Code or Codex, git, Python 3.9+, [Jevaluate-private](../jevaluate-private/), [Jevaluate Publish](../jevaluate/) and [Jev Sources](../jev-sources/). In Claude Code:
+Needs Claude Code or Codex, git, Python 3.9+, [Jevaluate Private](../jevaluate-private/), [Jevaluate Publish](../jevaluate/) and [Jev Sources](../jev-sources/). In Claude Code:
 
 ```
 claude plugin marketplace add tiffygk/jev-mode

@@ -3,7 +3,7 @@ name: jevaluate-private
 description: Rates a Jev project and keeps the rating private, with the same rubric and checks as Jevaluate, a verdict and fixes, a private library that export refuses, and nothing pushed or published. It is the default way to rate a project being built. Use when someone wants their own, their team's or a client's project rated, such as "rate my project", "jevaluate my repo", "rate our Jev integration", "/jevaluate-private" followed by a link or folder, "rate this privately", "evaluate my own project", a client's or employer's code, a design doc or a local folder that isn't public, or any rating that must not reach the public ratings or the repo.
 ---
 
-# Jevaluate, privately
+# Jevaluate Private
 
 Rates a project exactly as `jevaluate` does, with the same rubric, steps and checks, and keeps the rating out of everything public. The rating lives in a private library that export refuses, and nothing is pushed, published or added to `ratings/`.
 
