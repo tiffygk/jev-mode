@@ -60,7 +60,7 @@ codex plugin add jevaluate-harness@jev-mode
 codex plugin add jevaluate-eval@jev-mode
 ```
 
-To pull later changes in Claude Code, run `claude plugin marketplace update jev-mode`, then update each plugin you installed, such as `claude plugin update jevaluate@jev-mode`. In Codex, run `codex plugin marketplace upgrade jev-mode`, then add each plugin again, such as `codex plugin add jevaluate@jev-mode`.
+To pull later changes in Claude Code, run `claude plugin marketplace update jev-mode`, then update each plugin you installed, such as `claude plugin update jevaluate@jev-mode`. In Codex, `codex plugin marketplace upgrade jev-mode` also updates each plugin you installed.
 
 To install without the plugin system, copy a skill's folder into `~/.claude/skills/` for Claude Code, or `~/.agents/skills/` for Codex:
 

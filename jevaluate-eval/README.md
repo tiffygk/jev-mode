@@ -64,7 +64,7 @@ The rubric in `jevaluate/rubric.md`, with each rule's source in `shared/jev-rule
 
 ## Install and use
 
-Needs Claude Code with the `claude` CLI logged in and Python 3.8+. The Sol grader also needs Codex.
+Needs Claude Code with the `claude` CLI logged in, Python 3.8+ and [Jevaluate Publish](../jevaluate/). The Sol grader also needs Codex.
 
 In Claude Code:
 

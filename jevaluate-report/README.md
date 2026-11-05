@@ -31,8 +31,6 @@ Each fix rests on TypeSafe's documented practice and is advice to test on your o
 
 ## What the report holds
 
-Each fix has five parts:
-
 | Each fix has | What it holds | Who acts on it |
 |---|---|---|
 | **What&nbsp;we&nbsp;saw** | The code line it rests on, linked at the rated commit | Your agent |
@@ -69,12 +67,13 @@ The format checker got 31 of 31 blind test files right, 11 held out from its dev
 
 ## Install and use
 
-Needs Claude Code or Codex, git and Python 3.9+. In Claude Code:
+Needs Claude Code or Codex, git, Python 3.9+, [Jevaluate-private](../jevaluate-private/), [Jevaluate Publish](../jevaluate/) and [Jev Sources](../jev-sources/). In Claude Code:
 
 ```
 claude plugin marketplace add tiffygk/jev-mode
 claude plugin install jevaluate-report@jev-mode
 claude plugin install jevaluate-private@jev-mode
+claude plugin install jevaluate@jev-mode
 claude plugin install jev-sources@jev-mode
 ```
 
@@ -84,6 +83,7 @@ In Codex:
 codex plugin marketplace add tiffygk/jev-mode
 codex plugin add jevaluate-report@jev-mode
 codex plugin add jevaluate-private@jev-mode
+codex plugin add jevaluate@jev-mode
 codex plugin add jev-sources@jev-mode
 ```
 
