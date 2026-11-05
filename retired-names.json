@@ -34,6 +34,7 @@
    "pattern": "(?<![\\w.~/-])/jevaluate(?![-/\\w])|`jevaluate (?:<|https?:)|the `jevaluate` skill",
    "why": "the public rating command is jevaluate-publish; the plugin and folder keep the name jevaluate",
    "allowed": {
+    "README.md": "a hand copy into Claude Code takes its command from the folder, so it stays /jevaluate",
     "scripts/test_docs_check.py": "tests of this check"
    }
   }

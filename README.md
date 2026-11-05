@@ -76,6 +76,8 @@ cp -r jev-mode/jev-sources ~/.claude/skills/
 cp -r jev-mode/shared ~/.claude/skills/
 ```
 
+Copied this way, Claude Code's public command stays `/jevaluate`.
+
 Any other coding harness that loads skills can run them with small changes.
 
 Ratings of community Jev projects are in [`ratings/`](ratings/), released under CC0: use and change them freely.
