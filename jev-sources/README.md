@@ -57,7 +57,7 @@ Jev Sources adds no rules. It cites TypeSafe and says each page's kind: referenc
 
 ## How accurate it is
 
-| Questions | n | Difficulty | Counts as found when the section is | Found (recall) |
+| Questions | n | Difficulty | Counts as found when the section is | Found (recall), with 95% confidence interval |
 |---|---|---|---|---|
 | Everyday questions | 21 | 🟢 Easy | listed, at any label | 95% (20 of 21; 77% to 99%) |
 | Everyday questions | 21 | 🟢 Easy | printed in full within the cap | 90% (19 of 21; 71% to 97%) |
@@ -72,10 +72,10 @@ How to read it:
 - 🟡 **Medium** questions cover the same ground, but the routing never saw them. Expect these numbers on new questions.
 - 🔴 **Hard** questions each ask about one function, field or error in the SDK reference.
 - **Listed** means the section is anywhere in the list `jev.py` returns. **Printed in full** is stricter: the whole section, within the cap.
-- **Found** is recall: the share of questions whose section was found. For goals, it is the average share of each goal's needed sections, as a separate reviewer marked them. Ranges are 95% intervals (Wilson; bootstrap for goals), wide on small rows.
+- **Found** is recall: the share of questions whose section was found. For goals, it is the average share of each goal's needed sections, as a separate reviewer marked them. Ranges are 95% confidence intervals (Wilson; bootstrap for goals), wide on small rows.
 - **Broad goals** are first-time requests, such as moving a classifier to Jev, written blind. Splitting reads about 4 times the tokens.
 
-The table measures `jev.py` once it runs; `scripts/firing_report.py` shows how often the reminder hook prompts it. Live sessions in projects that say they use Jev met blind answer keys on 18 of 19 tests, twice, and 10 of 11 held out. Hard rows and live results predate TypeSafe's November docs update.
+The table measures `jev.py` once it runs; `scripts/firing_report.py` shows how often the reminder hook prompts it. Live sessions in projects that say they use Jev met blind answer keys on 18 of 19 tests, twice, and 10 of 11 held out.
 
 ## Install and use
 
