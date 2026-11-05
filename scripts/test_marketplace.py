@@ -23,3 +23,10 @@ def test_the_bundle_holds_every_skill_and_the_jev_sources_hooks():
     bundle = plugins[BUNDLE]
     assert sorted(bundle["skills"]) == sorted(f"./{s}" for s in skills)
     assert bundle.get("hooks") == plugins["jev-sources"].get("hooks")
+
+
+def test_the_jevaluate_plugin_installs_the_publish_command():
+    plugins, _ = load()
+    assert plugins["jevaluate"]["skills"] == ["./jevaluate"]
+    head = (ROOT / "jevaluate" / "SKILL.md").read_text().split("---")[1]
+    assert "\nname: jevaluate-publish\n" in head

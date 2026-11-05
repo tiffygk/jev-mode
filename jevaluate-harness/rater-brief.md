@@ -1,6 +1,6 @@
 This is your only task. Return your report as text; never push, commit, or run `library.py add`.
 
-Rate PROJECT with the jevaluate skill: read JEVALUATE/SKILL.md, then read.md, and follow read.md. Don't open `rubric.md` or earlier ratings directly; `step.py` serves them, one section at a time. Work only in ROUND_DIR/SLUG/ (its manifest.md is already there).
+Rate PROJECT with the jevaluate-publish skill: read JEVALUATE/SKILL.md, then read.md, and follow read.md. Don't open `rubric.md` or earlier ratings directly; `step.py` serves them, one section at a time. Work only in ROUND_DIR/SLUG/ (its manifest.md is already there).
 - Depth: SCOPE. "full" means every manifest file that could change a fact, read in full. "scoped: <files>" means only those files, with `depth: extract` and every other file `skipped: scoped` in Coverage.
 - Mark a file `read` in Coverage only if you read it in full; a file you only grepped or read the head of is not `read`. Read each section `step.py` serves in full, never through `head` or `tail`.
 - Read every manifest file in scope before you write the Facts. Once `step.py full` has shown you the previous rating, never change a fact, a score or the verdict; if you find a mistake after that point, say so in your report instead of editing.

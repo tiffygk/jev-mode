@@ -262,7 +262,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
     <p class="lead">The harness runs three workflows. A rubric change passes the eval before a git tag freezes it. A rating round sends each project to one rater per model and takes their verdict-changing disagreements to the owner. Publishing exports reviewed ratings in one pull request.</p>
 
     <div class="cast">
-      <div class="piece rate"><div class="nm">jevaluate</div><div class="bd">
+      <div class="piece rate"><div class="nm">jevaluate-publish</div><div class="bd">
         <p class="role">Rates one project</p>
         <p class="q">Does this project use Jev well?</p>
         <p>The rater follows <code>SKILL.md</code> and <code>read.md</code>. A rating costs about 100-300k tokens, by repo size. Run as <code>/jevaluate-private</code>, the same rating stays in a private library that export refuses, so it is never published.</p></div></div>
@@ -297,7 +297,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
           <li><span class="st">picked</span></li>
           <li><span class="st">sized</span></li>
           <li><span class="st">costs approved</span></li>
-          <li><div class="grp rate"><small>jevaluate, one rater per model</small><ol>
+          <li><div class="grp rate"><small>jevaluate-publish, one rater per model</small><ol>
             <li><span class="st">rater reads the code</span></li><li><span class="scr">step.py</span></li><li><span class="scr">library.py check</span></li></ol></div></li>
           <li><span class="scr">scan_transcripts.py</span></li>
           <li><span class="scr">library.py add</span></li>
@@ -323,7 +323,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
       <span><i class="lg" style="background:var(--ink)"></i>script</span>
       <span><i class="lg t" style="background:var(--bg)"></i>step, logged in the workflow's ledger</span>
       <span><i class="lg" style="background:var(--sage);border:2px solid var(--on-fill)"></i>run by jevaluate-eval</span>
-      <span><i class="lg v"></i>run by jevaluate</span>
+      <span><i class="lg v"></i>run by jevaluate-publish</span>
     </div>
   </div>
 </section>
@@ -594,7 +594,7 @@ footer.foot { font-family: var(--mono); font-size: .72rem; color: var(--dim); te
   </div>
 </section>
 
-<footer class="foot">jev-mode / jevaluate, rubric 2026-09-29.2. Test count as of 2026-10-08; quiz and eval figures from the full run of 2026-09-30.</footer>
+<footer class="foot">jev-mode / jevaluate, rubric 2026-09-29.3. Test count as of 2026-10-08; quiz and eval figures from the full run of 2026-09-30.</footer>
 </main>
 </body>
 </html>

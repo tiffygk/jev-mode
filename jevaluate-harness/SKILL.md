@@ -5,7 +5,7 @@ description: Use when running a jevaluate rating round, re-rating after a rubric
 
 # Jevaluate Harness
 
-The maintainer's process for `jevaluate`. One rating is `jevaluate/read.md`; testing the rubric is the `jevaluate-eval` skill. If `$JEVALUATE_OVERLAY` is set, read that file first; its rules override the defaults here.
+The maintainer's process for `jevaluate-publish`. One rating is `jevaluate/read.md`; testing the rubric is the `jevaluate-eval` skill. If `$JEVALUATE_OVERLAY` is set, read that file first; its rules override the defaults here.
 
 ## Settings (yours, not in this skill)
 - `$JEVALUATE_LIBRARY`: the private ratings library (default `~/.claude/jevaluate-library` if it exists, else `~/.jevaluate-library`).
@@ -28,3 +28,13 @@ Open the file for the workflow and follow it in order; each step names the gate 
 To see where you are: `python3 jevaluate-harness/scripts/harness_status.py <ledger> --workflow rubric|round` (`round` runs through publishing). It reruns the scripted gates it has (the materials check), reads the other steps from the ledger, and names the file to open next. Ledger lines: `done: <step> <YYYY-MM-DD> <evidence>`. Steps: rubric = rules-written, materials-checked, quiz-passed, eval-passed, owner-approved, frozen; round = picked, sized, costs-approved, rated, scanned, adjudicated, final-gate, release-check, published.
 
 Keep a ledger per workflow: each step, each ruling with its cost if wrong, and tokens per agent. Record rulings and handoffs where your overlay says, or in the ledger.
+
+## Enforced by
+
+| Rule | Enforced by |
+|---|---|
+| A rater never reads the rubric, past ratings or a full-file copy directly | `scan_transcripts.py`; `test_scan.py` |
+| A freeze tag goes only on a merged commit whose rubric title carries its version | `freeze_tag_check.py` |
+| A workflow's scripted gates are rerun, not read from the ledger | `scripts/harness_status.py`; `test_status.py` |
+| Every release check passes before publishing | `scripts/check_release.py`; `test_release.py` |
+| Each step followed in order, rulings recorded with their cost if wrong | judgment |

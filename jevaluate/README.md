@@ -73,7 +73,7 @@ codex plugin marketplace add tiffygk/jev-mode
 codex plugin add jevaluate@jev-mode
 ```
 
-Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex). A rating costs about 100-300k tokens. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
+Then ask your agent: `jevaluate-publish https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex). A rating costs about 100-300k tokens. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
 
 To install every jev-mode skill at once, or to copy skills by hand, see the [repo README](../README.md#install).
 
