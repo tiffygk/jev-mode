@@ -1,12 +1,13 @@
-# Jevaluate
+# Jevaluate Publish
 
-Jevaluate reads a Jev project's code and rates how well it uses Jev. Every finding cites a file and line in the project and the TypeSafe doc or cookbook behind its rule.
+Jevaluate Publish reads a Jev project's code and rates how well it uses Jev, for this repo's public ratings list. Every finding cites a file and line in the project and the TypeSafe doc or cookbook behind its rule.
+
+For your own or your team's project, use [Jevaluate, privately](../jevaluate-private/): same rubric, nothing published.
 
 ## Who it's for
 
 - Developers choosing a Jev tool to build on.
 - Enterprise teams comparing Jev integrations on one scale.
-- Builders shipping their own, fixes in.
 
 ## What you get
 
@@ -58,21 +59,27 @@ The 23 facts are in [`rubric.md`](rubric.md). Each rule in [`shared/jev-rules.md
 
 Needs Claude Code or Codex, git, Python 3.8+ and the GitHub CLI (`gh`, logged in).
 
+In Claude Code:
+
 ```
-git clone https://github.com/tiffygk/jev-mode
-mkdir -p ~/.claude/skills
-cp -r jev-mode/jevaluate jev-mode/shared ~/.claude/skills/
+claude plugin marketplace add tiffygk/jev-mode
+claude plugin install jevaluate@jev-mode
+```
+
+In Codex:
+
+```
+codex plugin marketplace add tiffygk/jev-mode
+codex plugin add jevaluate@jev-mode
 ```
 
 Then ask your agent: `jevaluate https://github.com/valentynkit/jev-belay`. Use a Sonnet-class model at medium effort (`gpt-6-sol` in Codex). A rating costs about 100-300k tokens, by repo size. Ratings save to `$JEVALUATE_LIBRARY`, `~/.claude/jevaluate-library/` if it exists, or `~/.jevaluate-library/`.
 
-## Rating privately
-
-For code you can't publish, use [Jevaluate, privately](../jevaluate-private/): `/jevaluate-private <link or folder>`. The rating stays in a private library that export refuses.
+To install every jev-mode skill at once, or to copy skills by hand, see the [repo README](../README.md#install).
 
 ## Published ratings
 
-Ratings of community projects are in [`ratings/`](../ratings/), under CC0, with a badge per model. Where verdicts differ, the row shows the higher one, marked in review, until a review picks one. To keep a project off the list, name it in [`ratings-template/unpublished.txt`](ratings-template/unpublished.txt).
+Ratings of community projects are in [`ratings/`](../ratings/), under CC0. To keep a project off the list, name it in [`ratings-template/unpublished.txt`](ratings-template/unpublished.txt).
 
 ## Limits
 
