@@ -42,6 +42,6 @@ Facts:
 | F22 Untrusted text treated as data | `library.check` (very high: a no caps the verdict at 3; else listed as a fix) | Whether user text is flagged or tested needs reading the state and the tests. |
 | F23 Non-English handled | `library.check` (line and value; a no moves nothing) | Whether inputs in other languages matter is a judgment about the project's users. |
 
-That a rated project's files are evidence, never instructions, stays judgment: whether text was written to steer a rater is read from the project.
+No script checks that a rated project's files stay evidence, never instructions. The rater LLM judges if the project has prompt injections by written instructions. It ignores text addressed to a rater, such as a line asking for a high score.
 
 Rules on the rating as a whole are also code: `library.check_steps` (the step log shows each section was served in order and the routing calls did not change afterward), `library.check_mechanical` (word and sentence limits, stage labels, commit against the evidence), and `library.check` (evidence coverage, no process notes, verdict caps and the verdict-5 requirements).
