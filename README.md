@@ -2,17 +2,17 @@
 
 Context and eval tools for building with Jev, TypeSafe's System One model, in Claude Code and Codex, plus a study course. In the Ratings folder find the list of rated Jev projects and our eval methodology for user safety and quality.
 
-None of these skills calls Jev, so none needs a TypeSafe key: the LLM in your coding agent does the work. Each skill is its own plugin, named in the table.
+None of these skills calls Jev yet, so none needs a TypeSafe key: the LLM in your coding agent does the work. Each skill is its own plugin, named in the table.
 
 | Name | What it does | Get it |
 |---|---|---|
-| [Jevaluate, privately](jevaluate-private/) | The usual way to rate your own, your team's or a client's project: a verdict and fixes from its code, with nothing published. Run `/jevaluate-private <link or folder>` | Plugin `jevaluate-private` |
-| [Jevaluate Publish](jevaluate/) | Rates a community Jev project with the same rubric for this repo's public ratings list, with provenance for every finding | Plugin `jevaluate` |
-| [Jevaluate Report](jevaluate-report/) | After you agree with a rating from Jevaluate, privately, writes one file your coding agents work through before a pull request: the verdict, a ranked fix table, and each fix as a change to try with a test to run. Run `/jevaluate-report <repo or rating>` | Plugin `jevaluate-report` |
-| [Jevaluate Harness](jevaluate-harness/) | Runs rating rounds, re-rates and rubric tuning for Jevaluate | Plugin `jevaluate-harness` |
-| [Jevaluate Eval](jevaluate-eval/) | Tests whether Jevaluate's rubric leads graders to the right answers, before a rubric change reaches any rating | Plugin `jevaluate-eval`; run it from a clone of this repo |
-| [Jev Sources](jev-sources/) | Finds the TypeSafe docs, patterns, cookbook and blog sections that answer a Jev question, by keyword and by meaning, and tells your coding agent (Claude or Codex) to read them before any claim | Plugin `jev-sources`. Updated for Jev 1.14, including image input and Box questions |
-| [Jev Best Practices Study](study/) | A five-level course: summaries of TypeSafe's cookbooks and docs, then quizzes on the concepts and new glossary terms | A web course, nothing to install. **[Open the Claude artifact](https://claude.ai/artifact/W1pVFeGkbcLzndA5xa1RE9)** (recommended, Claude grades your definitions)<br>[Open in GitHub Pages](https://tiffygk.github.io/jev-mode/study/) |
+| [Jevaluate Private](jevaluate-private/) | The preferred way to rate your project: a verdict and fixes from its code, with nothing published to this repo's ratings page. Run `/jevaluate-private <link or folder>` | Plugin `jevaluate-private` |
+| [Jevaluate Publish](jevaluate/) | Rates a community Jev project with the same unbiased rubric for this repo's public ratings list, with provenance for every finding | Plugin `jevaluate` |
+| [Jevaluate Report](jevaluate-report/) | After you tune your rating from Jevaluate Private, writes one file your coding agents work through before a pull request: the verdict, a ranked fix table, and each fix as a change to try with a test to run. Run `/jevaluate-report <repo or rating>` | Plugin `jevaluate-report` |
+| [Jevaluate Harness](jevaluate-harness/) | When you want to rate many projects at once, runs full rating rounds, re-rates and rubric tuning for Jevaluate | Plugin `jevaluate-harness` |
+| [Jevaluate Eval](jevaluate-eval/) | Just for evaluating rubric quality and changes for Jevaluate before a rubric change reaches any rating | Plugin `jevaluate-eval`; run it from a clone of this repo |
+| [Jev Sources](jev-sources/) | Finds the TypeSafe docs, patterns, cookbook and blog sections that answer a Jev question by keyword and semantic meaning, and tells your coding agent (Claude or Codex) to read them before any claim | Plugin `jev-sources`. Updated for Jev 1.14, including image input and Box questions |
+| [Jev Best Practices Study](study/) | A five-level course: summaries of TypeSafe's cookbooks and docs, then quizzes on the concepts and new glossary terms | A web course, nothing to install. **[Open the Claude artifact](https://claude.ai/artifact/W1pVFeGkbcLzndA5xa1RE9)** (recommended, Claude grades your definitions)<br>[Open in GitHub Pages](https://tiffygk.github.io/jev-mode/study/) (keyword grading only) |
 
 Jev Lens, which turned images into a JSON state, is retired: Jev reads images directly, and that works better. It's kept, unmaintained, in [`archive/jev-lens`](archive/jev-lens/).
 
