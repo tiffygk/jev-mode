@@ -37,4 +37,4 @@ Keep a ledger per workflow: each step, each ruling with its cost if wrong, and t
 | A freeze tag goes only on a merged commit whose rubric title carries its version | `freeze_tag_check.py` |
 | A workflow's scripted gates are rerun, not read from the ledger | `scripts/harness_status.py`; `test_status.py` |
 | Every release check passes before publishing | `scripts/check_release.py`; `test_release.py` |
-| Each step followed in order, rulings recorded with their cost if wrong | judgment |
+| Each step followed in order, rulings recorded with their cost if wrong | LLM's judgment following instructions |
