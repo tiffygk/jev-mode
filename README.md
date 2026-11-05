@@ -1,12 +1,12 @@
 # Jev Mode
 
-Context and eval tools for building with Jev, TypeSafe's System One model, in Claude Code and Codex, plus a short quiz course to help humans learn Jev best practices. In the Ratings folder find the list of rated Jev projects and our eval methodology for user safety and quality.
+Context management, eval, and onboarding tools for building with Jev, TypeSafe's System One model, in Claude Code and Codex, plus a short quiz learning modules to help humans learn Jev best practices. In the Ratings folder find the list of rated Jev projects and our eval methodology for user safety and quality.
 
 None of these skills calls Jev yet, so none needs a TypeSafe key: the LLM in your coding agent does the work. Each skill is its own plugin, named in the table.
 
 | Name | What it does | Get it |
 |---|---|---|
-| [Jev Sources](jev-sources/) | Finds the TypeSafe docs, patterns, cookbook and blog sections that answer a Jev question by keyword and semantic meaning, and tells your coding agent (Claude or Codex) to read them before any claim | Plugin `jev-sources`. Updated for Jev 1.14, including image input and Box questions |
+| [Jev Sources](jev-sources/) | Your first onboarding step into building with Jev according to best practices from the start, triggered entirely via hooks. Finds the right TypeSafe docs, patterns, cookbook and blog sections that answer a Jev question by keyword and semantic meaning, telling your agent to read them before any claim | Plugin `jev-sources`. Updated for Jev 1.14, including image input and Box questions |
 | [Jevaluate Private](jevaluate-private/) | The preferred way to rate your project: a verdict and fixes from its code, with nothing published to this repo's ratings page. Run `/jevaluate-private <link or folder>` | Plugin `jevaluate-private` |
 | [Jevaluate Publish](jevaluate/) | Rates a community Jev project with the same unbiased rubric for this repo's public ratings list, with provenance for every finding | Plugin `jevaluate` |
 | [Jevaluate Report](jevaluate-report/) | After you tune your rating from Jevaluate Private, writes one file your coding agents work through before a pull request: the verdict, a ranked fix table, and each fix as a change to try with a test to run. Run `/jevaluate-report <repo or rating>` | Plugin `jevaluate-report` |
