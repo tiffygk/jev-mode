@@ -1,6 +1,6 @@
 # Jev Sources
 
-Hate when your coding harness hallucinates Jev functionality or implements Jev from memory? Want to avoid a research agent getting called every session? Jev Sources (updated for 1.14) puts the relevant TypeSafe documentation sections in your coding harness's context when you develop with Jev.
+Hate when your coding harness hallucinates Jev functionality or implements Jev from memory? Want to avoid a research agent getting called every session? Jev Sources (updated for 1.14) matches your question by keywords and meaning. Only the most relevant TypeSafe documentation sections land in your coding harness's context.
 
 It answers Jev questions from TypeSafe's official docs, cookbooks, patterns and blog posts. It never calls Jev: your coding agent's Claude or Codex model does the reading, so no TypeSafe key is needed.
 
@@ -30,7 +30,7 @@ Each section `jev.py` finds gets a label:
   <img alt="How a Jev question flows: reminder hook, jev.py, keyword and meaning routes, labels, sections read in full or a reading plan, then a cited answer." src="images/how-it-works.svg">
 </picture>
 
-1. A hook sees a Jev message and tells the model to run `jev.py`. At most every two days, the hook also starts a background check for new or re-dated TypeSafe pages.
+1. A hook sees a Jev message and tells the model to run `jev.py`.
 2. `jev.py` matches your question to the docs two ways, then reads the best matches:
    - Keywords rank sections and boost reference rules; names like `request_id` also match their parts.
    - A small offline model compares meanings and adds up to two sections the keywords missed.
@@ -45,7 +45,13 @@ Each section `jev.py` finds gets a label:
 | Reminder; refusing subagent instructions without their source line; checking citations, a subagent's or the answer's | Hooks, once installed |
 | Running `jev.py`, the answer, its sources | The model, following `SKILL.md` |
 
-After a page changes, the background check reruns the routing tests and lists the citations it affects. With pytest installed, the check also runs the tests that read the saved pages and names any failures. `JEV_LIBRARY_TESTS=off` skips them. Each check also confirms the index matches the saved pages and flags any mismatch or broken page. Data stays in `~/.claude/jev-sources-data/`; `JEV_LOG=off` stops logging your questions.
+Data stays in `~/.claude/jev-sources-data/`; `JEV_LOG=off` stops logging your questions.
+
+## How it stays current
+
+With the hooks installed, your first Jev message after two days starts a background check for new or re-dated TypeSafe pages. A later message names any changes. If no check finishes in seven days, the model tells you to run the refresh command. Without the hooks, run `refresh.sh --fetch` yourself.
+
+Each check confirms the index matches the saved pages and flags any mismatch or broken page. After a page changes, it also reruns the routing tests and lists the citations it affects. With pytest installed, it runs the library tests; `JEV_LIBRARY_TESTS=off` skips them.
 
 ## What it reads
 
@@ -62,10 +68,10 @@ Jev Sources adds no rules. It cites TypeSafe and says each page's kind: referenc
 | Everyday questions | 21 | 🟢 Easy | listed, at any label | 95% (20 of 21; 77% to 99%) |
 | Everyday questions | 21 | 🟢 Easy | printed in full within the cap | 90% (19 of 21; 71% to 97%) |
 | Release-check questions | 23 | 🟢 Easy | printed in full within the cap | 100% (23 of 23; 86% to 100%) |
-| New questions, written blind | 11 | 🟡 Medium | marked READ FULL | 64% (7 of 11; 35% to 85%) |
-| New questions, written blind | 11 | 🟡 Medium | on the same page as the answer | 91% (10 of 11; 62% to 98%) |
-| SDK questions, written blind | 24 | 🔴 Hard | printed in full within the cap | 42% (10 of 24; 24% to 61%) |
-| Broad first-time goals, written blind | 12 | 🔴 Hard | read or left for later reading | 49% of needed sections (40% to 60%); unsplit, 9% |
+| New questions, blinded | 11 | 🟡 Medium | marked READ FULL | 64% (7 of 11; 35% to 85%) |
+| New questions, blinded | 11 | 🟡 Medium | on the same page as the answer | 91% (10 of 11; 62% to 98%) |
+| SDK questions, blinded | 24 | 🔴 Hard | printed in full within the cap | 42% (10 of 24; 24% to 61%) |
+| Broad first-time goals, blinded | 12 | 🔴 Hard | read or left for later reading | 49% of needed sections (40% to 60%); unsplit, 9% |
 
 How to read it:
 - 🟢 **Easy** questions cover the docs broadly; the routing was tuned on them.
@@ -73,7 +79,7 @@ How to read it:
 - 🔴 **Hard** questions each ask about one function, field or error in the SDK reference.
 - **Listed** means the section is anywhere in the list `jev.py` returns. **Printed in full** is stricter: the whole section, within the cap.
 - **Found** is recall: the share of questions whose section was found. For goals, it is the average share of each goal's needed sections, as a separate reviewer marked them. Ranges are 95% confidence intervals (Wilson; bootstrap for goals), wide on small rows.
-- **Broad goals** are first-time requests, such as moving a classifier to Jev, written blind. Splitting reads about 4 times the tokens.
+- **Broad goals** are first-time requests, such as moving a classifier to Jev, blinded. Splitting reads about 4 times the tokens.
 
 The table measures `jev.py` once it runs; `scripts/firing_report.py` shows how often the reminder hook prompts it. Live sessions in projects that say they use Jev met blind answer keys on 18 of 19 tests, twice, and 10 of 11 held out.
 
@@ -106,6 +112,8 @@ python3 ~/.claude/skills/jev-sources/scripts/jev.py "can I put 30 passages in on
 ```
 
 Copy installs add hooks by hand: [`hooks/install-hooks.md`](hooks/install-hooks.md).
+
+To install every jev-mode skill at once, or to copy skills by hand, see the [repo README](../README.md#install).
 
 ## Limits
 

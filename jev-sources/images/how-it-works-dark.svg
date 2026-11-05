@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1658" viewBox="0 0 800 1658" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
-<rect x="0" y="0" width="800" height="1658" rx="8" fill="#1a1a19"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1680" viewBox="0 0 800 1680" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="800" height="1680" rx="8" fill="#1a1a19"/>
 <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c3c2b7"/></marker></defs>
 <rect x="20.0" y="20.0" width="452.0" height="170.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
 <circle cx="46" cy="45.0" r="12" fill="#f0efec"/>
@@ -12,140 +12,141 @@
 <text x="34.0" y="128.0" font-size="16" fill="#f0efec">most every 2 days, it also starts a background check</text>
 <text x="34.0" y="151.0" font-size="16" fill="#f0efec">of TypeSafe's docs, so the library keeps up with</text>
 <text x="34.0" y="174.0" font-size="16" fill="#f0efec">TypeSafe's dated changes.</text>
-<rect x="512.0" y="20.0" width="268.0" height="174.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<rect x="512.0" y="20.0" width="268.0" height="195.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
 <line x1="474" y1="105.0" x2="509" y2="105.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
 <text x="526.0" y="44.0" font-size="13" fill="#c3c2b7" font-weight="700" letter-spacing="0.6">BACKGROUND</text>
-<text x="526.0" y="68.0" font-size="16" fill="#f0efec" font-weight="700">Page cleaning</text>
+<text x="526.0" y="68.0" font-size="16" fill="#f0efec" font-weight="700">Docs check</text>
 <rect x="703.8" y="52.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
 <text x="734.9" y="67.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="526.0" y="95.0" font-size="15" fill="#f0efec">Each page is kept twice: as</text>
-<text x="526.0" y="116.0" font-size="15" fill="#f0efec">served, and cleaned of site</text>
-<text x="526.0" y="137.0" font-size="15" fill="#f0efec">code. Routing reads the clean</text>
-<text x="526.0" y="158.0" font-size="15" fill="#f0efec">copy; change checks read the</text>
-<text x="526.0" y="179.0" font-size="15" fill="#f0efec">served one.</text>
-<line x1="246.0" y1="192.0" x2="246.0" y2="231.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<rect x="20.0" y="234.0" width="452.0" height="127.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<circle cx="46" cy="259.0" r="12" fill="#f0efec"/>
-<text x="46.0" y="264.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">2</text>
-<text x="68.0" y="265.0" font-size="17" fill="#f0efec" font-weight="700">Query expansion</text>
-<rect x="395.8" y="248.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="426.9" y="263.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="34.0" y="296.0" font-size="16" fill="#f0efec">jev.py routes the question twice: once in your words,</text>
-<text x="34.0" y="319.0" font-size="16" fill="#f0efec">once in the docs' words.</text>
-<text x="34.0" y="347.0" font-size="14" fill="#c3c2b7" font-style="italic">The model supplies the docs' words</text>
-<rect x="512.0" y="234.0" width="268.0" height="195.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<line x1="474" y1="297.5" x2="509" y2="297.5" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<text x="526.0" y="258.0" font-size="13" fill="#c3c2b7" font-weight="700" letter-spacing="0.6">SIDE PATH</text>
-<text x="526.0" y="282.0" font-size="16" fill="#f0efec" font-weight="700">Brief guardrail</text>
-<rect x="703.8" y="266.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="734.9" y="281.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="526.0" y="309.0" font-size="15" fill="#f0efec">A subagent brief about Jev is</text>
-<text x="526.0" y="330.0" font-size="15" fill="#f0efec">refused until it carries the</text>
-<text x="526.0" y="351.0" font-size="15" fill="#f0efec">source-reading line. That way, a</text>
-<text x="526.0" y="372.0" font-size="15" fill="#f0efec">subagent can't hand the main</text>
-<text x="526.0" y="393.0" font-size="15" fill="#f0efec">session a Jev answer made up</text>
-<text x="526.0" y="414.0" font-size="15" fill="#f0efec">from memory.</text>
-<line x1="246.0" y1="363.0" x2="246.0" y2="466.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<rect x="20.0" y="469.0" width="452.0" height="147.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<circle cx="46" cy="494.0" r="12" fill="#f0efec"/>
-<text x="46.0" y="499.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">3</text>
-<text x="68.0" y="500.0" font-size="17" fill="#f0efec" font-weight="700">Keyword retrieval</text>
-<rect x="395.8" y="483.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="426.9" y="498.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="34.0" y="531.0" font-size="16" fill="#f0efec">Synonyms widen the question. A topic list adds</text>
-<text x="34.0" y="554.0" font-size="16" fill="#f0efec">pages known to answer it. Names like request_id</text>
-<text x="34.0" y="577.0" font-size="16" fill="#f0efec">also match their parts. Every section is scored on</text>
-<text x="34.0" y="600.0" font-size="16" fill="#f0efec">keyword match, with a boost for reference rules.</text>
-<circle cx="472" cy="513.0" r="3.5" fill="#898781"/>
-<path d="M475.5,513.0 H504.0" fill="none" stroke="#898781" stroke-width="1"/>
-<line x1="512.0" y1="505.0" x2="512.0" y2="657.0" stroke="#898781" stroke-width="2" stroke-linecap="round"/>
-<text x="526.0" y="517.0" font-size="13" fill="#c3c2b7" font-weight="700">What keyword retrieval catches</text>
-<text x="526.0" y="545.0" font-size="15" fill="#c3c2b7" font-style="italic">Catches the docs' own terms.</text>
-<text x="526.0" y="566.0" font-size="15" fill="#c3c2b7" font-style="italic">"Can I put 30 passages in one</text>
-<text x="526.0" y="587.0" font-size="15" fill="#c3c2b7" font-style="italic">call?" matches the batching</text>
-<text x="526.0" y="608.0" font-size="15" fill="#c3c2b7" font-style="italic">topic, which adds the Primitives</text>
-<text x="526.0" y="629.0" font-size="15" fill="#c3c2b7" font-style="italic">page's section "How many</text>
-<text x="526.0" y="650.0" font-size="15" fill="#c3c2b7" font-style="italic">questions you can ask".</text>
-<line x1="246.0" y1="618.0" x2="246.0" y2="695.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<rect x="20.0" y="698.0" width="452.0" height="124.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<circle cx="46" cy="723.0" r="12" fill="#f0efec"/>
-<text x="46.0" y="728.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">4</text>
-<text x="68.0" y="729.0" font-size="17" fill="#f0efec" font-weight="700">Semantic retrieval</text>
-<rect x="395.8" y="712.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="426.9" y="727.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="34.0" y="760.0" font-size="16" fill="#f0efec">A small local model adds up to two sections that</text>
-<text x="34.0" y="783.0" font-size="16" fill="#f0efec">match by meaning. They go after the keyword list</text>
-<text x="34.0" y="806.0" font-size="16" fill="#f0efec">and never reorder it. It runs offline.</text>
-<circle cx="472" cy="735.0" r="3.5" fill="#898781"/>
-<path d="M475.5,735.0 H504.0" fill="none" stroke="#898781" stroke-width="1"/>
-<line x1="512.0" y1="727.0" x2="512.0" y2="900.0" stroke="#898781" stroke-width="2" stroke-linecap="round"/>
-<text x="526.0" y="739.0" font-size="13" fill="#c3c2b7" font-weight="700">What semantic retrieval catches</text>
-<text x="526.0" y="767.0" font-size="15" fill="#c3c2b7" font-style="italic">Catches the same idea in other</text>
-<text x="526.0" y="788.0" font-size="15" fill="#c3c2b7" font-style="italic">words. A test question asks how</text>
-<text x="526.0" y="809.0" font-size="15" fill="#c3c2b7" font-style="italic">the system can "express how</text>
-<text x="526.0" y="830.0" font-size="15" fill="#c3c2b7" font-style="italic">sure it is about an answer"</text>
-<text x="526.0" y="851.0" font-size="15" fill="#c3c2b7" font-style="italic">without saying confidence;</text>
-<text x="526.0" y="872.0" font-size="15" fill="#c3c2b7" font-style="italic">semantic retrieval adds the</text>
-<text x="526.0" y="893.0" font-size="15" fill="#c3c2b7" font-style="italic">Confidence page.</text>
-<line x1="246.0" y1="824.0" x2="246.0" y2="938.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<rect x="20.0" y="941.0" width="452.0" height="170.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<circle cx="46" cy="966.0" r="12" fill="#f0efec"/>
-<text x="46.0" y="971.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">5</text>
-<text x="68.0" y="972.0" font-size="17" fill="#f0efec" font-weight="700">Classification</text>
-<rect x="395.8" y="955.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="426.9" y="970.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="34.0" y="1003.0" font-size="16" fill="#f0efec">Each section is marked READ FULL or EXTRACT,</text>
-<text x="34.0" y="1026.0" font-size="16" fill="#f0efec">with its kind: reference rule, pattern, cookbook</text>
-<text x="34.0" y="1049.0" font-size="16" fill="#f0efec">example, SDK reference or vendor claim. NEEDS or</text>
-<text x="34.0" y="1072.0" font-size="16" fill="#f0efec">EXPERIMENTAL is added from a kept list of</text>
-<text x="34.0" y="1095.0" font-size="16" fill="#f0efec">TypeSafe's stated limits.</text>
-<line x1="246.0" y1="1113.0" x2="246.0" y2="1148.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<rect x="20.0" y="1151.0" width="452.0" height="147.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<circle cx="46" cy="1176.0" r="12" fill="#f0efec"/>
-<text x="46.0" y="1181.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">6</text>
-<text x="68.0" y="1182.0" font-size="17" fill="#f0efec" font-weight="700">Context assembly</text>
-<rect x="395.8" y="1165.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="426.9" y="1180.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="34.0" y="1213.0" font-size="16" fill="#f0efec">jev.py reads every READ FULL section, reference</text>
-<text x="34.0" y="1236.0" font-size="16" fill="#f0efec">rules first, up to a 12,000-token cap. The rest are</text>
-<text x="34.0" y="1259.0" font-size="16" fill="#f0efec">listed with read commands, or as a reading plan for</text>
-<text x="34.0" y="1282.0" font-size="16" fill="#f0efec">subagents when they total more than the cap.</text>
-<rect x="512.0" y="1151.0" width="268.0" height="132.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<line x1="474" y1="1217.0" x2="509" y2="1217.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<text x="526.0" y="1175.0" font-size="13" fill="#c3c2b7" font-weight="700" letter-spacing="0.6">SIDE PATH</text>
-<text x="526.0" y="1199.0" font-size="16" fill="#f0efec" font-weight="700">Audit log</text>
-<rect x="703.8" y="1183.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="734.9" y="1198.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="526.0" y="1226.0" font-size="15" fill="#f0efec">Each session's routed and read</text>
-<text x="526.0" y="1247.0" font-size="15" fill="#f0efec">sections are logged on your</text>
-<text x="526.0" y="1268.0" font-size="15" fill="#f0efec">machine, for tuning the routes.</text>
-<line x1="246.0" y1="1300.0" x2="246.0" y2="1335.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<rect x="20.0" y="1338.0" width="452.0" height="124.0" rx="6" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="7 5"/>
-<circle cx="46" cy="1363.0" r="12" fill="#f0efec"/>
-<text x="46.0" y="1368.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">7</text>
-<text x="68.0" y="1369.0" font-size="17" fill="#f0efec" font-weight="700">Answer with provenance</text>
-<rect x="321.2" y="1352.0" width="136.8" height="22" rx="4" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="4 3"/>
-<text x="389.6" y="1367.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">INSTRUCTIONS</text>
-<text x="34.0" y="1400.0" font-size="16" fill="#f0efec">The model (Claude or Codex) answers in its own</text>
-<text x="34.0" y="1423.0" font-size="16" fill="#f0efec">words, citing each section's source and label. When</text>
-<text x="34.0" y="1446.0" font-size="16" fill="#f0efec">the docs don't settle it, it says "the docs don't say".</text>
-<rect x="512.0" y="1338.0" width="268.0" height="194.0" rx="6" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="7 5"/>
-<line x1="474" y1="1400.0" x2="509" y2="1400.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
-<text x="526.0" y="1362.0" font-size="13" fill="#c3c2b7" font-weight="700" letter-spacing="0.6">SIDE PATH</text>
-<text x="526.0" y="1386.0" font-size="16" fill="#f0efec" font-weight="700">Quote</text>
-<text x="526.0" y="1407.0" font-size="16" fill="#f0efec" font-weight="700">check</text>
-<rect x="629.2" y="1370.0" width="136.8" height="22" rx="4" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="4 3"/>
-<text x="697.6" y="1385.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">INSTRUCTIONS</text>
-<text x="526.0" y="1433.0" font-size="15" fill="#f0efec">Before relaying a subagent's</text>
-<text x="526.0" y="1454.0" font-size="15" fill="#f0efec">finding, the model checks its</text>
-<text x="526.0" y="1475.0" font-size="15" fill="#f0efec">quote against the cited section.</text>
-<text x="526.0" y="1496.0" font-size="15" fill="#f0efec">A quote the check can't find is</text>
-<text x="526.0" y="1517.0" font-size="15" fill="#f0efec">relayed as unverified.</text>
-<line x1="20" y1="1560.0" x2="780" y2="1560.0" stroke="#2c2c2a" stroke-width="1"/>
-<rect x="20.0" y="1576.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
-<text x="51.1" y="1591.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
-<text x="168.8" y="1592.0" font-size="15" fill="#f0efec">Code gives the same result for the same input.</text>
-<rect x="20.0" y="1610.0" width="136.8" height="22" rx="4" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="4 3"/>
-<text x="88.4" y="1625.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">INSTRUCTIONS</text>
-<text x="168.8" y="1626.0" font-size="15" fill="#f0efec">The model follows the instructions in SKILL.md.</text>
+<text x="526.0" y="95.0" font-size="15" fill="#f0efec">Each check fetches new or</text>
+<text x="526.0" y="116.0" font-size="15" fill="#f0efec">re-dated pages and keeps each</text>
+<text x="526.0" y="137.0" font-size="15" fill="#f0efec">page twice: as served, and</text>
+<text x="526.0" y="158.0" font-size="15" fill="#f0efec">cleaned of site code. Then it</text>
+<text x="526.0" y="179.0" font-size="15" fill="#f0efec">confirms the index matches the</text>
+<text x="526.0" y="200.0" font-size="15" fill="#f0efec">pages and reruns the tests.</text>
+<line x1="246.0" y1="192.0" x2="246.0" y2="252.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20.0" y="255.0" width="452.0" height="127.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<circle cx="46" cy="280.0" r="12" fill="#f0efec"/>
+<text x="46.0" y="285.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">2</text>
+<text x="68.0" y="286.0" font-size="17" fill="#f0efec" font-weight="700">Query expansion</text>
+<rect x="395.8" y="269.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="426.9" y="284.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="34.0" y="317.0" font-size="16" fill="#f0efec">jev.py routes the question twice: once in your words,</text>
+<text x="34.0" y="340.0" font-size="16" fill="#f0efec">once in the docs' words.</text>
+<text x="34.0" y="368.0" font-size="14" fill="#c3c2b7" font-style="italic">The model supplies the docs' words</text>
+<rect x="512.0" y="255.0" width="268.0" height="195.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<line x1="474" y1="318.5" x2="509" y2="318.5" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="526.0" y="279.0" font-size="13" fill="#c3c2b7" font-weight="700" letter-spacing="0.6">SIDE PATH</text>
+<text x="526.0" y="303.0" font-size="16" fill="#f0efec" font-weight="700">Brief guardrail</text>
+<rect x="703.8" y="287.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="734.9" y="302.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="526.0" y="330.0" font-size="15" fill="#f0efec">A subagent brief about Jev is</text>
+<text x="526.0" y="351.0" font-size="15" fill="#f0efec">refused until it carries the</text>
+<text x="526.0" y="372.0" font-size="15" fill="#f0efec">source-reading line. That way, a</text>
+<text x="526.0" y="393.0" font-size="15" fill="#f0efec">subagent can't hand the main</text>
+<text x="526.0" y="414.0" font-size="15" fill="#f0efec">session a Jev answer made up</text>
+<text x="526.0" y="435.0" font-size="15" fill="#f0efec">from memory.</text>
+<line x1="246.0" y1="384.0" x2="246.0" y2="487.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20.0" y="490.0" width="452.0" height="147.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<circle cx="46" cy="515.0" r="12" fill="#f0efec"/>
+<text x="46.0" y="520.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">3</text>
+<text x="68.0" y="521.0" font-size="17" fill="#f0efec" font-weight="700">Keyword retrieval</text>
+<rect x="395.8" y="504.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="426.9" y="519.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="34.0" y="552.0" font-size="16" fill="#f0efec">Synonyms widen the question. A topic list adds</text>
+<text x="34.0" y="575.0" font-size="16" fill="#f0efec">pages known to answer it. Names like request_id</text>
+<text x="34.0" y="598.0" font-size="16" fill="#f0efec">also match their parts. Every section is scored on</text>
+<text x="34.0" y="621.0" font-size="16" fill="#f0efec">keyword match, with a boost for reference rules.</text>
+<circle cx="472" cy="534.0" r="3.5" fill="#898781"/>
+<path d="M475.5,534.0 H504.0" fill="none" stroke="#898781" stroke-width="1"/>
+<line x1="512.0" y1="526.0" x2="512.0" y2="678.0" stroke="#898781" stroke-width="2" stroke-linecap="round"/>
+<text x="526.0" y="538.0" font-size="13" fill="#c3c2b7" font-weight="700">What keyword retrieval catches</text>
+<text x="526.0" y="566.0" font-size="15" fill="#c3c2b7" font-style="italic">Catches the docs' own terms.</text>
+<text x="526.0" y="587.0" font-size="15" fill="#c3c2b7" font-style="italic">"Can I put 30 passages in one</text>
+<text x="526.0" y="608.0" font-size="15" fill="#c3c2b7" font-style="italic">call?" matches the batching</text>
+<text x="526.0" y="629.0" font-size="15" fill="#c3c2b7" font-style="italic">topic, which adds the Primitives</text>
+<text x="526.0" y="650.0" font-size="15" fill="#c3c2b7" font-style="italic">page's section "How many</text>
+<text x="526.0" y="671.0" font-size="15" fill="#c3c2b7" font-style="italic">questions you can ask".</text>
+<line x1="246.0" y1="639.0" x2="246.0" y2="716.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20.0" y="719.0" width="452.0" height="124.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<circle cx="46" cy="744.0" r="12" fill="#f0efec"/>
+<text x="46.0" y="749.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">4</text>
+<text x="68.0" y="750.0" font-size="17" fill="#f0efec" font-weight="700">Semantic retrieval</text>
+<rect x="395.8" y="733.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="426.9" y="748.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="34.0" y="781.0" font-size="16" fill="#f0efec">A small local model adds up to two sections that</text>
+<text x="34.0" y="804.0" font-size="16" fill="#f0efec">match by meaning. They go after the keyword list</text>
+<text x="34.0" y="827.0" font-size="16" fill="#f0efec">and never reorder it. It runs offline.</text>
+<circle cx="472" cy="756.0" r="3.5" fill="#898781"/>
+<path d="M475.5,756.0 H504.0" fill="none" stroke="#898781" stroke-width="1"/>
+<line x1="512.0" y1="748.0" x2="512.0" y2="921.0" stroke="#898781" stroke-width="2" stroke-linecap="round"/>
+<text x="526.0" y="760.0" font-size="13" fill="#c3c2b7" font-weight="700">What semantic retrieval catches</text>
+<text x="526.0" y="788.0" font-size="15" fill="#c3c2b7" font-style="italic">Catches the same idea in other</text>
+<text x="526.0" y="809.0" font-size="15" fill="#c3c2b7" font-style="italic">words. A test question asks how</text>
+<text x="526.0" y="830.0" font-size="15" fill="#c3c2b7" font-style="italic">the system can "express how</text>
+<text x="526.0" y="851.0" font-size="15" fill="#c3c2b7" font-style="italic">sure it is about an answer"</text>
+<text x="526.0" y="872.0" font-size="15" fill="#c3c2b7" font-style="italic">without saying confidence;</text>
+<text x="526.0" y="893.0" font-size="15" fill="#c3c2b7" font-style="italic">semantic retrieval adds the</text>
+<text x="526.0" y="914.0" font-size="15" fill="#c3c2b7" font-style="italic">Confidence page.</text>
+<line x1="246.0" y1="845.0" x2="246.0" y2="959.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20.0" y="962.0" width="452.0" height="170.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<circle cx="46" cy="987.0" r="12" fill="#f0efec"/>
+<text x="46.0" y="992.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">5</text>
+<text x="68.0" y="993.0" font-size="17" fill="#f0efec" font-weight="700">Classification</text>
+<rect x="395.8" y="976.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="426.9" y="991.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="34.0" y="1024.0" font-size="16" fill="#f0efec">Each section is marked READ FULL or EXTRACT,</text>
+<text x="34.0" y="1047.0" font-size="16" fill="#f0efec">with its kind: reference rule, pattern, cookbook</text>
+<text x="34.0" y="1070.0" font-size="16" fill="#f0efec">example, SDK reference or vendor claim. NEEDS or</text>
+<text x="34.0" y="1093.0" font-size="16" fill="#f0efec">EXPERIMENTAL is added from a kept list of</text>
+<text x="34.0" y="1116.0" font-size="16" fill="#f0efec">TypeSafe's stated limits.</text>
+<line x1="246.0" y1="1134.0" x2="246.0" y2="1169.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20.0" y="1172.0" width="452.0" height="147.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<circle cx="46" cy="1197.0" r="12" fill="#f0efec"/>
+<text x="46.0" y="1202.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">6</text>
+<text x="68.0" y="1203.0" font-size="17" fill="#f0efec" font-weight="700">Context assembly</text>
+<rect x="395.8" y="1186.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="426.9" y="1201.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="34.0" y="1234.0" font-size="16" fill="#f0efec">jev.py reads every READ FULL section, reference</text>
+<text x="34.0" y="1257.0" font-size="16" fill="#f0efec">rules first, up to a 12,000-token cap. The rest are</text>
+<text x="34.0" y="1280.0" font-size="16" fill="#f0efec">listed with read commands, or as a reading plan for</text>
+<text x="34.0" y="1303.0" font-size="16" fill="#f0efec">subagents when they total more than the cap.</text>
+<rect x="512.0" y="1172.0" width="268.0" height="132.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<line x1="474" y1="1238.0" x2="509" y2="1238.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="526.0" y="1196.0" font-size="13" fill="#c3c2b7" font-weight="700" letter-spacing="0.6">SIDE PATH</text>
+<text x="526.0" y="1220.0" font-size="16" fill="#f0efec" font-weight="700">Audit log</text>
+<rect x="703.8" y="1204.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="734.9" y="1219.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="526.0" y="1247.0" font-size="15" fill="#f0efec">Each session's routed and read</text>
+<text x="526.0" y="1268.0" font-size="15" fill="#f0efec">sections are logged on your</text>
+<text x="526.0" y="1289.0" font-size="15" fill="#f0efec">machine, for tuning the routes.</text>
+<line x1="246.0" y1="1321.0" x2="246.0" y2="1356.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20.0" y="1359.0" width="452.0" height="124.0" rx="6" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="7 5"/>
+<circle cx="46" cy="1384.0" r="12" fill="#f0efec"/>
+<text x="46.0" y="1389.0" font-size="14" fill="#1a1a19" font-weight="700" text-anchor="middle">7</text>
+<text x="68.0" y="1390.0" font-size="17" fill="#f0efec" font-weight="700">Answer with provenance</text>
+<rect x="321.2" y="1373.0" width="136.8" height="22" rx="4" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="4 3"/>
+<text x="389.6" y="1388.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">INSTRUCTIONS</text>
+<text x="34.0" y="1421.0" font-size="16" fill="#f0efec">The model (Claude or Codex) answers in its own</text>
+<text x="34.0" y="1444.0" font-size="16" fill="#f0efec">words, citing each section's source and label. When</text>
+<text x="34.0" y="1467.0" font-size="16" fill="#f0efec">the docs don't settle it, it says "the docs don't say".</text>
+<rect x="512.0" y="1359.0" width="268.0" height="195.0" rx="6" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<line x1="474" y1="1421.0" x2="509" y2="1421.0" stroke="#c3c2b7" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="526.0" y="1383.0" font-size="13" fill="#c3c2b7" font-weight="700" letter-spacing="0.6">SIDE PATH</text>
+<text x="526.0" y="1407.0" font-size="16" fill="#f0efec" font-weight="700">Answer check</text>
+<rect x="703.8" y="1391.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="734.9" y="1406.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="526.0" y="1434.0" font-size="15" fill="#f0efec">A hook checks each quote and</text>
+<text x="526.0" y="1455.0" font-size="15" fill="#f0efec">citation against its section</text>
+<text x="526.0" y="1476.0" font-size="15" fill="#f0efec">before the answer reaches you,</text>
+<text x="526.0" y="1497.0" font-size="15" fill="#f0efec">and sends back any that fail.</text>
+<text x="526.0" y="1518.0" font-size="15" fill="#f0efec">Subagent findings are checked</text>
+<text x="526.0" y="1539.0" font-size="15" fill="#f0efec">too.</text>
+<line x1="20" y1="1582.0" x2="780" y2="1582.0" stroke="#2c2c2a" stroke-width="1"/>
+<rect x="20.0" y="1598.0" width="62.2" height="22" rx="4" fill="#1a1a19" stroke="#3987e5" stroke-width="2"/>
+<text x="51.1" y="1613.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">CODE</text>
+<text x="168.8" y="1614.0" font-size="15" fill="#f0efec">Code gives the same result for the same input.</text>
+<rect x="20.0" y="1632.0" width="136.8" height="22" rx="4" fill="#1a1a19" stroke="#d95926" stroke-width="2" stroke-dasharray="4 3"/>
+<text x="88.4" y="1647.5" font-size="13" fill="#f0efec" font-weight="700" text-anchor="middle" letter-spacing="0.6">INSTRUCTIONS</text>
+<text x="168.8" y="1648.0" font-size="15" fill="#f0efec">The model follows the instructions in SKILL.md.</text>
 </svg>
