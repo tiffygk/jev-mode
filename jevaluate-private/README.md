@@ -1,8 +1,8 @@
-# Jevaluate-private
+# Jevaluate Private
 
 Updated private version of Jevaluate for how devs and teams build and eval their own projects. Rate a project you can't publish: a client's codebase, your employer's pipeline, a design you were sent, or your own work in progress. It uses the same rubric, steps and checks as [Jevaluate Publish](../jevaluate/), so a private verdict means the same as a public one. The rating stays on your machine, so the skill skips the publishing steps.
 
-After receiving your Jevaluate-private rating:
+After receiving your Jevaluate Private rating:
 - Read the verdict and tune the rating to your own product judgment by talking it through with the skill. The rater may have missed some of your API calls, or made calls you don't agree with.
 - Run [Jevaluate Report](../jevaluate-report/) to write a Markdown file of the proposed fixes, which your agents build and test in your Jev project.
 
