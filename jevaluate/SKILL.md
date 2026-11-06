@@ -1,9 +1,9 @@
 ---
-name: jevaluate
-description: Use when rating whether a project, repo, skill, workflow, plugin, agent product or post uses TypeSafe's Jev (System One) model well -- "is this a good use of Jev?", "rate this Jev integration", "jevaluate <url>", or a link to something named after Jev; also when checking whether something that calls itself Jev actually uses it.
+name: jevaluate-publish
+description: Use when rating whether a project, repo, skill, workflow, plugin, agent product or post uses TypeSafe's Jev (System One) model well -- "is this a good use of Jev?", "rate this Jev integration", "jevaluate-publish https://github.com/owner/repo", or a link to something named after Jev; also when checking whether something that calls itself Jev actually uses it. The rating goes to the public ratings list. For a person's own or team's project, jevaluate-private is the one to use.
 ---
 
-# Jevaluate
+# Jevaluate Publish
 
 Rates how well something uses Jev, TypeSafe's System One model (typed questions over a JSON `state`, answered in parallel with calibrated probabilities). Every rating is evidence-backed, dated, tied to a commit, and logged, so the library of past ratings anchors future ones.
 

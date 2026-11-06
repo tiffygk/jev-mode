@@ -129,3 +129,21 @@ def test_skill_missing_from_install_list_flagged(tmp_path):
 
 def test_repo_install_list_complete():
     assert dc.install_problems() == []
+
+
+def _publish_guard():
+    names = json.loads((pathlib.Path(dc.ROOT) / "retired-names.json").read_text())["names"]
+    entry = next(n for n in names if "jevaluate-publish" in n["why"])
+    return {"names": [dict(entry, allowed={})]}
+
+
+def test_old_command_forms_are_flagged():
+    for line in ("Run /jevaluate https://x", "Ask: `jevaluate <url>`", "Ask: `jevaluate https://x`", "Use the `jevaluate` skill"):
+        assert dc.retired_problems(_publish_guard(), {"README.md": line}), line
+
+
+def test_folder_and_plugin_lines_are_not_flagged():
+    for line in ('"skills": ["./jevaluate"]', "https://github.com/tiffygk/jev-mode/tree/main/jevaluate", "cp -r jev-mode/jevaluate ~/.claude/skills/",
+                 "~/.cache/jevaluate", "jevaluate/rubric.md", "claude plugin install jevaluate@jev-mode", "Plugin `jevaluate`",
+                 "/jevaluate-private", "jevaluate-publish", "`jevaluate-publish https://x`"):
+        assert dc.retired_problems(_publish_guard(), {"README.md": line}) == [], line

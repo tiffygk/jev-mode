@@ -1,4 +1,4 @@
-You are applying the jevaluate skill in your instructions. These are the routing calls a rater makes before scoring anything (rubric.md, section 1); a wrong call changes everything scored after it. Do not rate the projects. For each project below, answer only these, with the rubric's allowed values:
+You are applying the jevaluate-publish skill in your instructions. These are the routing calls a rater makes before scoring anything (rubric.md, section 1); a wrong call changes everything scored after it. Do not rate the projects. For each project below, answer only these, with the rubric's allowed values:
 
 1. project_type.
 2. calls_jev: yes, no or n.a.; with traced_line, the path:line in a code file (not .md, .txt, docs/ or tests/) or the capture that traces the request, when yes; or one line on why the evidence shows no call.

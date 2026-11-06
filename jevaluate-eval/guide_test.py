@@ -1,4 +1,4 @@
-"""Guide test: does jevaluate, given the whole building-with-jev-skill guide, name the known gaps? Headless; costs ~150k tokens."""
+"""Guide test: does jevaluate-publish, given the whole building-with-jev-skill guide, name the known gaps? Headless; costs ~150k tokens."""
 import argparse, copy, json, pathlib, re, subprocess, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from build_packets import build

@@ -1,4 +1,4 @@
-# Jevaluate rubric (2026-09-29.2)
+# Jevaluate rubric (2026-09-29.3)
 
 Route first, check facts second, score third, set the verdict last. Every ruling below has a one-sentence meaning and an invented example sorted correctly. The examples are made up: none is a real project, and a rating never cites them. The rules' sources are in `jev-rules.md`. When two ratings of one project disagree, tighten the rule they split on.
 
