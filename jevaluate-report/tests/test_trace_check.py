@@ -24,11 +24,14 @@ def library_as_of(tmp, date):
     its day, so a later docs change must not fail it."""
     import shutil
     lib = pathlib.Path(os.path.expanduser(os.environ.get("JEV_SOURCES_DATA", "~/.claude/jev-sources-data")))
+    if not (lib / "archive").is_dir():
+        pytest.skip(f"the Jev Sources library has no archive, so its pages as of {date} can't be rebuilt")
+    assert (lib / "docs").is_dir(), f"the Jev Sources library at {lib} has no docs/ folder"
     out = tmp / "lib-as-of"
     for kind in ("docs", "cookbooks", "patterns", "blog"):
         if (lib / kind).is_dir():
             shutil.copytree(lib / kind, out / kind)
-    runs = sorted(r for r in (lib / "archive").iterdir() if r.name[:10] > date) if (lib / "archive").is_dir() else []
+    runs = sorted(r for r in (lib / "archive").iterdir() if r.name[:10] > date)
     for run in reversed(runs):
         for state in ("changed", "removed"):
             for f in (run / state).glob("*/*.md"):
@@ -36,6 +39,16 @@ def library_as_of(tmp, date):
                     (out / f.parent.name).mkdir(parents=True, exist_ok=True)
                     shutil.copyfile(f, out / f.parent.name / f.name)
     return out
+
+
+def test_library_as_of_skips_a_library_with_no_archive(tmp_path, monkeypatch):
+    """A library with no archive/ folder can't be rolled back to a report's date, so the dated tests skip rather than
+    check today's pages."""
+    lib = tmp_path / "lib"
+    (lib / "docs").mkdir(parents=True)
+    monkeypatch.setenv("JEV_SOURCES_DATA", str(lib))
+    with pytest.raises(pytest.skip.Exception, match="no archive"):
+        library_as_of(tmp_path, "2026-10-01")
 
 
 def build(tmp, docs, files):
