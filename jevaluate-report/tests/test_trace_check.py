@@ -18,6 +18,26 @@ def git(cwd, *args):
     return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True, check=True, env=env).stdout.strip()
 
 
+def library_as_of(tmp, date):
+    """A copy of the Jev Sources library as it stood on `date`: each page TypeSafe changed or removed since then is
+    taken from the first archive run after that date, which kept the copy it replaced. A report quotes the pages of
+    its day, so a later docs change must not fail it."""
+    import shutil
+    lib = pathlib.Path(os.path.expanduser(os.environ.get("JEV_SOURCES_DATA", "~/.claude/jev-sources-data")))
+    out = tmp / "lib-as-of"
+    for kind in ("docs", "cookbooks", "patterns", "blog"):
+        if (lib / kind).is_dir():
+            shutil.copytree(lib / kind, out / kind)
+    runs = sorted(r for r in (lib / "archive").iterdir() if r.name[:10] > date) if (lib / "archive").is_dir() else []
+    for run in reversed(runs):
+        for state in ("changed", "removed"):
+            for f in (run / state).glob("*/*.md"):
+                if f.parent.name in ("docs", "cookbooks", "patterns", "blog"):
+                    (out / f.parent.name).mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(f, out / f.parent.name / f.name)
+    return out
+
+
 def build(tmp, docs, files):
     lib, repo = tmp / "lib", tmp / "repo"
     lib.mkdir()
@@ -120,14 +140,15 @@ SKIMMER_COMMIT_RE =r"^commit:\s*([0-9a-f]{40})"
 @pytest.mark.skipif(not os.path.isdir(os.path.expanduser(os.environ.get("JEV_SOURCES_DATA", "~/.claude/jev-sources-data"))),
                     reason="no Jev Sources library here (the script reads $JEV_SOURCES_DATA, else this default)")
 def test_skimmer_docs_quotes_are_in_the_library(tmp_path):
-    """Every TypeSafe docs quote the corrected skimmer report links is in the library (the posted one cites a 1.13 page
+    """Every TypeSafe docs quote the corrected skimmer report links is in the library as of the report's date (the posted one cites a 1.13 page
     TypeSafe has since removed, and two quotes with no docs link). Its code links are moved to
     another commit, so they are listed as unchecked (checking them needs a clone of the repo)."""
     import re
     text = re.sub(SKIMMER_COMMIT_RE, "commit: " + "0" * 40, (HERE / "fixtures" / "skimmer-corrected.md").read_text(), flags=re.M)
     report = tmp_path / "skimmer.md"
     report.write_text(text)
-    r = subprocess.run([sys.executable, "-I", str(CHECK), str(report)], capture_output=True, text=True)
+    lib = library_as_of(tmp_path, re.search(r"^date: (\S+)", text, re.M).group(1))
+    r = subprocess.run([sys.executable, "-I", str(CHECK), str(report), "--library", str(lib)], capture_output=True, text=True)
     assert r.returncode == 0 and "counts docs 15," in r.stdout, r.stdout + r.stderr
 
 
@@ -135,12 +156,13 @@ def test_skimmer_docs_quotes_are_in_the_library(tmp_path):
 @pytest.mark.skipif(not os.path.isdir(os.path.expanduser(os.environ.get("JEV_SOURCES_DATA", "~/.claude/jev-sources-data"))),
                     reason="no Jev Sources library here (the script reads $JEV_SOURCES_DATA, else this default)")
 def test_report_in_the_current_template_docs_quotes_are_in_the_library(tmp_path):
-    """The same docs quotes, in the report rebuilt in the current template; its code links move to another commit."""
+    """The same docs quotes, as of the report's date, in the report rebuilt in the current template; its code links move to another commit."""
     import re
     text = re.sub(SKIMMER_COMMIT_RE, "commit: " + "0" * 40, (HERE / "fixtures" / "skimmer-report.md").read_text(), flags=re.M)
     report = tmp_path / "skimmer.md"
     report.write_text(text)
-    r = subprocess.run([sys.executable, "-I", str(CHECK), str(report)], capture_output=True, text=True)
+    lib = library_as_of(tmp_path, re.search(r"^date: (\S+)", text, re.M).group(1))
+    r = subprocess.run([sys.executable, "-I", str(CHECK), str(report), "--library", str(lib)], capture_output=True, text=True)
     assert r.returncode == 0 and "counts docs 15," in r.stdout, r.stdout + r.stderr
 
 
