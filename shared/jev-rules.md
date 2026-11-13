@@ -7,9 +7,10 @@ The single source of rules for building with Jev, each citing its public source.
 |---|---|---|
 | `concepts/state` | 2026-09-27 | full prose |
 | `primitives/advanced` | 2026-09-27 | full prose |
-| `model-jaggedness/jev-1.13` | 2026-09-27 | sections: literal reading, indirection, large state, adversarial content |
+| `model-jaggedness` | 2026-11-11 | sections: literal reading, indirection, large state, adversarial content, Choice option order |
 | `concepts/how-to-build-with-system-one` | 2026-09-24 | design section |
-| `models` | 2026-09-24 | full |
+| `models` | 2026-11-11 | sections: input, rate limits |
+| `images` | 2026-11-11 | opening note and turning on images |
 | Cookbooks (18) | 2026-09-24 | script extracts, not full reads |
 | Launch post, evals.typesafe.ai | 2026-09-24 | sentences on training, calibration and evals |
 
@@ -22,10 +23,10 @@ These decide how a rating is made, not how to build with Jev. They come from rat
 - S1 **An object with descriptive field names** is the default; **a plain string is fine** when the use case is one piece of text. An array suits a sequence of messages or records. (`concepts/state`)
 - S2 **Group related information** in one state when the decision compares its parts. (`concepts/state`)
 - S3 **Content in the state; judgments in the questions.** No instructions buried in the state, no source text stuffed into questions. (`concepts/state`: "Separate content from questions")
-- S4 **Send only what the questions need.** Irrelevant detail lowers accuracy and hides which input caused a wrong answer. Filter in code, or with a relevance Noul. (`model-jaggedness/jev-1.13`; classifying RAG passages cookbook)
+- S4 **Send only what the questions need.** Irrelevant detail lowers accuracy and hides which input caused a wrong answer. Filter in code, or with a relevance Noul. (`model-jaggedness`; classifying RAG passages cookbook)
 - S5 **An ID on every item,** with questions pointing at backticked paths (`` `people[0].cap.text` ``). (How to build; line-by-line search cookbook)
-- S6 **Text only, and English is where accuracy is best.** Images, audio and video must be described in text first. Test non-English content, or add a translation beside it. (`concepts/state`, `models`)
-- S7 **State is data, not instructions,** and Jev doesn't treat it as hostile. Flag or test untrusted text (user input, web pages, text inside images) that could steer an answer. (`model-jaggedness/jev-1.13`)
+- S6 **Text and PNG or JPEG images; audio and video become text first.** Images are off by default, and TypeSafe says they aren't ready for production yet, so test any decision that rests on one. Test inputs in other languages too, or add a translation beside them; this is general practice, since no TypeSafe page covers languages. (`models`, `images`)
+- S7 **State is data, not instructions,** and Jev doesn't treat it as hostile. Flag or test untrusted text (user input, web pages, text inside images) that could steer an answer. (`model-jaggedness`)
 - S8 **Observations, not conclusions:** state facts and unknowns; never write the answer into the state. (case-study finding; related to S3)
 - S9 **Record the evidence for each answer evenly;** uneven detail acts as a hidden weight. (case-study finding)
 - S10 **Size:** state plus all questions ≤ 64k tokens; state plus the longest question ≤ 32k. (`models`)
@@ -35,7 +36,7 @@ These decide how a rating is made, not how to build with Jev. They come from rat
 - Q2 **Structure over templates:** instructions and criteria can be JSON objects or arrays. Pass schemas, taxonomies and database rows as JSON; don't splice values from code into strings. (`primitives/advanced`; How to build)
 - Q3 **Choice options are exclusive and cover every case;** describe the boundaries between close options (what each option covers, and what it isn't for). (`primitives/advanced`)
 - Q4 **Deep or large option sets:** walk a taxonomy with one Choice per level (a Choice caps at 255 options). (`primitives/advanced`; hierarchical classification cookbook)
-- Q5 **Say exactly what you mean:** Jev reads scoping words, negations and implied conditions at face value. Avoid double negatives and questions that need several hops. (`model-jaggedness/jev-1.13`)
+- Q5 **Say exactly what you mean:** Jev reads scoping words, negations and implied conditions at face value. Avoid double negatives and questions that need several hops. (`model-jaggedness`)
 - Q6 **Pair a Choice with an "is there an answer at all?" Noul** when none of the options may apply. (line-by-line search and skill suggestion cookbooks)
 
 - Q7 **Describe Score levels as situations,** with no numbers in the level text; each level is judged on its own and never sees its number or its neighbors. (`primitives/score`)
@@ -50,7 +51,7 @@ These decide how a rating is made, not how to build with Jev. They come from rat
 - E2 **Thresholds live in code** and scale with the cost of a wrong action; route on confidence. (`confidence`)
 - E3 **Pin the versioned model** from the models page when thresholds are tuned; log the `model` field each response returns. (`models`)
 - E4 **Average high-stakes Choices over option orders;** Choice is the least stable question type. (consistency Choice cookbook: answers flip between runs; own testing, 2026-09-28: reversing a Choice's options moved the top answer from 0.67 to 0.85)
-- E5 **Counting, arithmetic and dates happen in code;** Jev picks among candidates that code supplies. (`model-jaggedness/jev-1.13`; date and pre-parsed extraction cookbooks)
+- E5 **Counting, arithmetic and dates happen in code;** Jev picks among candidates that code supplies. (`model-jaggedness`; date and pre-parsed extraction cookbooks)
 - E6 **Keep an uncertain middle band** (for example 0.30 to 0.70) that goes to review instead of one cutoff; answers drift slightly between runs. (consistency Noul cookbook)
 - E7 **Derive thresholds from the probabilities you actually observe** on your data, not from round numbers. (structure recovery cookbook)
 - E8 **A combined answer is only as confident as its weakest part.** (date extraction and function calling cookbooks)
@@ -58,7 +59,7 @@ These decide how a rating is made, not how to build with Jev. They come from rat
 - E10 **Use a second request only when it needs the first one's output** (for example, shortlist, then recheck the top few). (structure recovery and skill suggestion cookbooks)
 - E11 **Cascade:** a cheap model first, Jev to verify each field, and the strong model only where Jev flags a problem. (SDE cascade cookbook)
 - E12 **Retrieve, then re-rank:** fast search for a shortlist, then Jev to score each candidate. (re-ranking cookbook)
-- E13 **Throughput is limited by tokens, not requests** (published: 250,000 tokens a second, 1,200 requests a minute; limits can change). Keep concurrency modest (6 to 8 workers) and batch by total tokens. (`models`; entity alignment cookbook)
+- E13 **Rate limits are set per organization,** in tokens and requests per second, and shown in TypeSafe's developer console. A request over either limit gets an error that the SDKs retry, waiting longer each time. Keep concurrency modest (the entity alignment cookbook uses 6 workers) and batch by total tokens. (`models`; entity alignment cookbook)
 - E14 **Cache calls during development** so reruns cost nothing. (every cookbook)
 - E15 **For the inverted request, check each new dataset** against the standard method on a small sample. A row's position among the questions doesn't affect its answer. (Recommended practice; no rating fact checks it.)
 
