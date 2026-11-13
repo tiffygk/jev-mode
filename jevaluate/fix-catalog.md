@@ -17,18 +17,18 @@ Each design fix answers one failed fact. Cite the fact, give the remedy, and poi
 | F10 unbalanced evidence, or conclusions in the state | Record the evidence for each answer about equally; state facts and unknowns, not conclusions **(confirm with data: remove one field at a time and rerun)** | `concepts/state` |
 | F11 confidence ignored | Gate each action on confidence: act, send for review, or escalate | `confidence`, `patterns/confidence-routing` |
 | F12 model not pinned | Pin the versioned ID from the models page; log the `model` field each response returns; retune thresholds after upgrading | `models` |
-| F13 Choice order unhandled | Average high-stakes Choices over option orders, or randomize the order per item | `cookbooks/consistency_choice_cookbook` |
-| F14 size limits exceeded | Filter the state to relevant fields; split long inputs; keep state plus the longest question under 32k tokens | `models`, `model-jaggedness/jev-1.13` |
+| F13 Choice order unhandled | Average high-stakes Choices over option orders, or randomize the order per item | `model-jaggedness` ("Choice option order") |
+| F14 size limits exceeded | Filter the state to relevant fields; split long inputs; keep state plus the longest question under 32k tokens | `models`, `model-jaggedness` |
 | F19 free-text answers string-matched | Ask a typed question (Noul, Choice or Score) and read its typed field and probabilities; never parse prose | `primitives` |
 | Measured once, loop not closed (`closes_loop: none`) | After evaluating, calibrate (tune thresholds or weights on labels) and/or revise (rewrite the questions or state for the misses), then re-measure | `confidence`; `cookbooks/autoresearch_feature_discovery` |
 | F20 values spliced into question strings (caps the verdict only at `very high` stakes) | Pass schemas, rows and values as JSON fields in the question or the state; put a user's own question in a state field marked as user input and point the question at it | `primitives/advanced` |
 | F21 content and judgments mixed | Move the source content into the state and keep only the judgment in the question | `concepts/state` |
-| F22 untrusted text not treated as data (caps the verdict only at `very high` stakes) | Flag steering text; add an injection-check Noul; test adversarial inputs before deploying | `model-jaggedness/jev-1.13`; `cookbooks/classifying_rag_passages` |
-| F23 non-English content untested | Test on your language, or add an English translation beside the original | `concepts/state` |
+| F22 untrusted text not treated as data (caps the verdict only at `very high` stakes) | Flag steering text; add an injection-check Noul; test adversarial inputs before deploying | `model-jaggedness`; `cookbooks/classifying_rag_passages` |
+| F23 non-English content untested | Test on your language, or add an English translation beside the original | General practice; no TypeSafe page covers other languages |
 | A Choice with a very large or deep option list | Walk a taxonomy, one Choice per level (the cap is 255 options) | `primitives/advanced`; `cookbooks/hierarchical_classification` |
-| F15 sample too small for the claim | Report the sample size; zero errors in n supports a rate of at most about 3/n | `cookbooks/classification_using_confidence` |
+| F15 sample too small for the claim | Report the sample size; zero errors in n supports a rate of at most about 3/n | General practice; no TypeSafe page covers sample size |
 | F16 builder's own labels | Label with an LLM panel or blind reviewers, or disclose that the builder labeled | `cookbooks/classification_using_confidence` |
-| F17 tuned and tested on the same data | Hold out a test set the thresholds and wording never saw | `cookbooks/classification_using_confidence` |
+| F17 tuned and tested on the same data | Hold out a test set the thresholds and wording never saw | `cookbooks/autoresearch_feature_discovery` (800 rows held out, scored once) |
 | F18 unfair baseline | Compare on the same data against a reasonable LLM or rules alternative | `cookbooks/consistency_choice_cookbook` |
 | G1 a guide's rule contradicts the page it cites | Rewrite the rule to match the page, and quote the page beside it | The page the rule cites |
 | G2 a guide's example would fail F1-F6 | Fix the example the way the matching F1-F6 row says; readers copy examples before rules | `concepts/how-to-build-with-system-one` |
