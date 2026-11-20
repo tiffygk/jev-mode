@@ -9,8 +9,9 @@ The single source of rules for building with Jev, each citing its public source.
 | `primitives/advanced` | 2026-09-27 | full prose |
 | `model-jaggedness` | 2026-11-11 | sections: literal reading, indirection, large state, adversarial content, Choice option order |
 | `concepts/how-to-build-with-system-one` | 2026-09-24 | design section |
-| `models` | 2026-11-11 | sections: input, rate limits |
+| `models` | 2026-11-19 | sections: input, rate limits, long context |
 | `images` | 2026-11-11 | opening note and turning on images |
+| `changelog` | 2026-11-19 | model changelog, the Jev 1.14 entry |
 | Cookbooks (18) | 2026-09-24 | script extracts, not full reads |
 | Launch post, evals.typesafe.ai | 2026-09-24 | sentences on training, calibration and evals |
 
@@ -25,11 +26,11 @@ These decide how a rating is made, not how to build with Jev. They come from rat
 - S3 **Content in the state; judgments in the questions.** No instructions buried in the state, no source text stuffed into questions. (`concepts/state`: "Separate content from questions")
 - S4 **Send only what the questions need.** Irrelevant detail lowers accuracy and hides which input caused a wrong answer. Filter in code, or with a relevance Noul. (`model-jaggedness`; classifying RAG passages cookbook)
 - S5 **An ID on every item,** with questions pointing at backticked paths (`` `people[0].cap.text` ``). (How to build; line-by-line search cookbook)
-- S6 **Text and PNG or JPEG images; audio and video become text first.** Images are off by default, and TypeSafe says they aren't ready for production yet, so test any decision that rests on one. Test inputs in other languages too, or add a translation beside them; this is general practice, since no TypeSafe page covers languages. (`models`, `images`)
+- S6 **Text and PNG or JPEG images; audio and video become text first.** Images are off by default, and TypeSafe says they aren't ready for production yet, so test any decision that rests on one. Test inputs in other languages too, or add a translation beside them. This is general practice: TypeSafe's changelog says only that Jev 1.14 has better multilingual support. (`models`, `images`, `changelog`)
 - S7 **State is data, not instructions,** and Jev doesn't treat it as hostile. Flag or test untrusted text (user input, web pages, text inside images) that could steer an answer. (`model-jaggedness`)
 - S8 **Observations, not conclusions:** state facts and unknowns; never write the answer into the state. (case-study finding; related to S3)
 - S9 **Record the evidence for each answer evenly;** uneven detail acts as a hidden weight. (case-study finding)
-- S10 **Size:** state plus all questions ≤ 64k tokens; state plus the longest question ≤ 32k. (`models`)
+- S10 **Size:** state plus all questions ≤ 64k tokens; state plus the longest question ≤ 32k. TypeSafe's long-context header raises both to 262k, but it is experimental, and TypeSafe calls it slower and less accurate. (`models`)
 
 ## Questions
 - Q1 **Atomic:** one property per question; break broad judgments down. ("Decompose the questions," which How to build calls "probably the most important concept")
@@ -71,4 +72,4 @@ These decide how a rating is made, not how to build with Jev. They come from rat
 - V5 **Audit what was returned and what wasn't:** the top, the boundary, near misses, and a random slice from the deep bottom, reviewed blind. Zero misses in n means the miss rate can still be up to about 3/n.
 - V6 **Report error bars:** Wilson intervals for rates; count labels rather than taking a percentage of the data.
 - V7 **Find what drives an answer by taking the state apart:** remove or flip one field at a time and rerun; anything within the run-to-run noise counts as no effect. (measured case study, 2026-09-27)
-- V8 **Screen draft questions before running them** with Nouls about the question itself: answerable from the state? one meaning? applies to most items? varies across them? (autoresearch cookbook, next steps)
+- V8 **Screen draft questions before running them** with Nouls about the question itself: answerable from the state? one meaning? varies across items? (autoresearch cookbook, next steps)
