@@ -123,7 +123,10 @@ def problems(base, head, body):
         versions += [(c, m, b, f) for m, b, f in raw_entries("diff-tree", "-r", "-m", "--no-commit-id", *diff, c)]
     items = scope_items(body)
     if items is None:
-        out.append(("", "the PR description has no Scope line, such as `Scope: jev-sources/, README.md`"))
+        if SCOPE.search(body or ""):
+            out.append(("", "the Scope line is empty; name the folders or files this PR changes, such as `Scope: README.md`"))
+        else:
+            out.append(("", "the PR description has no Scope line, such as `Scope: jev-sources/, README.md`"))
         items = []
     m = MARKERS.search(body or "")
     if m:
