@@ -115,9 +115,13 @@ def test_commit_message_with_plan_text_fails(repo):
     assert any("message reads like" in w for w in check())
 
 
-def test_unfilled_template_counts_as_no_scope(repo):
+def test_unfilled_template_says_the_scope_line_is_empty(repo):
+    # The template's blank "Scope: " line was reported as "no Scope line", which confused a contributor whose
+    # description had one (PRs #47 and #50).
     add(repo, "jev-sources/route.py", "x = 7\n")
-    assert any("no Scope line" in w for w in check(body="Scope: \n\n## What changes\n"))
+    found = check(body="Scope: \n\n## What changes\n")
+    assert any("Scope line is empty" in w for w in found)
+    assert not any("no Scope line" in w for w in found)
 
 
 def test_any_home_folder_path_fails(repo):
